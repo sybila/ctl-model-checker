@@ -26,6 +26,7 @@ public interface Nodes<N: Node, C: Colors<C>> {
      */
     val emptyColors: C
 
+    //TODO: Maybe we don't really need this?
     /**
      * All keys that have their value set.
      */
@@ -79,8 +80,8 @@ public interface MutableNodes<N: Node, C: Colors<C>>: Nodes<N, C> {
 }
 
 public open class MapNodes<N: Node, C: Colors<C>>(
-        private val map: Map<N, C>, //TODO: Shouldn't we make a defensive copy of this?
-        public override val emptyColors: C
+        public override val emptyColors: C, //TODO: Shouldn't we make a defensive copy of this?
+        private val map: Map<N, C>
 ) : Nodes<N, C> {
 
     override val validKeys: Set<N> = map.keys
@@ -93,7 +94,7 @@ public open class MapNodes<N: Node, C: Colors<C>>(
         for ((k, v) in other.validEntries) {
             new[k] = get(k) + v
         }
-        return MapNodes(new, emptyColors)
+        return MapNodes(emptyColors, new)
     }
 
     override fun minus(other: Nodes<N, C>): Nodes<N, C> {
@@ -101,15 +102,15 @@ public open class MapNodes<N: Node, C: Colors<C>>(
         for ((k, v) in other.validEntries) {
             new[k] = get(k) - v
         }
-        return MapNodes(new.filterValues { it.isNotEmpty() }, emptyColors)
+        return MapNodes(emptyColors, new.filterValues { it.isNotEmpty() })
     }
 
     override fun intersect(other: Nodes<N, C>): Nodes<N, C> {
-        val new = HashMap(map)
+        val new = HashMap<N, C>()
         for ((k, v) in other.validEntries) {
             new[k] = get(k) intersect v
         }
-        return MapNodes(new.filterValues { it.isNotEmpty() }, emptyColors)
+        return MapNodes(emptyColors, new.filterValues { it.isNotEmpty() })
     }
 
     override fun isEmpty(): Boolean = map.isEmpty()
@@ -133,13 +134,13 @@ public open class MapNodes<N: Node, C: Colors<C>>(
 }
 
 public class MutableMapNodes<N: Node, C: Colors<C>>(
-    private val map: MutableMap<N, C>,
-    emptyColors: C
-): MapNodes<N, C>(map, emptyColors), MutableNodes<N, C> {
+        emptyColors: C,
+        private val map: MutableMap<N, C>
+): MapNodes<N, C>(emptyColors, map), MutableNodes<N, C> {
 
     override fun toNodes(): Nodes<N, C> {
         synchronized(map) {
-            return MapNodes(HashMap(map), emptyColors)
+            return MapNodes(emptyColors, HashMap(map))
         }
     }
 
@@ -163,10 +164,10 @@ public class MutableMapNodes<N: Node, C: Colors<C>>(
 }
 
 public fun <N: Node, C: Colors<C>> Map<N, C>.toNodes(value: C): Nodes<N, C>
-        = MapNodes(this, value)
+        = MapNodes(value, this)
 public fun <N: Node, C: Colors<C>> MutableMap<N, C>.toMutableNodes(value: C): MutableNodes<N, C>
-        = MutableMapNodes(this, value)
+        = MutableMapNodes(value, this)
 
 public fun <N: Node, C: Colors<C>> nodesOf(default: C, vararg pairs: Pair<N, C>): Nodes<N, C>
-        = MapNodes(pairs.toMap({it.first}, {it.second}), default)
+        = MapNodes(default, pairs.toMap({it.first}, {it.second}))
 

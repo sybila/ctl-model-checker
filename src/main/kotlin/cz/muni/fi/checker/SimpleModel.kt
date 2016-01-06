@@ -92,7 +92,7 @@ public class ExplicitKripkeFragment(
         validity: Map<Atom, Map<IDNode, IDColors>>
 ) : KripkeFragment<IDNode, IDColors> {
 
-    private val emptyNodeSet = MapNodes(mapOf<IDNode, IDColors>(), IDColors())
+    private val emptyNodeSet = MapNodes(IDColors(), mapOf<IDNode, IDColors>())
 
     private val successorMap = edges
             .groupBy { it.start }
