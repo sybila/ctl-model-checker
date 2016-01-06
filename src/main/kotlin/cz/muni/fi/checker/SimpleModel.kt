@@ -57,11 +57,11 @@ public class ExplicitPartitionFunction<N: Node>(
 /**
  * Partition function defined by an actual function from nodes to ids.
  */
-public class FunctionalPartitionFunction(
+public class FunctionalPartitionFunction<N: Node>(
         private val id: Int,
-        private val function: (IDNode) -> Int
-) : PartitionFunction<IDNode> {
-    override val ownerId: IDNode.() -> Int = {function(this)}
+        private val function: (N) -> Int
+) : PartitionFunction<N> {
+    override val ownerId: N.() -> Int = {function(this)}
     override val myId: Int = id
 }
 
