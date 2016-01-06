@@ -51,12 +51,15 @@ public interface PartitionFunction<N: Node> {
 
 
 /**
- * Note: Several invariants should hold for each valid Kripke fragment
+ * Immutable (but can be lazy) Kripke fragment allowing colored nodes and edges.
+ *
+ * Note: Several invariants/contracts should hold for each valid Kripke fragment
  * 1. validNodes should always return subset of allNodes (with respect to colors).
  * 2. for every node N and color C from allNodes, successors(N) should be non empty (no finite paths).
  * 3. Border state set is a union of all successors/predecessors minus all nodes (with respect to colors).
  * 4. If N is successor of M for colors C, M is predecessor of N for colors C.
  * 5. The default value in all node sets is always an empty color space.
+ * 6. The color set returned by successors/predecessors minus set returned by allNodes does not have to be empty.
  */
 public interface KripkeFragment<N: Node, C: Colors<C>> {
 
@@ -81,12 +84,3 @@ public interface KripkeFragment<N: Node, C: Colors<C>> {
     fun validNodes(a: Atom): Nodes<N, C>
 
 }
-
-/**
- * Utility data class
- */
-public data class Edge<N: Node, C: Colors<C>>(
-        public val start: N,
-        public val end: N,
-        public val colors: C
-)

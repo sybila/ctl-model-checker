@@ -24,22 +24,28 @@ public interface Nodes<N: Node, C: Colors<C>> {
     /**
      * Default element returned
      */
-    public val emptyColors: C
+    val emptyColors: C
 
     /**
      * All keys that have their value set.
      */
-    public val validKeys: Set<N>
+    val validKeys: Set<N>
 
     /**
      * All entries that are not empty.
      */
-    public val validEntries: Set<Map.Entry<N, C>>
+    val validEntries: Set<Map.Entry<N, C>>
+
+    fun isEmpty(): Boolean
+
+    fun isNotEmpty(): Boolean = !isEmpty()
 
     /**
      * Return color set for given key or empty set if no value is set.
      */
     operator fun get(key: N): C
+
+    operator fun contains(key: N): Boolean
 
     operator fun plus(other: Nodes<N, C>): Nodes<N, C>
 
@@ -105,6 +111,10 @@ public open class MapNodes<N: Node, C: Colors<C>>(
         }
         return MapNodes(new.filterValues { it.isNotEmpty() }, emptyColors)
     }
+
+    override fun isEmpty(): Boolean = map.isEmpty()
+
+    override fun contains(key: N): Boolean = key in map
 
     override fun equals(other: Any?): Boolean {
         if (other is MapNodes<*, *>) {
