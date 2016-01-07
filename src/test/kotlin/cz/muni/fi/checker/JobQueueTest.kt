@@ -25,10 +25,9 @@ abstract class SingleThreadJobQueueTest: JobQueueTest() {
     override fun createJobQueues(
             processCount: Int,
             partitioning: List<PartitionFunction<IDNode>>
-    ): List<JobQueue.Factory<IDNode, IDColors, Job.EU<IDNode, IDColors>>>
+    ): List<JobQueue.Factory<IDNode, IDColors>>
             = createSharedMemoryJobQueue(
                 processCount = processCount,
-                jobClass = genericClass<Job.EU<IDNode, IDColors>>(),
                 partitioning = partitioning
             )
 
@@ -52,7 +51,7 @@ public abstract class JobQueueTest {
     abstract fun createJobQueues(
             processCount: Int,
             partitioning: List<PartitionFunction<IDNode>> = (1..processCount).map { UniformPartitionFunction<IDNode>(it-1) }
-    ): List<JobQueue.Factory<IDNode, IDColors, Job.EU<IDNode, IDColors>>>
+    ): List<JobQueue.Factory<IDNode, IDColors>>
 
     private val allColors = (1..5).toSet()
 
@@ -65,7 +64,7 @@ public abstract class JobQueueTest {
     @Test(timeout = 1000)
     fun noMessages() {
         createJobQueues(processCount).map { f -> thread {
-            val q = f.createNew {  }
+            val q = f.createNew(jobClass = genericClass<Job.EU<IDNode, IDColors>>()) {  }
             q.waitForTermination()
         } }.map { it.join() }
     }
@@ -77,16 +76,16 @@ public abstract class JobQueueTest {
             val executed = ArrayList<Job.EU<IDNode, IDColors>>()
             val jobs = (1..10).map { randomEuJob() }
 
-            val q = f.createNew(jobs) { synchronized(executed) {
+            val q = f.createNew(jobs, genericClass()) { synchronized(executed) {
                 executed.add(it)
             } }
 
             q.waitForTermination()
 
-            assertEquals<List<Job.EU<IDNode, IDColors>>>(
+            assertEquals(
                     jobs.sortedWith(jobComparator),
                     executed.sortedWith(jobComparator)
-            )   //bug
+            )
         } }.map { it.join() }
     }
 
@@ -108,7 +107,7 @@ public abstract class JobQueueTest {
                     posted[job.node.id % processCount]!!.add(job)
             } }
 
-            val queue = f.createNew(initial) {
+            val queue = f.createNew(initial, genericClass()) {
                 synchronized(executed) { executed.add(it) }
                 if (it.node.id != 0) {
                     val newNodeId = it.node.id - 1
