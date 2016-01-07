@@ -104,13 +104,16 @@ public class SingleThreadJobQueue<N: Node, C: Colors<C>, J: Job<N, C>> (
 
     private var active: Boolean = true
 
-    private val localTaskQueue = LinkedBlockingQueue<Maybe<J>>(initialJobs.map { Maybe.Just(it) })
+    private val localTaskQueue = LinkedBlockingQueue<Maybe<J>>()
 
     private val terminator = terminators.createNew()
 
     init {
         //If we don't have initial jobs, we are done straight away
         if (initialJobs.isEmpty()) doneIfEmpty()
+        else {
+            initialJobs.map { post(it) }
+        }
     }
 
     private val messenger = comm.listenTo(jobClass) {
