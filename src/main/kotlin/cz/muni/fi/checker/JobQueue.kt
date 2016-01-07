@@ -69,7 +69,7 @@ public interface JobQueue<N: Node, C: Colors<C>, J: Job<N, C>> {
      */
     fun waitForTermination()
 
-    public interface Factory<N: Node, C: Colors<C>, J: Job<N, C>> {
+    public interface Factory<N: Node, C: Colors<C>> {
 
         /**
          * Create new job queue that will execute onTask callback whenever job is posted.
@@ -80,7 +80,7 @@ public interface JobQueue<N: Node, C: Colors<C>, J: Job<N, C>> {
          * Also, this method returns only after all queues has been successfully initialized.
          * Simply: When this method returns, any process can post jobs and expect them to be delivered.
          */
-        fun createNew(initial: List<J> = listOf(), onTask: JobQueue<N, C, J>.(J) -> Unit): JobQueue<N, C, J>
+        fun <J : Job<N, C>> createNew(initial: List<J> = listOf(), jobClass: Class<J>, onTask: JobQueue<N, C, J>.(J) -> Unit): JobQueue<N, C, J>
     }
 
 }
@@ -165,24 +165,22 @@ public class SingleThreadJobQueue<N: Node, C: Colors<C>, J: Job<N, C>> (
 
 }
 
-fun <N: Node, C: Colors<C>, J: Job<N, C>> createSharedMemoryJobQueue(
+fun <N: Node, C: Colors<C>> createSharedMemoryJobQueue(
         processCount: Int,
         partitioning: List<PartitionFunction<N>> = (1..processCount).map { UniformPartitionFunction<N>(it-1) },
         terminators: List<Terminator.Factory> = createSharedMemoryTerminators(processCount),
-        communicators: List<Communicator> = createSharedMemoryCommunicators(processCount),
-        jobClass: Class<J>
-): List<JobQueue.Factory<N, C, J>> {
+        communicators: List<Communicator> = createSharedMemoryCommunicators(processCount)
+): List<JobQueue.Factory<N, C>> {
     return (0..(processCount-1)).map { i ->
-        object : JobQueue.Factory<N, C, J> {
-            override fun createNew(initial: List<J>, onTask: JobQueue<N, C, J>.(J) -> Unit): JobQueue<N, C, J> {
+        object : JobQueue.Factory<N, C> {
+            override fun <J : Job<N, C>> createNew(initial: List<J>, jobClass: Class<J>, onTask: JobQueue<N, C, J>.(J) -> Unit): JobQueue<N, C, J> {
                 return SingleThreadJobQueue(
                         initialJobs = initial,
                         comm = communicators[i],
                         terminators = terminators[i],
                         jobClass = jobClass,
                         partitioning = partitioning[i],
-                        onTask = onTask
-                )
+                        onTask = onTask)
             }
         }
     }
