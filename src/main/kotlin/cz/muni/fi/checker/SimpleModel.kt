@@ -142,4 +142,10 @@ public class ExplicitKripkeFragment(
 
 }
 
+public val emptyIDNodes = emptyMap<IDNode, IDColors>().toNodes(IDColors())
+public fun Iterable<Pair<IDNode, IDColors>>.toIDNodes(): Nodes<IDNode, IDColors>
+        = MapNodes(IDColors(), this.toMap())
+public fun Map<IDNode, IDColors>.toIDNodes(): Nodes<IDNode, IDColors>
+        = MapNodes(IDColors(), this)
+
 
