@@ -11,6 +11,15 @@ public data class IDNode(
 ) : Node
 
 /**
+ * A node represented by it's coordinates in sum rectangular space.
+ * Note: Don't use this in production. Usually it's much cheaper to encode
+ * the coordinates into one number.
+ */
+public data class CoordinateNode(
+        public val coordinates: IntArray
+) : Node
+
+/**
  * Simple color set represented by a set of IDs
  */
 public data class IDColors(private val set: Set<Int> = HashSet()) : Colors<IDColors> {
@@ -25,6 +34,70 @@ public data class IDColors(private val set: Set<Int> = HashSet()) : Colors<IDCol
 
     override fun intersect(other: IDColors): IDColors = IDColors(set.intersect(other.set))
 
+}
+
+/**
+ * Primitive alternative to IDColors that stores color sets as intervals.
+ */
+public data class IntervalColors(
+        private val intervals: Set<Interval> = emptySet()
+) : Colors<IntervalColors> {
+
+    constructor(vararg intervals: Interval): this(intervals.toSet())
+
+    override fun minus(other: IntervalColors): IntervalColors
+            = IntervalColors(normalize(intervals
+                    .flatMap { fst ->  other.intervals.map { snd -> fst - snd } }
+                    .filterNotNull().toSet()
+            ))
+
+    override fun plus(other: IntervalColors): IntervalColors
+            = IntervalColors(normalize(intervals + other.intervals))
+
+    override fun intersect(other: IntervalColors): IntervalColors
+            = IntervalColors(normalize(intervals
+                    .flatMap { fst -> other.intervals.map { snd -> fst intersect snd } }
+                    .filter { !it.isEmpty() }.toSet()
+            ))
+
+    override fun isEmpty(): Boolean = intervals.isEmpty()
+
+    private fun normalize(items: Set<Interval>): Set<Interval> {
+        val nonRedundant = HashSet<Interval>()
+
+        for (range in items) {
+            if (items.all { it == range || !(it encloses range) }) {
+                nonRedundant.add(range)
+            }
+        }
+
+        val independent = HashSet<Interval>()
+
+        while (nonRedundant.isNotEmpty()) {
+            val candidate = nonRedundant.first()
+            nonRedundant.remove(candidate)
+
+            //println("candidate: $candidate")
+
+            val merge = nonRedundant.asSequence()   //should be lazy
+                    .map { Pair(it merge candidate, it) }
+                    .filter { it.first != null }.firstOrNull()
+
+            //println("Remaining: $nonRedundant")
+            //println("merge: $merge")
+
+            if (merge == null) {    //can't merge with anything!
+                independent.add(candidate)
+            } else {                //merge again!
+                //remove comes first, since if fst == snd, the set would remain empty
+                nonRedundant.remove(merge.second)
+                nonRedundant.add(merge.first!!)
+            }
+
+        }
+
+        return independent
+    }
 }
 
 /**
