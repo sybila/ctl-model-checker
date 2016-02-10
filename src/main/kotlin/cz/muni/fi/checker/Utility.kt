@@ -89,3 +89,8 @@ fun <T: Any> BlockingQueue<Maybe<T>>.threadUntilPoisoned(onItem: (T) -> Unit) = 
         job = this.take()
     }   //got Nothing
 }
+
+/**
+ * And poison it afterwards.
+ */
+fun <T: Any> BlockingQueue<Maybe<T>>.poison() = this.put(Maybe.Nothing())
