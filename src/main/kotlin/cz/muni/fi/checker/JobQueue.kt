@@ -75,8 +75,10 @@ class SingleThreadJobQueue<N: Node, C: Colors<C>>(
         val initRound = terminators.createNew()
         comm.addListener(genericClass<Job<N, C>>()) {
             synchronized(localQueue) {
-                localQueue.add(Maybe.Just(it))
+                //must be set first, otherwise we might process
+                //message before terminator is marked as working
                 workRound.messageReceived()
+                localQueue.add(Maybe.Just(it))
             }
         }
         initRound.setDone()
@@ -134,8 +136,8 @@ class SingleThreadJobQueue<N: Node, C: Colors<C>>(
 fun <N: Node, C: Colors<C>> createSingleThreadJobQueues(
         processCount: Int,
         partitioning: List<PartitionFunction<N>> = (1..processCount).map { UniformPartitionFunction<N>(it-1) },
-        communicators: List<Communicator> = createSharedMemoryCommunicators(processCount),
-        terminators: List<Terminator.Factory> = communicators.map { Terminator.Factory(CommunicatorTokenMessenger(it)) }
+        communicators: List<Communicator>,
+        terminators: List<Terminator.Factory>
 ): List<JobQueue.Factory<N, C>> {
     return (0..(processCount-1)).map { i ->
         object : JobQueue.Factory<N, C> {
