@@ -6,14 +6,14 @@ import java.util.*
 /**
  * Simple node represented only by it's ID
  */
-public data class IDNode(
-        public val id: Int
+data class IDNode(
+        val id: Int
 ) : Node
 
 /**
  * Simple color set represented by a set of IDs
  */
-public data class IDColors(private val set: Set<Int> = HashSet()) : Colors<IDColors> {
+data class IDColors(private val set: Set<Int> = HashSet()) : Colors<IDColors> {
 
     constructor(vararg items: Int): this(items.toSet())
 
@@ -32,7 +32,7 @@ public data class IDColors(private val set: Set<Int> = HashSet()) : Colors<IDCol
  *
  * You can either provide a direct or inverse mapping (or a combination of both)
  */
-public class ExplicitPartitionFunction<N: Node>(
+class ExplicitPartitionFunction<N: Node>(
         private val id: Int,
         directMapping: Map<N, Int> = mapOf(),
         inverseMapping: Map<Int, List<N>> = mapOf()
@@ -57,7 +57,7 @@ public class ExplicitPartitionFunction<N: Node>(
 /**
  * Partition function defined by an actual function from nodes to ids.
  */
-public class FunctionalPartitionFunction<N: Node>(
+class FunctionalPartitionFunction<N: Node>(
         private val id: Int,
         private val function: (N) -> Int
 ) : PartitionFunction<N> {
@@ -68,7 +68,7 @@ public class FunctionalPartitionFunction<N: Node>(
 /**
  * "No partition"
  */
-public class UniformPartitionFunction<N: Node>(private val id: Int = 0) : PartitionFunction<N> {
+class UniformPartitionFunction<N: Node>(private val id: Int = 0) : PartitionFunction<N> {
     override val ownerId: N.() -> Int = { id }
     override val myId: Int = id
 }
@@ -76,17 +76,17 @@ public class UniformPartitionFunction<N: Node>(private val id: Int = 0) : Partit
 /**
  * Utility data class
  */
-public data class Edge<N: Node, C: Colors<C>>(
-        public val start: N,
-        public val end: N,
-        public val colors: C
+data class Edge<N: Node, C: Colors<C>>(
+        val start: N,
+        val end: N,
+        val colors: C
 )
 
 /**
  * Explicitly defined kripke fragment with some invariant verification.
  * Don't use for big models! (verification will kill you)
  */
-public class ExplicitKripkeFragment(
+class ExplicitKripkeFragment(
         nodes: Map<IDNode, IDColors>,
         edges: Set<Edge<IDNode, IDColors>>,
         validity: Map<Atom, Map<IDNode, IDColors>>
@@ -97,24 +97,23 @@ public class ExplicitKripkeFragment(
     private val successorMap = edges
             .groupBy { it.start }
             .mapValues { entry ->
-                entry.value.toMap({ it.end }, { it.colors }).toNodes(IDColors())
-            }.withDefault { emptyNodeSet }
+                entry.value.associateBy({ it.end }, { it.colors }).toNodes(IDColors())
+            }
 
     private val predecessorMap = edges
             .groupBy { it.end }
             .mapValues { entry ->
-                entry.value.toMap({ it.start }, { it.colors }).toNodes(IDColors())
-            }.withDefault { emptyNodeSet }
+                entry.value.associateBy({ it.start }, { it.colors }).toNodes(IDColors())
+            }
 
     private val nodes = nodes.toNodes(IDColors())
 
     private val validity = validity
             .mapValues { it.value.toNodes(IDColors()) }
-            .withDefault { emptyNodeSet }
 
-    override val successors: IDNode.() -> Nodes<IDNode, IDColors> = { successorMap.getOrImplicitDefault(this) }
+    override val successors: IDNode.() -> Nodes<IDNode, IDColors> = { successorMap.getOrElse(this, { emptyNodeSet }) }
 
-    override val predecessors: IDNode.() -> Nodes<IDNode, IDColors> = { predecessorMap.getOrImplicitDefault(this) }
+    override val predecessors: IDNode.() -> Nodes<IDNode, IDColors> = { predecessorMap.getOrElse(this, { emptyNodeSet }) }
 
     init {
         for (valid in validity.values) {  //Invariant 1.
@@ -138,7 +137,7 @@ public class ExplicitKripkeFragment(
 
     override fun allNodes(): Nodes<IDNode, IDColors> = nodes
 
-    override fun validNodes(a: Atom): Nodes<IDNode, IDColors> = validity.getOrImplicitDefault(a)
+    override fun validNodes(a: Atom): Nodes<IDNode, IDColors> = validity.getOrElse(a, { emptyNodeSet })
 
 }
 

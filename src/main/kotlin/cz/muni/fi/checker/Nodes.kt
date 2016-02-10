@@ -169,5 +169,5 @@ public fun <N: Node, C: Colors<C>> MutableMap<N, C>.toMutableNodes(value: C): Mu
         = MutableMapNodes(value, this)
 
 public fun <N: Node, C: Colors<C>> nodesOf(default: C, vararg pairs: Pair<N, C>): Nodes<N, C>
-        = MapNodes(default, pairs.toMap({it.first}, {it.second}))
+        = MapNodes(default, pairs.associateBy({ it.first }, { it.second }))
 

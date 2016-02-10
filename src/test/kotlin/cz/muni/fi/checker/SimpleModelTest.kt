@@ -8,10 +8,10 @@ import kotlin.test.assertFailsWith
 import kotlin.test.assertTrue
 
 fun nodesOf(vararg pairs: Pair<IDNode, IDColors>): Nodes<IDNode, IDColors>
-        = pairs.toMap({it.first}, {it.second}).toNodes(IDColors())
+        = pairs.associateBy({ it.first }, { it.second }).toNodes(IDColors())
 
 fun nodesOf(pairs: List<Pair<IDNode, IDColors>>): Nodes<IDNode, IDColors>
-        = pairs.toMap({it.first}, {it.second}).toNodes(IDColors())
+        = pairs.associateBy({ it.first }, { it.second }).toNodes(IDColors())
 
 class ExplicitKripkeFragmentTest {
 
@@ -118,7 +118,7 @@ class ExplicitKripkeFragmentTest {
     @Test fun edgeTestNoBorders() {
 
         val fullColors = IDColors(1,2,3,4,5)
-        val nodes = setOf(n1, n2, n3, n4, n5).toMap({it}, {fullColors})
+        val nodes = setOf(n1, n2, n3, n4, n5).associateBy({ it }, { fullColors })
 
         val ks = ExplicitKripkeFragment(
                 nodes, nodes.map { Edge(it.key, it.key, it.value) }.toSet() + setOf(
@@ -186,14 +186,14 @@ class ExplicitKripkeFragmentTest {
     }
 
     @Test fun allNodesTest() {
-        val nodes = setOf(n1, n2, n4).toMap({it}, {IDColors(it.id)})
+        val nodes = setOf(n1, n2, n4).associateBy({ it }, { IDColors(it.id) })
         val ks = ExplicitKripkeFragment(nodes, nodes.map { Edge(it.key, it.key, it.value) }.toSet(), mapOf())
         assertEquals(nodesOf(IDColors(),Pair(n1, IDColors(0)), Pair(n2, IDColors(1)), Pair(n4, IDColors(3))), ks.allNodes())
     }
 
     @Test fun validNodesTest() {
         val ks = ExplicitKripkeFragment(
-                setOf(n1, n3, n5).toMap({it}, { IDColors(1,2,3) })
+                setOf(n1, n3, n5).associateBy({ it }, { IDColors(1, 2, 3) })
                 , setOf(n1, n3, n5).map { Edge(it, it, IDColors(1,2,3)) }.toSet(), mapOf(
                     Pair(
                             FloatProposition("name", CompareOp.EQ, 3.14),
