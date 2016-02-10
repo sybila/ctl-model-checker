@@ -2,7 +2,6 @@ package cz.muni.fi.checker
 
 import java.util.*
 import java.util.concurrent.BlockingQueue
-import kotlin.concurrent.thread
 
 /**
  * This is a utility file for all the goodies you won't find anywhere else.
@@ -80,16 +79,41 @@ fun <T> Iterable<T>.pow(exp: Int): List<List<T>> {
     return r
 }
 
+class JobThread(
+        val thread: Thread
+) {
+
+    constructor(task: () -> Unit) : this(Thread(task))
+
+    var ex: Throwable? = null
+
+    init {
+        thread.setUncaughtExceptionHandler { thread, throwable ->
+            ex = throwable
+        }
+    }
+
+    fun join() {
+        thread.join()
+        if (ex != null) throw ex!!
+    }
+
+}
+
 /**
  * Create a thread listening to all items in a blocking queue until Nothing is received.
  * (Classic poison pill principle)
  */
-fun <T: Any> BlockingQueue<Maybe<T>>.threadUntilPoisoned(onItem: (T) -> Unit) = thread {
-    var job = this.take()
-    while (job is Maybe.Just) {
-        onItem(job.value)
-        job = this.take()
-    }   //got Nothing
+fun <T: Any> BlockingQueue<Maybe<T>>.threadUntilPoisoned(onItem: (T) -> Unit): JobThread {
+    val result = JobThread {
+        var job = this.take()
+        while (job is Maybe.Just) {
+            onItem(job.value)
+            job = this.take()
+        }   //got Nothing
+    }
+    result.thread.start()
+    return result
 }
 
 /**
