@@ -24,8 +24,8 @@ class SmallSharedMemoryCommunicatorTest : CommunicatorTest() {
 
 class BigSharedMemoryCommunicatorTest : CommunicatorTest() {
 
-    override val repetitions: Int = 1
-    override val processCount: Int = 24
+    override val repetitions: Int = 2
+    override val processCount: Int = 12
 
     override val communicatorConstructor: (Int) -> List<Communicator>
             = { c -> createSharedMemoryCommunicators(c) }
@@ -86,7 +86,7 @@ abstract class CommunicatorTest {
         val terminationBarrier = CyclicBarrier(2 * processCount)
         val initBarrier = CyclicBarrier(processCount)
 
-        for (a in 1..repetitions) {
+        repeat(repetitions) {
             communicatorConstructor(processCount).map { comm ->
 
                 val expected = (0..(processCount - 1))
@@ -127,7 +127,7 @@ abstract class CommunicatorTest {
         //therefore we can safely predict how the expected received messages should look.
         //(It's going to be all messages repeated i-times except for message from itself)
 
-        for (a in 1..repetitions) { //Repeat this a lot and hope for the best!
+        repeat(repetitions) { //Repeat this a lot and hope for the best!
             val allMessages = (1..processCount).map { TestMessage(it - 1) }
             val messageCount = 10
 
@@ -179,7 +179,7 @@ abstract class CommunicatorTest {
 
         //Also, in the parallel, termination messages are sent using the same communicator.
 
-        for (a in 1..repetitions) { //Repeat this a lot and hope for the best!
+        repeat(repetitions) { //Repeat this a lot and hope for the best!
 
             val allMessages = communicatorConstructor(processCount).map { comm ->
                 Pair(CommunicatorTokenMessenger(comm), comm)
@@ -267,6 +267,8 @@ abstract class CommunicatorTest {
             val received = allMessages.map { it.second }.mapIndexed { i, list -> Pair(i, list.sorted()) }.toMap()
 
             assertEquals(received, sent)
+
+            //For debugging: throw IllegalStateException("Transferred: ${received.values.fold(0, { f, s -> f + s.size })}")
         }
 
     }
