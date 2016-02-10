@@ -30,16 +30,18 @@ interface Nodes<N: Node, C: Colors<C>> {
     /**
      * All keys that have their value set.
      */
-    val validKeys: Set<N>
+    val keys: Set<N>
 
     /**
      * All entries that are not empty.
      */
-    val validEntries: Set<Map.Entry<N, C>>
+    val entries: Set<Map.Entry<N, C>>
 
     fun isEmpty(): Boolean
 
     fun isNotEmpty(): Boolean = !isEmpty()
+
+    fun toMutableNodes(): MutableNodes<N, C>
 
     /**
      * Return color set for given key or empty set if no value is set.
@@ -86,14 +88,14 @@ open class MapNodes<N: Node, C: Colors<C>>(
         private val map: Map<N, C>
 ) : Nodes<N, C> {
 
-    override val validKeys: Set<N> = map.keys
-    override val validEntries: Set<Map.Entry<N, C>> = map.entries
+    override val keys: Set<N> = map.keys
+    override val entries: Set<Map.Entry<N, C>> = map.entries
 
     override fun get(key: N): C = map.getOrElse(key) { emptyColors }
 
     override fun plus(other: Nodes<N, C>): Nodes<N, C> {
         val new = HashMap(map)
-        for ((k, v) in other.validEntries) {
+        for ((k, v) in other.entries) {
             new[k] = get(k) + v
         }
         return MapNodes(emptyColors, new)
@@ -101,7 +103,7 @@ open class MapNodes<N: Node, C: Colors<C>>(
 
     override fun minus(other: Nodes<N, C>): Nodes<N, C> {
         val new = HashMap(map)
-        for ((k, v) in other.validEntries) {
+        for ((k, v) in other.entries) {
             new[k] = get(k) - v
         }
         return MapNodes(emptyColors, new.filterValues { it.isNotEmpty() })
@@ -109,7 +111,7 @@ open class MapNodes<N: Node, C: Colors<C>>(
 
     override fun intersect(other: Nodes<N, C>): Nodes<N, C> {
         val new = HashMap<N, C>()
-        for ((k, v) in other.validEntries) {
+        for ((k, v) in other.entries) {
             new[k] = get(k) intersect v
         }
         return MapNodes(emptyColors, new.filterValues { it.isNotEmpty() })
@@ -118,6 +120,8 @@ open class MapNodes<N: Node, C: Colors<C>>(
     override fun isEmpty(): Boolean = map.isEmpty()
 
     override fun contains(key: N): Boolean = key in map
+
+    override fun toMutableNodes(): MutableNodes<N, C> = MutableMapNodes(emptyColors, map)
 
     override fun equals(other: Any?): Boolean {
         if (other is MapNodes<*, *>) {
@@ -137,8 +141,10 @@ open class MapNodes<N: Node, C: Colors<C>>(
 
 class MutableMapNodes<N: Node, C: Colors<C>>(
         emptyColors: C,
-        private val map: MutableMap<N, C>
+        map: Map<N, C>
 ): MapNodes<N, C>(emptyColors, map), MutableNodes<N, C> {
+
+    private val map = HashMap(map)  //defensive copy
 
     override fun toNodes(): Nodes<N, C> {
         synchronized(map) {

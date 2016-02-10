@@ -19,6 +19,34 @@ val c2 = IDColors(2)
 val c3 = IDColors(3)
 val c4 = IDColors(4)
 
+class MutableMapNodesTest {
+
+    @Test fun putOrUnionTest() {
+        val s1 = MutableMapNodes(cEmpty, mapOf(
+                Pair(n0, c0 + c3), Pair(n2, c1 + c2)
+        ))
+        assertFalse(s1.putOrUnion(n0, c0))
+        assertFalse(s1.putOrUnion(n0, c3))
+        assertTrue(s1.putOrUnion(n0, c2))
+        assertTrue(s1.putOrUnion(n0, c1))
+        assertFalse(s1.putOrUnion(n0, c1 + c2 + c3))
+        assertFalse(s1.putOrUnion(n2, c1))
+        assertFalse(s1.putOrUnion(n2, c2))
+        assertTrue(s1.putOrUnion(n2, c3))
+        assertTrue(s1.putOrUnion(n2, c0))
+        assertTrue(s1.putOrUnion(n1, c0))
+        assertTrue(s1.putOrUnion(n1, c1))
+        assertTrue(s1.putOrUnion(n1, c2))
+
+        assertEquals(MapNodes(cEmpty, mapOf(
+                Pair(n0, c0 + c1 + c2 + c3),
+                Pair(n1, c0 + c1 + c2),
+                Pair(n2, c0 + c1 + c2 + c3)
+        )), s1.toNodes())
+
+    }
+}
+
 class MapNodesTest {
 
     @Test fun isEmptyTest() {
@@ -52,11 +80,11 @@ class MapNodesTest {
                 Pair(n0, c1 + c2),
                 Pair(n3, c3)
         ))
-        assertEquals(setOf(n0, n3), s.validKeys)
+        assertEquals(setOf(n0, n3), s.keys)
         assertEquals(setOf(
                 AbstractMap.SimpleEntry(n0, c1 + c2),
                 AbstractMap.SimpleEntry(n3, c3)
-        ), s.validEntries)
+        ), s.entries)
     }
 
     @Test fun intersectTest() {
