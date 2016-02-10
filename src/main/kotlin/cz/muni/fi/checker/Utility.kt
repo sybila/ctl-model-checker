@@ -90,6 +90,7 @@ class JobThread(
     init {
         thread.setUncaughtExceptionHandler { thread, throwable ->
             ex = throwable
+            throwable.printStackTrace() //sometimes, thread won't join because of this exception. Print it!
         }
     }
 
