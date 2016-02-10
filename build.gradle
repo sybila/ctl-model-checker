@@ -5,7 +5,7 @@ apply plugin: 'jacoco'
 
 //include antlr and kotlin plugin
 buildscript {
-    ext.kotlin_version = '1.0.0-beta-3595'
+    ext.kotlin_version = '1.0.0-rc-1036'
 
     repositories {
         jcenter()
@@ -29,9 +29,10 @@ repositories {
 dependencies {
     testCompile group: 'junit', name: 'junit', version: '4.11'
     compile 'com.intellij:annotations:5.1'
-    compile 'com.github.sybila:CTL-Parser:1.1.0'
-    compile 'com.github.daemontus:jafra:1.0.6'
+    compile 'com.github.daemontus:jafra:1.0.7'
+    compile 'com.github.sybila:CTL-Parser:1.1.1'
     compile "org.jetbrains.kotlin:kotlin-stdlib:$kotlin_version"
+    testCompile "org.jetbrains.kotlin:kotlin-test:$kotlin_version"
 }
 
 //create a single Jar with all dependencies
