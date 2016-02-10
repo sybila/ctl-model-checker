@@ -11,6 +11,15 @@ data class IDNode(
 ) : Node
 
 /**
+ * A node represented by it's coordinates in rectangular space.
+ * Note: Don't use this in production. Usually it's cheaper to encode
+ * the coordinates into one number.
+ */
+data class CoordinateNode(
+        val coordinates: IntArray
+) : Node
+
+/**
  * Simple color set represented by a set of IDs
  */
 data class IDColors(private val set: Set<Int> = HashSet()) : Colors<IDColors> {
@@ -28,53 +37,7 @@ data class IDColors(private val set: Set<Int> = HashSet()) : Colors<IDColors> {
 }
 
 /**
- * Partition function defined by explicit enumeration.
- *
- * You can either provide a direct or inverse mapping (or a combination of both)
- */
-class ExplicitPartitionFunction<N: Node>(
-        private val id: Int,
-        directMapping: Map<N, Int> = mapOf(),
-        inverseMapping: Map<Int, List<N>> = mapOf()
-): PartitionFunction<N> {
-
-    private val mapping =
-            directMapping + inverseMapping.flatMap { entry ->
-                entry.value.map { Pair(it, entry.key) }
-            }.toMap()
-
-    init {
-        //check if we preserved size of input - i.e. the input is a valid function
-        if (mapping.size != directMapping.size + inverseMapping.map { it.value.size }.sum()) {
-            throw IllegalArgumentException("Provided mapping is not a function! $directMapping  $inverseMapping")
-        }
-    }
-
-    override val ownerId: N.() -> Int = { mapping[this]!! }
-    override val myId: Int = id
-}
-
-/**
- * Partition function defined by an actual function from nodes to ids.
- */
-class FunctionalPartitionFunction<N: Node>(
-        private val id: Int,
-        private val function: (N) -> Int
-) : PartitionFunction<N> {
-    override val ownerId: N.() -> Int = {function(this)}
-    override val myId: Int = id
-}
-
-/**
- * "No partition"
- */
-class UniformPartitionFunction<N: Node>(private val id: Int = 0) : PartitionFunction<N> {
-    override val ownerId: N.() -> Int = { id }
-    override val myId: Int = id
-}
-
-/**
- * Utility data class
+ * Utility edge data class
  */
 data class Edge<N: Node, C: Colors<C>>(
         val start: N,
@@ -140,5 +103,11 @@ class ExplicitKripkeFragment(
     override fun validNodes(a: Atom): Nodes<IDNode, IDColors> = validity.getOrElse(a, { emptyNodeSet })
 
 }
+
+val emptyIDNodes = emptyMap<IDNode, IDColors>().toNodes(IDColors())
+fun Iterable<Pair<IDNode, IDColors>>.toIDNodes(): Nodes<IDNode, IDColors>
+        = MapNodes(IDColors(), this.toMap())
+fun Map<IDNode, IDColors>.toIDNodes(): Nodes<IDNode, IDColors>
+        = MapNodes(IDColors(), this)
 
 

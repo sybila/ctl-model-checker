@@ -15,11 +15,11 @@ import java.util.*
  * a lot of color sets are represented symbolically and therefore direct comparison is
  * often unfeasible.
  *
- * Therefore avoid using equals/hashCode with NodeSet.
+ * Therefore avoid using equals/hashCode with Nodes.
  *
- * NodeSet should be immutable and therefore thread safe.
+ * Nodes should be immutable and therefore thread safe.
  */
-public interface Nodes<N: Node, C: Colors<C>> {
+interface Nodes<N: Node, C: Colors<C>> {
 
     /**
      * Default element returned
@@ -62,8 +62,10 @@ public interface Nodes<N: Node, C: Colors<C>> {
 
 /**
  * Mutable variant of node set.
+ *
+ * Implementations should be thread safe!
  */
-public interface MutableNodes<N: Node, C: Colors<C>>: Nodes<N, C> {
+interface MutableNodes<N: Node, C: Colors<C>>: Nodes<N, C> {
 
     /**
      * When updating elements, union is created instead of replacing old value.
@@ -79,8 +81,8 @@ public interface MutableNodes<N: Node, C: Colors<C>>: Nodes<N, C> {
     fun toNodes(): Nodes<N, C>
 }
 
-public open class MapNodes<N: Node, C: Colors<C>>(
-        public override val emptyColors: C, //TODO: Shouldn't we make a defensive copy of this?
+open class MapNodes<N: Node, C: Colors<C>>(
+        override val emptyColors: C,
         private val map: Map<N, C>
 ) : Nodes<N, C> {
 
@@ -133,7 +135,7 @@ public open class MapNodes<N: Node, C: Colors<C>>(
 
 }
 
-public class MutableMapNodes<N: Node, C: Colors<C>>(
+class MutableMapNodes<N: Node, C: Colors<C>>(
         emptyColors: C,
         private val map: MutableMap<N, C>
 ): MapNodes<N, C>(emptyColors, map), MutableNodes<N, C> {
@@ -163,11 +165,11 @@ public class MutableMapNodes<N: Node, C: Colors<C>>(
 
 }
 
-public fun <N: Node, C: Colors<C>> Map<N, C>.toNodes(value: C): Nodes<N, C>
+fun <N: Node, C: Colors<C>> Map<N, C>.toNodes(value: C): Nodes<N, C>
         = MapNodes(value, this)
-public fun <N: Node, C: Colors<C>> MutableMap<N, C>.toMutableNodes(value: C): MutableNodes<N, C>
+fun <N: Node, C: Colors<C>> MutableMap<N, C>.toMutableNodes(value: C): MutableNodes<N, C>
         = MutableMapNodes(value, this)
 
-public fun <N: Node, C: Colors<C>> nodesOf(default: C, vararg pairs: Pair<N, C>): Nodes<N, C>
+fun <N: Node, C: Colors<C>> nodesOf(default: C, vararg pairs: Pair<N, C>): Nodes<N, C>
         = MapNodes(default, pairs.associateBy({ it.first }, { it.second }))
 

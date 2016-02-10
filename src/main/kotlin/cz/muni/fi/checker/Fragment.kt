@@ -5,7 +5,7 @@ import cz.muni.fi.ctl.Atom
 /**
  * Represents a Node (empty for now, reserved for future use)
  */
-public interface Node { }
+interface Node { }
 
 /**
  * Represents an immutable set of colors (parameters) of the model.
@@ -17,7 +17,7 @@ public interface Node { }
  * so if you want to use the default test suite, you have to implement some sort
  * of equivalence)
  */
-public interface Colors<C> {
+interface Colors<C> {
 
     operator fun minus(other: C): C
 
@@ -35,7 +35,7 @@ public interface Colors<C> {
 
 }
 
-public interface PartitionFunction<N: Node> {
+interface PartitionFunction<N: Node> {
 
     /**
      * Get ID of partition which owns given node.
@@ -61,7 +61,7 @@ public interface PartitionFunction<N: Node> {
  * 5. The default value in all node sets is always an empty color space.
  * 6. The color set returned by successors/predecessors minus set returned by allNodes does not have to be empty.
  */
-public interface KripkeFragment<N: Node, C: Colors<C>> {
+interface KripkeFragment<N: Node, C: Colors<C>> {
 
     /**
      * Find all successors of given node. (Even in different fragments)
