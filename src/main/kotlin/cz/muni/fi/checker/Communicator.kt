@@ -55,7 +55,7 @@ interface Communicator {
     fun close()
 }
 
-class ShareMemoryCommunicator(
+class SharedMemoryCommunicator(
         override val id: Int,
         override val size: Int,
         private val channels: Array<BlockingQueue<Maybe<Pair<Class<*>, Any>>>?>
@@ -117,7 +117,7 @@ fun createSharedMemoryCommunicators(
     })
 
     return (0 until processCount).map {
-        ShareMemoryCommunicator(it, processCount, queues)
+        SharedMemoryCommunicator(it, processCount, queues)
     }
 }
 
