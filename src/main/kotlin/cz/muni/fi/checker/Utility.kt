@@ -1,5 +1,6 @@
 package cz.muni.fi.checker
 
+import com.github.daemontus.jafra.Terminator
 import java.util.*
 import java.util.concurrent.BlockingQueue
 
@@ -10,6 +11,13 @@ import java.util.concurrent.BlockingQueue
  * If something in here exceeds ~100 lines or is connected strictly to something else,
  * refactor it away!
  */
+
+
+/**
+ * Utility conversions
+ */
+fun List<Communicator>.toTokenMessengers(): List<CommunicatorTokenMessenger> = this.map { CommunicatorTokenMessenger(it) }
+fun List<CommunicatorTokenMessenger>.toFactories(): List<Terminator.Factory> = this.map { Terminator.Factory(it) }
 
 /**
  * Haskell style repeat
