@@ -26,12 +26,6 @@ interface Nodes<N: Node, C: Colors<C>> {
      */
     val emptyColors: C
 
-    //TODO: Maybe we don't really need this?
-    /**
-     * All keys that have their value set.
-     */
-    val keys: Set<N>
-
     /**
      * All entries that are not empty.
      */
@@ -88,7 +82,6 @@ open class MapNodes<N: Node, C: Colors<C>>(
         private val map: Map<N, C>
 ) : Nodes<N, C> {
 
-    override val keys: Set<N> = map.keys
     override val entries: Set<Map.Entry<N, C>> = map.entries
 
     override fun get(key: N): C = map.getOrElse(key) { emptyColors }

@@ -80,7 +80,6 @@ class MapNodesTest {
                 Pair(n0, c1 + c2),
                 Pair(n3, c3)
         ))
-        assertEquals(setOf(n0, n3), s.keys)
         assertEquals(setOf(
                 AbstractMap.SimpleEntry(n0, c1 + c2),
                 AbstractMap.SimpleEntry(n3, c3)
