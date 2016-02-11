@@ -37,6 +37,8 @@ interface Nodes<N: Node, C: Colors<C>> {
 
     fun toMutableNodes(): MutableNodes<N, C>
 
+    fun toMutableMap(): MutableMap<N, C>
+
     /**
      * Return color set for given key or empty set if no value is set.
      */
@@ -115,6 +117,8 @@ open class MapNodes<N: Node, C: Colors<C>>(
     override fun contains(key: N): Boolean = key in map
 
     override fun toMutableNodes(): MutableNodes<N, C> = MutableMapNodes(emptyColors, map)
+
+    override fun toMutableMap(): MutableMap<N, C> = HashMap(map)
 
     override fun equals(other: Any?): Boolean {
         if (other is MapNodes<*, *>) {

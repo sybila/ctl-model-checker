@@ -86,9 +86,9 @@ class ExplicitKripkeFragment(
                 }
             }
         }
-        for (node in this.nodes.keys) { //Invariant 2.
-            if (node.successors().isEmpty()) {
-                throw IllegalArgumentException("Missing successors for $node")
+        for (entry in this.nodes.entries) { //Invariant 2.
+            if (entry.key.successors().isEmpty()) {
+                throw IllegalArgumentException("Missing successors for ${entry.key}")
             }
         }
         for ((from, to, colors) in edges) {
