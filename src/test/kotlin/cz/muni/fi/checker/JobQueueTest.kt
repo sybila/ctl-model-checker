@@ -4,7 +4,6 @@ import com.github.daemontus.jafra.Terminator
 import org.junit.Test
 import java.util.*
 import java.util.concurrent.FutureTask
-import kotlin.concurrent.thread
 import kotlin.test.assertEquals
 
 
@@ -94,7 +93,7 @@ abstract class JobQueueTest {
     @Test(timeout = 1000)
     fun noMessages() {
         withQueues {
-            it.map { f -> thread {
+            it.map { f -> guardedThread {
                 val q = f.createNew() {  }
                 q.waitForTermination()
             } }.map { it.join() }
@@ -105,7 +104,7 @@ abstract class JobQueueTest {
     fun onlyInitialTest() {
         repeat(repetitions) {
             withQueues {
-                it.map { f -> thread {
+                it.map { f -> guardedThread {
 
                     val executed = ArrayList<Job<IDNode, IDColors>>()
                     val jobs = (1..10).map { randomEuJob() }
@@ -159,7 +158,7 @@ abstract class JobQueueTest {
                     queue.waitForTermination()
 
                     Pair(posted, executed)
-                } }.map { thread { it.run() }; it }.map { it.get() }
+                } }.map { guardedThread { it.run() }; it }.map { it.get() }
 
                 //Merge sent messages by their destinations into something that has same type as received list
                 val sent = allJobs.map { it.first }.foldRight(

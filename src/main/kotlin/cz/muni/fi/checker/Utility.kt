@@ -61,7 +61,7 @@ fun <T> Set<T>.randomSubset(): Set<T> {
 }
 
 
-class JobThread(
+class GuardedThread(
         val thread: Thread
 ) {
 
@@ -72,7 +72,8 @@ class JobThread(
     init {
         thread.setUncaughtExceptionHandler { thread, throwable ->
             ex = throwable
-            throwable.printStackTrace() //sometimes, thread won't join because of this exception. Print it!
+            //sometimes, thread won't join because of this exception. Print it so that we at least know something is wrong.
+            System.err.println("Uncaught exception in $thread: $throwable")
         }
     }
 
@@ -83,12 +84,14 @@ class JobThread(
 
 }
 
+fun guardedThread(task: () -> Unit) = GuardedThread(task).apply { this.thread.start() }
+
 /**
  * Create a thread listening to all items in a blocking queue until Nothing is received.
  * (Classic poison pill principle)
  */
-fun <T: Any> BlockingQueue<Maybe<T>>.threadUntilPoisoned(onItem: (T) -> Unit): JobThread {
-    val result = JobThread {
+fun <T: Any> BlockingQueue<Maybe<T>>.threadUntilPoisoned(onItem: (T) -> Unit): GuardedThread {
+    val result = GuardedThread {
         var job = this.take()
         while (job is Maybe.Just) {
             onItem(job.value)

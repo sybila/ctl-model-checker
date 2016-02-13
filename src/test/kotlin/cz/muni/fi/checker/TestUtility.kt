@@ -1,7 +1,6 @@
 package cz.muni.fi.checker
 
 import java.util.concurrent.FutureTask
-import kotlin.concurrent.thread
 
 /**
  * Add here everything you find useful for testing, but can't quite see in the main package
@@ -39,7 +38,7 @@ fun <N: Node, C: Colors<C>, R> withModelCheckers(
         FutureTask {
             task(it)
         }
-    }.map { thread { it.run() }; it }.map { it.get() }
+    }.map { guardedThread { it.run() }; it }.map { it.get() }
 
     tokens.map { it.close() }
     comm.map { it.close() }
