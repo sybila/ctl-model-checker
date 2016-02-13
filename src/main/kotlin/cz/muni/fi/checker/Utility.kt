@@ -60,32 +60,6 @@ fun <T> Set<T>.randomSubset(): Set<T> {
     return result.toSet()
 }
 
-/**
- * Cartesian product of two iterable objects.
- */
-infix fun <T, U> Iterable<T>.times(other: Iterable<U>): Iterable<Pair<T, U>> {
-    return this.flatMap { a -> other.map { b -> Pair(a, b) } }
-}
-
-/**
- * "Flat" cartesian product.
- */
-infix fun <T> Iterable<List<T>>.flatTimes(other: Iterable<List<T>>): List<List<T>> {
-    return this.flatMap { a -> other.map { b -> a + b } }
-}
-
-/**
- * "Exponentiation" of collections - works as repeated flat cartesian product.
- */
-fun <T> Iterable<T>.pow(exp: Int): List<List<T>> {
-    if (exp == 0) return listOf()
-    var one = this.map { listOf(it) }
-    var r = one
-    for (i in 2..exp) {
-        r = r flatTimes one
-    }
-    return r
-}
 
 class JobThread(
         val thread: Thread
