@@ -75,10 +75,10 @@ class SequentialExistsUntilTest {
     fun smallCube() = generalModel(2, 2)
 
     @Test
-    fun mediumCube() = generalModel(4, 4)
+    fun mediumCube() = generalModel(3, 3)
 
-    @Test   //this can actually be kind of long! (7-10s)
-    fun largeCube() = generalModel(6, 6)
+    @Test
+    fun largeCube() = generalModel(5, 5)
 
     @Test
     fun smallAsymmetric1() = generalModel(2, 4)
@@ -163,10 +163,10 @@ abstract class ConcurrentExistsUntilTest {
     fun smallCube() = generalModel(2, 2)
 
     @Test
-    fun mediumCube() = generalModel(4, 4)
+    fun mediumCube() = generalModel(3, 3)
 
-    @Test   //this can actually be kind of long! (7-10s)
-    fun largeCube() = generalModel(6, 6)
+    @Test
+    fun largeCube() = generalModel(5, 5)
 
     @Test
     fun smallAsymmetric1() = generalModel(2, 4)

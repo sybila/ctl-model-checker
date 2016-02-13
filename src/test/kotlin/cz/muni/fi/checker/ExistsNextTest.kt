@@ -12,7 +12,7 @@ class SequentialExistsNextTest {
         val model = ReachModel(1, 1)
 
         withSingleModelChecker(model) {
-            val expected = nodesOf(Pair(IDNode(0), IDColors(0)))
+            val expected = nodesOf(Pair(IDNode(0), IDColors(1)))
             assertEquals(expected, it.verify(EX(ReachModel.Prop.UPPER_CORNER)))
             assertEquals(expected, it.verify(EX(ReachModel.Prop.LOWER_CORNER)))
             assertEquals(expected, it.verify(EX(ReachModel.Prop.CENTER)))
@@ -26,16 +26,16 @@ class SequentialExistsNextTest {
         val model = ReachModel(1, chainSize)
 
         withSingleModelChecker(model) {
-            assertEquals(nodesOf(Pair(IDNode(0), IDColors(0))), it.verify(EX(ReachModel.Prop.LOWER_CORNER)))   //just self loop
+            assertEquals(nodesOf(Pair(IDNode(0), model.parameters - IDColors(0))), it.verify(EX(ReachModel.Prop.LOWER_CORNER)))   //just self loop
             assertEquals(nodesOf(
-                    Pair(IDNode(chainSize-1), IDColors((0 until chainSize).toSet())),
+                    Pair(IDNode(chainSize-1), IDColors(chainSize)),
                     Pair(IDNode(chainSize-2), IDColors((0 until (chainSize-1)).toSet()))
             ), it.verify(EX(ReachModel.Prop.UPPER_CORNER)))
-            assertEquals(nodesOf(
-                    Pair(IDNode(0), IDColors(0)),
-                    Pair(IDNode(chainSize-1), IDColors((0 until chainSize).toSet())),
-                    Pair(IDNode(chainSize-2), IDColors((0 until (chainSize-1)).toSet()))
-            ), it.verify(EX(ReachModel.Prop.BORDER)))
+            assertEquals(
+                    model.validNodes(ReachModel.Prop.BORDER).entries
+                            .map { model.predecessors.invoke(it.key) }
+                            .fold(emptyIDNodes) { l, r -> l + r }
+            , it.verify(EX(ReachModel.Prop.BORDER)))
         }
 
     }
@@ -45,21 +45,19 @@ class SequentialExistsNextTest {
         val model = ReachModel(dimensions, dimensionSize)
 
         withSingleModelChecker(model) {
-            assertEquals(nodesOf(Pair(IDNode(0), IDColors(0))), it.verify(EX(ReachModel.Prop.LOWER_CORNER)))
+            assertEquals(nodesOf(Pair(IDNode(0), model.parameters - IDColors(0))), it.verify(EX(ReachModel.Prop.LOWER_CORNER)))
             val upperCorner = it.verify(ReachModel.Prop.UPPER_CORNER).entries.first()
             assertEquals(nodesOf(
                     (0..dimensions).map { IDNode(upperCorner.key.id - pow(dimensionSize, it)) }
                             .filter { it.id >= 0 }.map { Pair(it, model.stateColors(it)) }
-                    + Pair(upperCorner.key, upperCorner.value - IDColors((dimensionSize-1) * dimensions + 1))   //remove "dead" parameter
+                    + Pair(upperCorner.key, IDColors((dimensionSize-1) * dimensions + 1))
             ), it.verify(EX(ReachModel.Prop.UPPER_CORNER)))
-            assertEquals(nodesOf(
-                    model.allNodes().entries.filter { state ->
-                        (0 until dimensions).any {
-                            val c = model.extractCoordinate(state.key, it)
-                            c == 0 || c == dimensionSize-1 || c + 1 == dimensionSize-1
-                        }
-                    }.map { Pair(it.key, model.stateColors(it.key)) }
-            ), it.verify(EX(ReachModel.Prop.BORDER)))
+            assertEquals(
+                    //very slow, but works!
+                    model.validNodes(ReachModel.Prop.BORDER).entries
+                            .map { model.predecessors.invoke(it.key) }
+                            .fold(emptyIDNodes) { l, r -> l + r }
+            , it.verify(EX(ReachModel.Prop.BORDER)))
         }
 
     }
@@ -77,10 +75,10 @@ class SequentialExistsNextTest {
     fun smallCube() = generalModel(2, 2)
 
     @Test
-    fun mediumCube() = generalModel(4, 4)
+    fun mediumCube() = generalModel(3, 3)
 
-    @Test   //this can actually be kind of long! (7-10s)
-    fun largeCube() = generalModel(6, 6)
+    @Test
+    fun largeCube() = generalModel(5, 5)
 
     @Test
     fun smallAsymmetric1() = generalModel(2, 4)
@@ -144,23 +142,21 @@ abstract class ConcurrentExistsNextTest {
             )
         }.fold(nodesOf().repeat(3)) { l, r -> l.zip(r).map { it.first union it.second } }
 
-        assertEquals(nodesOf(Pair(IDNode(0), IDColors(0))), result[0])
+        assertEquals(nodesOf(Pair(IDNode(0), model.parameters - IDColors(0))), result[0])
 
         val upperCorner = model.validNodes(ReachModel.Prop.UPPER_CORNER).entries.first()
         assertEquals(nodesOf(
                 (0..dimensions).map { IDNode(upperCorner.key.id - pow(dimensionSize, it)) }
                         .filter { it.id >= 0 }.map { Pair(it, model.stateColors(it)) }
-                        + Pair(upperCorner.key, upperCorner.value - IDColors((dimensionSize-1) * dimensions + 1))   //remove "dead" parameter
+                        + Pair(upperCorner.key, IDColors((dimensionSize-1) * dimensions + 1))
         ), result[1])
 
-        assertEquals(nodesOf(
-                model.allNodes().entries.filter { state ->
-                    (0 until dimensions).any {
-                        val c = model.extractCoordinate(state.key, it)
-                        c == 0 || c == dimensionSize-1 || c + 1 == dimensionSize-1
-                    }
-                }.map { Pair(it.key, model.stateColors(it.key)) }
-        ), result[2])
+        assertEquals(
+                //very slow, but works!
+                model.validNodes(ReachModel.Prop.BORDER).entries
+                        .map { model.predecessors.invoke(it.key) }
+                        .fold(emptyIDNodes) { l, r -> l + r }
+        , result[2])
 
     }
 
@@ -168,10 +164,10 @@ abstract class ConcurrentExistsNextTest {
     fun smallCube() = generalModel(2, 2)
 
     @Test
-    fun mediumCube() = generalModel(4, 4)
+    fun mediumCube() = generalModel(3, 3)
 
-    @Test   //this can actually be kind of long! (7-10s)
-    fun largeCube() = generalModel(6, 6)
+    @Test
+    fun largeCube() = generalModel(5, 5)
 
     @Test
     fun smallAsymmetric1() = generalModel(2, 4)

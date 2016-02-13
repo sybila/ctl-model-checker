@@ -23,7 +23,7 @@ class ReachModel(
      * Use these propositions in your model queries, nothing else is supported!
      */
     enum class Prop : Atom {
-        UPPER_CORNER, LOWER_CORNER, CENTER, BORDER;
+        UPPER_CORNER, LOWER_CORNER, CENTER, BORDER, UPPER_HALF;
         override val operator: Op = Op.ATOM
         override val subFormulas: List<Formula> = emptyList()
     }
@@ -37,7 +37,7 @@ class ReachModel(
 
     val stateCount = pow(dimensionSize, dimensions)
 
-    private val states = Array(stateCount) { index -> IDNode(index) }
+    val states = Array(stateCount) { index -> IDNode(index) }
 
     val parameters = IDColors((0..((dimensionSize-1) * dimensions + 1)).toSet())
 
@@ -65,15 +65,17 @@ class ReachModel(
     override val successors: IDNode.() -> Nodes<IDNode, IDColors> = {
         ((0 until dimensions)
             .filter { extractCoordinate(this, it) + 1 < dimensionSize }
-            .map { this.id + pow(dimensionSize, it) } + this.id)    //add self loops!
-            .associate { id -> Pair(states[id], stateColors(this)) }.toIDNodes()
+            .map { this.id + pow(dimensionSize, it) }
+            .associate { id -> Pair(states[id], stateColors(this)) }
+             + Pair(this, parameters - stateColors(this))).toIDNodes()
     }
 
     override val predecessors: IDNode.() -> Nodes<IDNode, IDColors> = {
         ((0 until dimensions)
                 .filter { extractCoordinate(this, it) - 1 >= 0 }
-                .map { this.id - pow(dimensionSize, it) } + this.id)    //add self loops!
-                .associate { id -> Pair(states[id], stateColors(states[id])) }.toIDNodes()
+                .map { this.id - pow(dimensionSize, it) }
+                .associate { id -> Pair(states[id], stateColors(states[id])) }
+                 + Pair(this, parameters - stateColors(this))).toIDNodes()
     }
 
     override fun allNodes(): Nodes<IDNode, IDColors> {
@@ -90,6 +92,8 @@ class ReachModel(
             }.associate { Pair(it, parameters) }.toIDNodes()
             Prop.UPPER_CORNER -> nodesOf(Pair(states[toStateIndex((1..dimensions).map { dimensionSize - 1 })], parameters))
             Prop.LOWER_CORNER -> nodesOf(Pair(states[toStateIndex((1..dimensions).map { 0 })], parameters))
+            Prop.UPPER_HALF -> states.filter { state -> (0 until dimensions).all { extractCoordinate(state, it) >= dimensionSize/2 } }
+                    .associate { Pair(it, parameters) }.toIDNodes()
             else -> throw IllegalArgumentException("Unsupported atom: $a")
         }
         return r
