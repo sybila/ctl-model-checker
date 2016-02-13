@@ -8,6 +8,12 @@ val p1 = FloatProposition("x", CompareOp.EQ, 3.0)
 val p2 = FloatProposition("y", CompareOp.GT, 3.4)
 val p3 = FloatProposition("z", CompareOp.LT, 1.4)
 
+/**
+ * This is a simple model with fixed number of states, no transitions and
+ * propositions distributed using modular arithmetic, so that their
+ * validity can be easily predicted (although it might require some nontrivial
+ * control flow)
+ */
 class RegularKripkeFragment(
         private val bounds: IntRange
 ) : KripkeFragment<IDNode, IDColors> {
@@ -31,43 +37,6 @@ class RegularKripkeFragment(
             Pair(IDNode(it), IDColors(1, 4, if (it % 25 == 0) 3 else 2))
         }.toIDNodes()
         else -> emptyIDNodes
-    }
-
-}
-
-
-fun <N: Node, C: Colors<C>> withSingleModelChecker(
-        model: KripkeFragment<N, C>,
-        task: (ModelChecker<N, C>) -> Unit) {
-
-    withModelChecker(
-            listOf(model),
-            listOf(UniformPartitionFunction()),
-            task
-    )
-
-}
-
-fun <N: Node, C: Colors<C>, R> withModelChecker(
-        models: List<KripkeFragment<N, C>>,
-        partitions: List<PartitionFunction<N>> = (0 until models.size).map { UniformPartitionFunction<N>(it) },
-        task: (ModelChecker<N, C>) -> R): List<R> {
-
-    val comm = createSharedMemoryCommunicators(models.size)
-    val tokens = comm.toTokenMessengers()
-    val terminators = tokens.toFactories()
-    val queues = createSingleThreadJobQueues<N, C>(
-            models.size, partitions, comm, terminators)
-
-    try {
-        return queues.zip(models).map {
-            ModelChecker(it.second, it.first)
-        }.map {
-            task(it)
-        }
-    } finally {
-        tokens.map { it.close() }
-        comm.map { it.close() }
     }
 
 }
@@ -131,7 +100,7 @@ class AndVerificationTest {
             RegularKripkeFragment(bounds)
         }
 
-        val result = withModelChecker(models) {
+        val result = withModelCheckers(models) {
             it.verify(p1 and p2 and p3)
         }.fold(emptyIDNodes) { r, l -> r union l }
 
@@ -156,7 +125,7 @@ class AndVerificationTest {
             RegularKripkeFragment(bounds)
         }
 
-        val result = withModelChecker(models) {
+        val result = withModelCheckers(models) {
             it.verify(p1 and p2)
         }.fold(emptyIDNodes) { r, l -> r union l }
 
@@ -229,7 +198,7 @@ class OrVerificationTest {
         val models = listOf(0..1896,1897..4000).map {
             RegularKripkeFragment(it)
         }
-        val result = withModelChecker(models) {
+        val result = withModelCheckers(models) {
             it.verify(p1 or p2)
         }.foldRight(emptyIDNodes) { l, r -> l union r }
 
@@ -254,7 +223,7 @@ class OrVerificationTest {
             RegularKripkeFragment(it)
         }
 
-        val result = withModelChecker(models) {
+        val result = withModelCheckers(models) {
             it.verify(p1 or p2 or p3)
         }.foldRight(emptyIDNodes) { l, r -> l union r }
 
@@ -332,7 +301,7 @@ class NegationTest {
         val models = listOf(0..1896,1897..4000).map {
             RegularKripkeFragment(it)
         }
-        val result = withModelChecker(models) {
+        val result = withModelCheckers(models) {
             it.verify(not(p1))
         }.foldRight(emptyIDNodes) { l, r -> l union r }
 
@@ -358,7 +327,7 @@ class NegationTest {
         val models = listOf(0..1896,1897..3975, 3976..8000).map {
             RegularKripkeFragment(it)
         }
-        val result = withModelChecker(models) {
+        val result = withModelCheckers(models) {
             it.verify(not(not(p1)))
         }.foldRight(emptyIDNodes) { l, r -> l union r }
 
@@ -410,7 +379,7 @@ class MixedBooleanTest() {
         val models = listOf(0..1896,1897..3975, 3976..8000).map {
             RegularKripkeFragment(it)
         }
-        val result = withModelChecker(models) {
+        val result = withModelCheckers(models) {
             it.verify((p1 or not(not(p2)) or p2) and not(p3) and (p1 or p2))
         }.foldRight(emptyIDNodes) { l, r -> l union r }
 
