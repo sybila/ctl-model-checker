@@ -77,3 +77,9 @@ jacocoTestReport {
 }
 
 check.dependsOn jacocoTestReport
+
+test {
+    testLogging {
+        events "passed", "skipped", "failed"
+    }
+}
