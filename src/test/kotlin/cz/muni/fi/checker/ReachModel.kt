@@ -39,7 +39,7 @@ class ReachModel(
 
     private val states = Array(stateCount) { index -> IDNode(index) }
 
-    private val parameters = IDColors((0..((dimensionSize-1) * dimensions + 1)).toSet())
+    val parameters = IDColors((0..((dimensionSize-1) * dimensions + 1)).toSet())
 
     /**
      * Helper function to extract a coordinate from node id
@@ -82,6 +82,8 @@ class ReachModel(
 
     override fun validNodes(a: Atom): Nodes<IDNode, IDColors> {
         val r = when (a) {
+            True -> allNodes()
+            False -> emptyIDNodes
             Prop.CENTER -> nodesOf(Pair(states[toStateIndex((1..dimensions).map { dimensionSize/2 })], parameters))
             Prop.BORDER -> states.filter { state ->
                 (0 until dimensions).any { val c = extractCoordinate(state, it); c == 0 || c == dimensionSize - 1 }

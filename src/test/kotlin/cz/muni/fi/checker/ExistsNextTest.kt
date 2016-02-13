@@ -142,7 +142,7 @@ abstract class ConcurrentExistsNextTest {
                     it.verify(EX(ReachModel.Prop.UPPER_CORNER)),
                     it.verify(EX(ReachModel.Prop.BORDER))
             )
-        }.fold(listOf(nodesOf(), nodesOf(), nodesOf())) { l, r -> l.zip(r).map { it.first union it.second } }
+        }.fold(nodesOf().repeat(3)) { l, r -> l.zip(r).map { it.first union it.second } }
 
         assertEquals(nodesOf(Pair(IDNode(0), IDColors(0))), result[0])
 
