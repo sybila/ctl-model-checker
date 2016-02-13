@@ -107,7 +107,7 @@ class ModelChecker<N: Node, C: Colors<C>>(
             val validColors = synchronized(uncoveredSuccessors) {
                 //cover pushed edge
                 //Would this be reasonably faster if we removed empty sets from map completely?
-                uncoveredSuccessors[it.source] == uncoveredSuccessors[it.source]!! - it.colors
+                uncoveredSuccessors[it.source] = uncoveredSuccessors[it.source]!! - it.colors
                 //Compute what colors became covered by this change
                 //Or should we cache results of this reduction?
                 phi_1[it.target] intersect (it.colors - uncoveredSuccessors.values.reduce { a, b -> a union b })
