@@ -11,15 +11,6 @@ data class IDNode(
 ) : Node
 
 /**
- * A node represented by it's coordinates in rectangular space.
- * Note: Don't use this in production. Usually it's cheaper to encode
- * the coordinates into one number.
- */
-data class CoordinateNode(
-        val coordinates: IntArray
-) : Node
-
-/**
  * Simple color set represented by a set of IDs
  */
 data class IDColors(private val set: Set<Int> = HashSet()) : Colors<IDColors> {
