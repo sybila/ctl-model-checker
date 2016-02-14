@@ -3,6 +3,8 @@ sudo: false
 
 before_script:
   - pip install --user codecov
+  - "echo $JAVA_OPTS"
+  - "export JAVA_OPTS=-Xmx2048m"
 
 after_success:
   - codecov
