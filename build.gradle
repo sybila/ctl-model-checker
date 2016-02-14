@@ -84,13 +84,7 @@ test {
     }
 }
 
-test {
-    testLogging.showStandardStreams = true
-    testLogging {
-        exceptionFormat = 'full'
-    }
-}
-
+//travis has some strict RAM restrictions, can't afford to exceed this
 tasks.withType(Test) {
     maxHeapSize = "1024m"
     jvmArgs "-Xmx1024m"
