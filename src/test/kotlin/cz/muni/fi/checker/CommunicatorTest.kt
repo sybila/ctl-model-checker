@@ -12,10 +12,10 @@ data class TestMessage(val number: Int): Comparable<TestMessage> {
     override fun compareTo(other: TestMessage): Int = number.compareTo(other.number)
 }
 
-/*
+
 class SmallSharedMemoryCommunicatorTest : CommunicatorTest() {
 
-    override val repetitions: Int = 100
+    override val repetitions: Int = 50
     override val processCount: Int = 2
 
     override val communicatorConstructor: (Int) -> List<Communicator>
@@ -31,7 +31,7 @@ class BigSharedMemoryCommunicatorTest : CommunicatorTest() {
     override val communicatorConstructor: (Int) -> List<Communicator>
             = { c -> createSharedMemoryCommunicators(c) }
 
-}*/
+}
 
 
 abstract class CommunicatorTest {
@@ -250,7 +250,7 @@ abstract class CommunicatorTest {
     }
 
 
-    @Test(timeout = 40000)
+    @Test(timeout = 60000)
     fun complexTest() {
         //WARNING: this can actually take a while (Like 7s on a 2ghz dual core)
 
