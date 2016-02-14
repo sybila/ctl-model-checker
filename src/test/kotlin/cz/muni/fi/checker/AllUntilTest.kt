@@ -132,6 +132,8 @@ abstract class ConcurrentAllUntilTest {
 
     fun generalModel(dimensions: Int, dimensionSize: Int) {
 
+        println("Max mem: ${Runtime.getRuntime().maxMemory()}")
+
         val model = ReachModel(dimensions, dimensionSize)
 
         //This might not work for the last state if it's not rounded correctly
