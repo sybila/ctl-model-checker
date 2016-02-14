@@ -43,6 +43,8 @@ class SequentialAllUntilTest {
 
     fun generalModel(dimensions: Int, dimensionSize: Int) {
 
+        println("Max mem: ${Runtime.getRuntime().maxMemory()}")
+        
         val model = ReachModel(dimensions, dimensionSize)
 
         withSingleModelChecker(model) {
@@ -131,8 +133,6 @@ abstract class ConcurrentAllUntilTest {
     protected abstract val workers: Int
 
     fun generalModel(dimensions: Int, dimensionSize: Int) {
-
-        println("Max mem: ${Runtime.getRuntime().maxMemory()}")
 
         val model = ReachModel(dimensions, dimensionSize)
 
