@@ -304,12 +304,17 @@ abstract class CommunicatorTest {
 
                         val initRound = terminators.createNew()
 
-                        //var doneSending = false
+                        var doneSending = false
 
                         val barrier = CyclicBarrier(2)
 
                         comm.addListener(TestMessage::class.java) {
-                            barrier.await()
+                            synchronized(doneSending) {
+                                if (!doneSending) {
+                                    barrier.await()
+                                }
+                                doneSending = true
+                            }
                             synchronized(received) { received.add(it) }
                             terminator.value.messageReceived()
                             println("${comm.id} Message received")
@@ -321,9 +326,9 @@ abstract class CommunicatorTest {
                                 comm.send(receiver, message)
                                 println("${comm.id} Flood message sent")
                             }
-                            /*synchronized(doneSending) {
+                            synchronized(doneSending) {
                                 if (doneSending) terminator.value.setDone()
-                            }*/
+                            }
                         }
 
                         initRound.setDone()
@@ -342,9 +347,9 @@ abstract class CommunicatorTest {
                     println("${comm.id} Init messages dispatched")
 
                         barrier.await()
-                        /*synchronized(doneSending) {
+                        synchronized(doneSending) {
                             doneSending = true
-                        }*/
+                        }
 
                     println("${comm.id} Waiting for termination...")
                         terminator.value.waitForTermination()
