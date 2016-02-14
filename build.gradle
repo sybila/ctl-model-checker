@@ -83,3 +83,8 @@ test {
         events "passed", "skipped", "failed"
     }
 }
+
+tasks.withType(Test) {
+    maxHeapSize = "1024m"
+    jvmArgs "-XX:MaxPermSize=1024m"
+}
