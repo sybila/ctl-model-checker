@@ -16,7 +16,7 @@ data class TestMessage(val number: Int): Comparable<TestMessage> {
 
 class SmallSharedMemoryCommunicatorTest : CommunicatorTest() {
 
-    override val repetitions: Int = 1
+    override val repetitions: Int = 2
     override val processCount: Int = 2
 
     override val communicatorConstructor: (Int) -> List<Communicator>
@@ -261,7 +261,8 @@ abstract class CommunicatorTest {
 
         //Also, in the parallel, termination messages are sent using the same communicator.
 
-        //repeat(repetitions) { //Repeat this a lot and hope for the best!
+        repeat(repetitions) { //Repeat this a lot and hope for the best!
+            println("=========== REPETITION ============")
         //while (true) {
 
 
@@ -377,7 +378,7 @@ abstract class CommunicatorTest {
             assertEquals(received, sent)
 
             //For debugging: throw IllegalStateException("Transferred: ${received.values.fold(0, { f, s -> f + s.size })}")
-       // }
+        }
 
     }
 
