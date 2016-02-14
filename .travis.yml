@@ -17,5 +17,8 @@ before_script:
   - sudo service rsync stop || true
   - sudo service x11-common stop || true
 
+script:
+  - ./gradlew check --stacktrace --info
+
 after_success:
   - codecov
