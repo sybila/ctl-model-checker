@@ -6,8 +6,3 @@ before_script:
 
 after_success:
   - codecov
-
-jdk:
-  - oraclejdk8
-  - oraclejdk7
-  - openjdk6
