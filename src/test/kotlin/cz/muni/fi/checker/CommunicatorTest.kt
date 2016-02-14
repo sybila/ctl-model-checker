@@ -15,7 +15,7 @@ data class TestMessage(val number: Int): Comparable<TestMessage> {
 
 class SmallSharedMemoryCommunicatorTest : CommunicatorTest() {
 
-    override val repetitions: Int = 2
+    override val repetitions: Int = 100
     override val processCount: Int = 2
 
     override val communicatorConstructor: (Int) -> List<Communicator>
@@ -250,9 +250,9 @@ abstract class CommunicatorTest {
     }
 
 
-    @Test(timeout = 40000)
+    @Test(timeout = 20000)
     fun complexTest() {
-        //WARNING: this can actually take a while (Like 7s on a 2ghz dual core)
+        //WARNING: This thing is a mess. Someone should seriously rethink this and rewrite it.
 
         //Initialize 10 * processCount floods with various lifespans and send them to random receivers.
         //If you receive positive flood message, pass it to next random process.
@@ -261,6 +261,8 @@ abstract class CommunicatorTest {
         //Also, in the parallel, termination messages are sent using the same communicator.
 
         repeat(repetitions) { //Repeat this a lot and hope for the best!
+
+            val globalBarrier = CyclicBarrier(processCount)
 
             val allMessages = communicatorConstructor(processCount).map { comm ->
                 Pair(CommunicatorTokenMessenger(comm), comm)
@@ -286,8 +288,6 @@ abstract class CommunicatorTest {
                         //save this for later ;) - after init round
                         val terminator = lazy { terminators.createNew() }
 
-                        val initRound = terminators.createNew()
-
                         //this barrier will make sure that messages will be processed only after initial messages have
                         //been sent. This way we can guarantee that setDone will be called at least once
                         //(because main thread can't call it since it doesn't know when)
@@ -311,14 +311,20 @@ abstract class CommunicatorTest {
                                 terminator.value.messageSent()
                                 comm.send(receiver, message)
                             }
-                            synchronized(barrierLeft) {
-                                if (barrierLeft) terminator.value.setDone()
-                            }
+                            terminator.value.setDone()
                         }
 
-                        initRound.setDone()
-                        initRound.waitForTermination()
+                        globalBarrier.await()
 
+                        //make sure that everyone gets at least one message, otherwise the
+                        //barrier won't break
+                        for (p in 0 until processCount) {
+                            if (p == comm.id) continue
+                            val message = TestMessage(0)
+                            terminator.value.messageSent()
+                            synchronized(sent) { sent[p]!!.add(message) }
+                            comm.send(p, message)
+                        }
 
                         for (p in 1..(processCount * 10)) {
                             val receiver = randomReceiver()
