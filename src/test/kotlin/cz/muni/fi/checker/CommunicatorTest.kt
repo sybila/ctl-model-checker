@@ -251,7 +251,7 @@ abstract class CommunicatorTest {
     }
 */
 
-    @Test//(timeout = 40000)
+    @Test(timeout = 40000)
     fun complexTest() {
         //WARNING: this can actually take a while (Like 7s on a 2ghz dual core)
 
@@ -296,7 +296,6 @@ abstract class CommunicatorTest {
                 val sent = HashMap((1..comm.size).associateBy({ it - 1 }, { ArrayList<TestMessage>() }))
 
                 val worker = guardedThread {
-                    println("${comm.id} Internal cycle!")
                     for (i in 1..5) {   //Create more messengers in a row in order to fully test the communicator
 
                     println("${comm.id} Preparing")
@@ -305,11 +304,15 @@ abstract class CommunicatorTest {
 
                         val initRound = terminators.createNew()
 
-                        var doneSending = false
+                        //var doneSending = false
+
+                        val barrier = CyclicBarrier(2)
 
                         comm.addListener(TestMessage::class.java) {
+                            barrier.await()
                             synchronized(received) { received.add(it) }
                             terminator.value.messageReceived()
+                            println("${comm.id} Message received")
                             if (it.number > 0) {
                                 val receiver = randomReceiver()
                                 val message = TestMessage(it.number - 1)
@@ -318,9 +321,9 @@ abstract class CommunicatorTest {
                                 comm.send(receiver, message)
                                 println("${comm.id} Flood message sent")
                             }
-                            synchronized(doneSending) {
+                            /*synchronized(doneSending) {
                                 if (doneSending) terminator.value.setDone()
-                            }
+                            }*/
                         }
 
                         initRound.setDone()
@@ -338,9 +341,10 @@ abstract class CommunicatorTest {
                         }
                     println("${comm.id} Init messages dispatched")
 
-                        synchronized(doneSending) {
+                        barrier.await()
+                        /*synchronized(doneSending) {
                             doneSending = true
-                        }
+                        }*/
 
                     println("${comm.id} Waiting for termination...")
                         terminator.value.waitForTermination()
