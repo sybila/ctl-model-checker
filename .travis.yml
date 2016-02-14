@@ -4,8 +4,5 @@ sudo: false
 before_script:
   - pip install --user codecov
 
-script:
-  - ./gradlew check --stacktrace
-
 after_success:
   - codecov
