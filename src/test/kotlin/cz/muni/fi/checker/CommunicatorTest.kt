@@ -41,7 +41,7 @@ abstract class CommunicatorTest {
     abstract val communicatorConstructor: (Int) -> List<Communicator>
 
 
-    @Test(timeout = 1000)
+    @Test(timeout = 2000)
     fun noListenerTest() {
         val barrier = CyclicBarrier(processCount)
         communicatorConstructor(processCount).map {
@@ -58,7 +58,7 @@ abstract class CommunicatorTest {
         }.map { it.join() }
     }
 
-    @Test(timeout = 1000)
+    @Test(timeout = 2000)
     fun doubleRemoveListenerTest() {
         communicatorConstructor(processCount).map {
             guardedThread {
@@ -74,7 +74,7 @@ abstract class CommunicatorTest {
         }.map { it.join() }
     }
 
-    @Test(timeout = 1000)
+    @Test(timeout = 2000)
     fun badRecipientTest() {
         communicatorConstructor(processCount).map {
             guardedThread {
@@ -89,7 +89,7 @@ abstract class CommunicatorTest {
         }.map { it.join() }
     }
 
-    @Test(timeout = 1000)
+    @Test(timeout = 2000)
     fun doubleAddListenerTest() {
         communicatorConstructor(processCount).map {
             guardedThread {
@@ -107,7 +107,7 @@ abstract class CommunicatorTest {
         }.map { it.join() }
     }
 
-    @Test(timeout = 1000)
+    @Test(timeout = 2000)
     fun forgottenListenerTest() {
         communicatorConstructor(processCount).map {
             guardedThread {
@@ -121,12 +121,12 @@ abstract class CommunicatorTest {
         }.map { it.join() }
     }
 
-    @Test(timeout = 1000)
+    @Test(timeout = 2000)
     fun emptyRun() {
         communicatorConstructor(processCount).map { it.close() }
     }
 
-    @Test(timeout = 1000)
+    @Test(timeout = 2000)
     fun oneMessengerNoMessages() {
         communicatorConstructor(processCount).map {
             guardedThread {
@@ -139,7 +139,7 @@ abstract class CommunicatorTest {
         }.map { it.join() }
     }
 
-    @Test(timeout = 1000)
+    @Test(timeout = 2000)
     fun moreMessengersNoMessages() {
         communicatorConstructor(processCount).map {
             guardedThread {
@@ -157,7 +157,7 @@ abstract class CommunicatorTest {
         }.map { it.join() }
     }
 
-    @Test(timeout = 2000)
+    @Test(timeout = 4000)
     fun oneMessengerWithMessages() {
 
         //This barrier will be triggered by the receiver when all messages are received and
@@ -202,7 +202,7 @@ abstract class CommunicatorTest {
         }
     }
 
-    @Test(timeout = 10000)
+    @Test(timeout = 20000)
     fun moreMessengersWithMessages() {
         //Always sends messageCount messages to all other processes and then closes the messenger,
         //therefore we can safely predict how the expected received messages should look.
@@ -250,7 +250,7 @@ abstract class CommunicatorTest {
     }
 
 
-    @Test(timeout = 20000)
+    @Test(timeout = 40000)
     fun complexTest() {
         //WARNING: this can actually take a while (Like 7s on a 2ghz dual core)
 
