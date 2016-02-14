@@ -249,7 +249,7 @@ abstract class CommunicatorTest {
         }
     }
 
-/*
+
     @Test(timeout = 20000)
     fun complexTest() {
         //WARNING: this can actually take a while (Like 7s on a 2ghz dual core)
@@ -352,6 +352,6 @@ abstract class CommunicatorTest {
             //For debugging: throw IllegalStateException("Transferred: ${received.values.fold(0, { f, s -> f + s.size })}")
         }
 
-    }*/
+    }
 
 }

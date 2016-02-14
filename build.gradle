@@ -86,5 +86,5 @@ test {
 
 tasks.withType(Test) {
     maxHeapSize = "1024m"
-    jvmArgs "-XX:MaxPermSize=1024m"
+    jvmArgs "-Xmx1024m"
 }
