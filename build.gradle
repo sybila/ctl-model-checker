@@ -84,6 +84,13 @@ test {
     }
 }
 
+test {
+    testLogging.showStandardStreams = true
+    testLogging {
+        exceptionFormat = 'full'
+    }
+}
+
 tasks.withType(Test) {
     maxHeapSize = "1024m"
     jvmArgs "-Xmx1024m"
