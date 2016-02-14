@@ -1,5 +1,5 @@
 language: java
-sudo: required
+sudo: false
 
 before_script:
   - pip install --user codecov
