@@ -250,7 +250,7 @@ abstract class CommunicatorTest {
     }
 
 
-    @Test(timeout = 60000)
+    @Test(timeout = 240000)
     fun complexTest() {
         //WARNING: this can actually take a while (Like 7s on a 2ghz dual core)
 
