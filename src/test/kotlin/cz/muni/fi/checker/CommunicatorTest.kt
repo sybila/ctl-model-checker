@@ -15,7 +15,7 @@ data class TestMessage(val number: Int): Comparable<TestMessage> {
 
 class SmallSharedMemoryCommunicatorTest : CommunicatorTest() {
 
-    override val repetitions: Int = 50
+    override val repetitions: Int = 1
     override val processCount: Int = 2
 
     override val communicatorConstructor: (Int) -> List<Communicator>
