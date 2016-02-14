@@ -5,7 +5,7 @@ import cz.muni.fi.ctl.False
 import cz.muni.fi.ctl.True
 import org.junit.Test
 import kotlin.test.assertEquals
-
+/*
 class SequentialExistsUntilTest {
 
     @Test
@@ -110,7 +110,7 @@ class MediumConcurrentExistsUntilTest : ConcurrentExistsUntilTest() {
 
 class LargeConcurrentExistsUntilTest : ConcurrentExistsUntilTest() {
     override val workers: Int = 8
-}
+}*/
 
 abstract class ConcurrentExistsUntilTest {
 
