@@ -85,6 +85,7 @@ class SharedMemoryCommunicator(
     }
 
     override fun send(dest: Int, message: Any) {
+        if (dest == id) throw IllegalArgumentException("Can't send message to yourself")
         channels[dest]!!.put(Maybe.Just(Pair(message.javaClass, message)))
     }
 
@@ -131,7 +132,13 @@ class CommunicatorTokenMessenger(
         comm.addListener(Token::class.java) { pending.add(it) }
     }
 
-    override fun sendTokenAsync(destination: Int, token: Token) = comm.send(destination, token)
+    override fun sendTokenAsync(destination: Int, token: Token) {
+        if (destination == comm.id) {
+            pending.add(token)
+        } else {
+            comm.send(destination, token)
+        }
+    }
 
     override fun waitForToken(source: Int): Token = pending.take()
 

@@ -341,6 +341,7 @@ class IDColorsTest {
         assertEquals(IDColors(1,2), IDColors(1,2) + IDColors(1,2))
         assertEquals(IDColors(1,2,3), IDColors(1,2) + IDColors(2,3))
         assertEquals(IDColors(2,3,5,6), IDColors(2,5) + IDColors(3,6))
+        assertEquals(IDColors(2,3,5,6), IDColors(2,5) union IDColors(3,6))
     }
 
     @Test fun minusTest() {
@@ -348,6 +349,7 @@ class IDColorsTest {
         assertEquals(IDColors(), IDColors() - IDColors(1,2,3))
         assertEquals(IDColors(), IDColors(1,2,3) - IDColors(1,2,3))
         assertEquals(IDColors(1,2), IDColors(1,2,3) - IDColors(3,4))
+        assertEquals(IDColors(1,2), IDColors(1,2,3) subtract IDColors(3,4))
     }
 
     @Test fun isEmptyTest() {

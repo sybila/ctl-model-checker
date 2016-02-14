@@ -1,11 +1,12 @@
 package cz.muni.fi.checker
 
 import com.github.daemontus.jafra.Terminator
+import com.github.daemontus.jafra.Token
 import org.junit.Test
 import java.util.*
 import java.util.concurrent.CyclicBarrier
-import kotlin.concurrent.thread
 import kotlin.test.assertEquals
+import kotlin.test.assertFails
 
 data class TestMessage(val number: Int): Comparable<TestMessage> {
     override fun compareTo(other: TestMessage): Int = number.compareTo(other.number)
@@ -41,6 +42,86 @@ abstract class CommunicatorTest {
 
 
     @Test(timeout = 1000)
+    fun noListenerTest() {
+        val barrier = CyclicBarrier(processCount)
+        communicatorConstructor(processCount).map {
+            guardedThread {
+                it.addListener(TestMessage::class.java) {
+                    throw IllegalStateException("Unexpected message!")
+                }
+                it.send((it.id + 1) % processCount, Token(0,0)) //trigger error
+                barrier.await()
+                assertFails {
+                    it.close()
+                }
+            }
+        }.map { it.join() }
+    }
+
+    @Test(timeout = 1000)
+    fun doubleRemoveListenerTest() {
+        communicatorConstructor(processCount).map {
+            guardedThread {
+                it.addListener(TestMessage::class.java) {
+                    throw IllegalStateException("Unexpected message!")
+                }
+                it.removeListener(TestMessage::class.java)
+                assertFails {
+                    it.removeListener(TestMessage::class.java)
+                }
+                it.close()
+            }
+        }.map { it.join() }
+    }
+
+    @Test(timeout = 1000)
+    fun badRecipientTest() {
+        communicatorConstructor(processCount).map {
+            guardedThread {
+                assertFails {
+                    it.send(it.id, TestMessage(0))
+                }
+                assertFails {
+                    it.send(processCount+1, TestMessage(0))
+                }
+                it.close()
+            }
+        }.map { it.join() }
+    }
+
+    @Test(timeout = 1000)
+    fun doubleAddListenerTest() {
+        communicatorConstructor(processCount).map {
+            guardedThread {
+                it.addListener(TestMessage::class.java) {
+                    throw IllegalStateException("Unexpected message!")
+                }
+                assertFails {
+                    it.addListener(TestMessage::class.java) {
+                        throw IllegalStateException("Unexpected message!")
+                    }
+                }
+                it.removeListener(TestMessage::class.java)
+                it.close()
+            }
+        }.map { it.join() }
+    }
+
+    @Test(timeout = 1000)
+    fun forgottenListenerTest() {
+        communicatorConstructor(processCount).map {
+            guardedThread {
+                it.addListener(TestMessage::class.java) {
+                    throw IllegalStateException("Unexpected message!")
+                }
+                assertFails {
+                    it.close()
+                }
+            }
+        }.map { it.join() }
+    }
+
+    @Test(timeout = 1000)
     fun emptyRun() {
         communicatorConstructor(processCount).map { it.close() }
     }
@@ -48,7 +129,7 @@ abstract class CommunicatorTest {
     @Test(timeout = 1000)
     fun oneMessengerNoMessages() {
         communicatorConstructor(processCount).map {
-            thread {
+            guardedThread {
                 it.addListener(TestMessage::class.java) {
                     throw IllegalStateException("Unexpected message")
                 }
@@ -61,7 +142,7 @@ abstract class CommunicatorTest {
     @Test(timeout = 1000)
     fun moreMessengersNoMessages() {
         communicatorConstructor(processCount).map {
-            thread {
+            guardedThread {
                 it.addListener(TestMessage::class.java) {
                     throw IllegalStateException("Unexpected message")
                 }
@@ -93,7 +174,7 @@ abstract class CommunicatorTest {
                         .filter { it != comm.id }
                         .map { TestMessage(it) }.sorted()
 
-                thread {
+                guardedThread {
                     val received = ArrayList<TestMessage>()
 
                     comm.addListener(TestMessage::class.java) {
@@ -139,7 +220,7 @@ abstract class CommunicatorTest {
             val initBarrier = CyclicBarrier(processCount)
 
             communicatorConstructor(processCount).map { comm ->
-                Pair(comm, thread {
+                Pair(comm, guardedThread {
                     for (iteration in 1..10) {  //repeat to test if we are able to recreate messengers
                         val received = ArrayList<TestMessage>()
                         val expected = (allMessages - TestMessage(comm.id)).flatRepeat(messageCount)
@@ -199,7 +280,7 @@ abstract class CommunicatorTest {
                 val received = ArrayList<TestMessage>()
                 val sent = HashMap((1..comm.size).associateBy({ it - 1 }, { ArrayList<TestMessage>() }))
 
-                val worker = thread {
+                val worker = guardedThread {
                     for (i in 1..5) {   //Create more messengers in a row in order to fully test the communicator
 
                         //save this for later ;) - after init round
