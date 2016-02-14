@@ -5,7 +5,6 @@ import com.github.daemontus.jafra.Token
 import org.junit.Test
 import java.util.*
 import java.util.concurrent.CyclicBarrier
-import kotlin.concurrent.thread
 import kotlin.test.assertEquals
 import kotlin.test.assertFails
 
@@ -23,7 +22,7 @@ class SmallSharedMemoryCommunicatorTest : CommunicatorTest() {
             = { c -> createSharedMemoryCommunicators(c) }
 
 }
-/*
+
 class BigSharedMemoryCommunicatorTest : CommunicatorTest() {
 
     override val repetitions: Int = 2
@@ -32,7 +31,7 @@ class BigSharedMemoryCommunicatorTest : CommunicatorTest() {
     override val communicatorConstructor: (Int) -> List<Communicator>
             = { c -> createSharedMemoryCommunicators(c) }
 
-}*/
+}
 
 
 abstract class CommunicatorTest {
@@ -41,7 +40,7 @@ abstract class CommunicatorTest {
     abstract val repetitions: Int
     abstract val communicatorConstructor: (Int) -> List<Communicator>
 
-/*
+
     @Test(timeout = 2000)
     fun noListenerTest() {
         val barrier = CyclicBarrier(processCount)
@@ -249,7 +248,7 @@ abstract class CommunicatorTest {
             }.map { it.second.join(); it.first.close() }
         }
     }
-*/
+
 
     @Test(timeout = 40000)
     fun complexTest() {
@@ -262,20 +261,6 @@ abstract class CommunicatorTest {
         //Also, in the parallel, termination messages are sent using the same communicator.
 
         repeat(repetitions) { //Repeat this a lot and hope for the best!
-            println("=========== REPETITION ============")
-        //while (true) {
-
-
-          /*  var done = false
-
-            val timeout = guardedThread {
-                try {
-                    Thread.sleep(500)
-                } catch (e: InterruptedException) { /* No problem */ }
-                synchronized(done) {
-                    if (!done) throw IllegalStateException("Found inf. loop!")
-                }
-            }*/
 
             val allMessages = communicatorConstructor(processCount).map { comm ->
                 Pair(CommunicatorTokenMessenger(comm), comm)
@@ -298,43 +283,42 @@ abstract class CommunicatorTest {
                 val worker = guardedThread {
                     for (i in 1..5) {   //Create more messengers in a row in order to fully test the communicator
 
-                    println("${comm.id} Preparing")
                         //save this for later ;) - after init round
                         val terminator = lazy { terminators.createNew() }
 
                         val initRound = terminators.createNew()
 
-                        var doneSending = false
-
+                        //this barrier will make sure that messages will be processed only after initial messages have
+                        //been sent. This way we can guarantee that setDone will be called at least once
+                        //(because main thread can't call it since it doesn't know when)
+                        //Note: In JobQueue, this can't happen because we have a separate job buffer
+                        var barrierLeft = false
                         val barrier = CyclicBarrier(2)
 
                         comm.addListener(TestMessage::class.java) {
-                            synchronized(doneSending) {
-                                if (!doneSending) {
+                            synchronized(barrierLeft) {
+                                if (!barrierLeft) {
                                     barrier.await()
                                 }
-                                doneSending = true
+                                barrierLeft = true
                             }
                             synchronized(received) { received.add(it) }
                             terminator.value.messageReceived()
-                            println("${comm.id} Message received")
                             if (it.number > 0) {
                                 val receiver = randomReceiver()
                                 val message = TestMessage(it.number - 1)
                                 synchronized(sent) { sent[receiver]!!.add(message) }
                                 terminator.value.messageSent()
                                 comm.send(receiver, message)
-                                println("${comm.id} Flood message sent")
                             }
-                            synchronized(doneSending) {
-                                if (doneSending) terminator.value.setDone()
+                            synchronized(barrierLeft) {
+                                if (barrierLeft) terminator.value.setDone()
                             }
                         }
 
                         initRound.setDone()
                         initRound.waitForTermination()
 
-                    println("${comm.id} Init done")
 
                         for (p in 1..(processCount * 10)) {
                             val receiver = randomReceiver()
@@ -342,22 +326,15 @@ abstract class CommunicatorTest {
                             terminator.value.messageSent()
                             synchronized(sent) { sent[receiver]!!.add(message) }
                             comm.send(receiver, message)
-                            println("${comm.id} Init message sent")
                         }
-                    println("${comm.id} Init messages dispatched")
 
                         barrier.await()
-                        synchronized(doneSending) {
-                            doneSending = true
-                        }
 
-                    println("${comm.id} Waiting for termination...")
                         terminator.value.waitForTermination()
 
                         comm.removeListener(TestMessage::class.java)
                     }
 
-                    println("${comm.id} Closing")
                     termComm.close()
                     comm.close()
                 }
@@ -366,11 +343,6 @@ abstract class CommunicatorTest {
             }.map {
                 it.first.join(); it.second
             }
-           /* synchronized(done) {
-                done = true;
-            }
-            timeout.thread.interrupt()
-            timeout.join()*/
 
             //Merge sent messages by their destinations into something that has same type as received list
             val sent = allMessages.map { it.first }.foldRight(
