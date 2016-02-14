@@ -296,7 +296,8 @@ abstract class CommunicatorTest {
                 val sent = HashMap((1..comm.size).associateBy({ it - 1 }, { ArrayList<TestMessage>() }))
 
                 val worker = guardedThread {
-                   // for (i in 1..5) {   //Create more messengers in a row in order to fully test the communicator
+                    println("${comm.id} Internal cycle!")
+                    for (i in 1..5) {   //Create more messengers in a row in order to fully test the communicator
 
                     println("${comm.id} Preparing")
                         //save this for later ;) - after init round
@@ -345,7 +346,7 @@ abstract class CommunicatorTest {
                         terminator.value.waitForTermination()
 
                         comm.removeListener(TestMessage::class.java)
-                 //   }
+                    }
 
                     println("${comm.id} Closing")
                     termComm.close()
