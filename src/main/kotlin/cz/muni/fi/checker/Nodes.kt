@@ -29,7 +29,7 @@ interface Nodes<N: Node, C: Colors<C>> {
     /**
      * All entries that are not empty.
      */
-    val entries: Set<Map.Entry<N, C>>
+    val entries: Iterable<Map.Entry<N, C>>
 
     fun isEmpty(): Boolean
 
@@ -84,7 +84,7 @@ open class MapNodes<N: Node, C: Colors<C>>(
         private val map: Map<N, C>
 ) : Nodes<N, C> {
 
-    override val entries: Set<Map.Entry<N, C>> = map.entries
+    override val entries: Iterable<Map.Entry<N, C>> = map.entries
 
     override fun get(key: N): C = map.getOrElse(key) { emptyColors }
 
