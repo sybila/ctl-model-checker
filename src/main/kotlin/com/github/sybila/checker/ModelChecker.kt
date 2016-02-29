@@ -37,7 +37,7 @@ class ModelChecker<N: Node, C: Colors<C>>(
     private val results: MutableMap<Formula, Nodes<N, C>> = HashMap()
 
     fun verify(f: Formula): Nodes<N, C> {
-        logger.info { "Started processing formula $f"}
+        logger.lInfo { "Started processing formula $f"}
         val start = System.nanoTime()
         if (f !in results) {
             results[f] = if (f is Atom) {
@@ -54,7 +54,7 @@ class ModelChecker<N: Node, C: Colors<C>>(
                 }
             }
         }
-        logger.info { "Finished processing formula $f"}
+        logger.lInfo { "Finished processing formula $f"}
         verificationTime += System.nanoTime() - start
         return results[f]!!
     }
@@ -69,7 +69,7 @@ class ModelChecker<N: Node, C: Colors<C>>(
 
         val phi = verify(f[0])
 
-        logger.fine { "Found ${phi.entries.count()} initial states."}
+        logger.lFine { "Found ${phi.entries.count()} initial states."}
 
         val result = HashMap<N, C>().toMutableNodes(phi.emptyColors)
 
@@ -77,10 +77,10 @@ class ModelChecker<N: Node, C: Colors<C>>(
 
         queueFactory.createNew(initial) {
             result.putOrUnion(it.target, it.colors)
-            logger.finest { "Add ${it.colors} to ${it.target}" }
+            logger.lFinest { "Add ${it.colors} to ${it.target}" }
         }.waitForTermination()
 
-        logger.fine { "Results contain ${results.entries.size} entries." }
+        logger.lFine { "Results contain ${results.entries.size} entries." }
 
         return result.toNodes() //defensive copy, maybe redundant
     }
@@ -90,7 +90,7 @@ class ModelChecker<N: Node, C: Colors<C>>(
         val phi_1 = verify(f[0])
         val phi_2 = verify(f[1])
 
-        logger.fine { "Found ${phi_1.entries.count()} and ${phi_2.entries.count()} initial states." }
+        logger.lFine { "Found ${phi_1.entries.count()} and ${phi_2.entries.count()} initial states." }
 
         val result = phi_2.toMutableNodes() //this is the "initial step" where you mark as valid only the nodes where phi_2 holds.
 
@@ -105,7 +105,7 @@ class ModelChecker<N: Node, C: Colors<C>>(
             }
         }.waitForTermination()
 
-        logger.fine { "Results contain ${results.entries.size} entries." }
+        logger.lFine { "Results contain ${results.entries.size} entries." }
 
         return result.toNodes()
     }
@@ -115,7 +115,7 @@ class ModelChecker<N: Node, C: Colors<C>>(
         val phi_1 = verify(f[0])
         val phi_2 = verify(f[1])
 
-        logger.fine { "Found ${phi_1.entries.count()} and ${phi_2.entries.count()} initial states." }
+        logger.lFine { "Found ${phi_1.entries.count()} and ${phi_2.entries.count()} initial states." }
 
         val result = phi_2.toMutableNodes() //this is the "initial step" where you mark as valid only the nodes where phi_2 holds.
 
@@ -143,13 +143,13 @@ class ModelChecker<N: Node, C: Colors<C>>(
                 //Or should we cache results of this reduction?
                 phi_1[it.target] intersect (it.colors - uncoveredSuccessors.values.reduce { a, b -> a union b })
             }
-            logger.finest { "Add $validColors to ${it.target} - pushed from ${it.source}" }
+            logger.lFinest { "Add $validColors to ${it.target} - pushed from ${it.source}" }
             if (validColors.isNotEmpty() && result.putOrUnion(it.target, validColors)) { //if some colors survived all of this, mark them and push further
                 it.target.pushBack(validColors).map { post(it) }
             }
         }.waitForTermination()
 
-        logger.fine { "Results contain ${results.entries.size} entries." }
+        logger.lFine { "Results contain ${results.entries.size} entries." }
 
         return result.toNodes()
     }

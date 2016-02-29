@@ -2,7 +2,6 @@ package com.github.sybila.checker
 
 import com.github.daemontus.jafra.Terminator
 import java.util.concurrent.LinkedBlockingQueue
-import java.util.logging.ConsoleHandler
 import java.util.logging.Level
 import java.util.logging.Logger
 
@@ -110,7 +109,7 @@ class SingleThreadJobQueue<N: Node, C: Colors<C>>(
 
     init {
         //add initial jobs, if any
-        logger.fine { "Init queue with ${initial.size} jobs."}
+        logger.lFine { "Init queue with ${initial.size} jobs."}
         initial.map { post(it) }
         doneIfEmpty()   //at this point, worker is not running, so if something went into our queue, it's still there!
     }
@@ -124,7 +123,7 @@ class SingleThreadJobQueue<N: Node, C: Colors<C>>(
         timeInJobs += System.nanoTime() - start
         if (start - lastProgressUpdate > 2 * 1000 * 1000 * 1000L) {
             //print progress every two seconds
-            logger.info { "Remaining: ${localQueue.size}, $lastProgressUpdate, $start" }
+            logger.lInfo { "Remaining: ${localQueue.size}, $lastProgressUpdate, $start" }
             lastProgressUpdate = start
         }
         doneIfEmpty()
@@ -142,14 +141,14 @@ class SingleThreadJobQueue<N: Node, C: Colors<C>>(
             else -> {
                 jobsSent += 1
                 workRound.messageSent()
-                logger.finest { "Send job to ${job.target.ownerId()}" }
+                logger.lFinest { "Send job to ${job.target.ownerId()}" }
                 comm.send(job.target.ownerId(), job)
             }
         }
     }
 
     override fun waitForTermination() {
-        logger.fine { "Waiting for termination" }
+        logger.lFine { "Waiting for termination" }
         workRound.waitForTermination()
         active = false
         val finalRound = terminators.createNew()

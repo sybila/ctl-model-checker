@@ -4,6 +4,8 @@ import com.github.daemontus.jafra.Terminator
 import java.util.*
 import java.util.concurrent.BlockingQueue
 import java.util.concurrent.FutureTask
+import java.util.logging.Level
+import java.util.logging.Logger
 
 /**
  * This is a utility file for all the goodies you won't find anywhere else.
@@ -12,6 +14,27 @@ import java.util.concurrent.FutureTask
  * If something in here exceeds ~100 lines or is connected strictly to something else,
  * refactor it away!
  */
+
+/**
+ * Logger extensions for painless lazy logging
+ */
+fun Logger.lInfo(action: () -> String) {
+    if (this.isLoggable(Level.INFO)) {
+        this.info(action())
+    }
+}
+
+fun Logger.lFine(action: () -> String) {
+    if (this.isLoggable(Level.FINE)) {
+        this.fine(action())
+    }
+}
+
+fun Logger.lFinest(action: () -> String) {
+    if (this.isLoggable(Level.FINEST)) {
+        this.finest(action())
+    }
+}
 
 
 /**
