@@ -1,9 +1,3 @@
-apply plugin: 'java'
-apply plugin: 'kotlin'
-apply plugin: 'maven'
-apply plugin: 'jacoco'
-
-//include antlr and kotlin plugin
 buildscript {
     ext.kotlin_version = '1.0.0'
 
@@ -16,6 +10,15 @@ buildscript {
         classpath "org.jetbrains.kotlin:kotlin-gradle-plugin:$kotlin_version"
     }
 }
+
+plugins {
+    id 'com.madvay.tools.build.gitbuildinfo' version '0.1.5-alpha'
+}
+
+apply plugin: 'java'
+apply plugin: 'kotlin'
+apply plugin: 'maven'
+apply plugin: 'jacoco'
 
 group = "com.github.sybila"
 archivesBaseName = "ctlModelChecker"
@@ -88,4 +91,12 @@ test {
 tasks.withType(Test) {
     maxHeapSize = "1024m"
     jvmArgs "-Xmx1024m"
+}
+
+buildStamp {
+    // The git commit SHA will be appended to this url to generate the final url.
+    repoBaseUrl "https://github.com/sybila/ctl-model-checker/tree/"
+    // BuildInfo.java will be added under this package, in a
+    // generated build/ directory.
+    packageName "cz.muni.fi.checker"
 }
