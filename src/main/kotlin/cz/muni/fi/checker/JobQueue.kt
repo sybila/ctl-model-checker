@@ -47,6 +47,9 @@ interface JobQueue<N: Node, C: Colors<C>> {
          * all processes reach it. (Or fails everywhere)
          * Also, this method returns only after all queues has been successfully initialized.
          * Simply: When this method returns, any process can post jobs and expect them to be delivered.
+         *
+         * You can also assume that the callback won't be called concurrently, so in general there is no need
+         * for synchronization on fields accessed from it.
          */
         fun createNew(initial: List<Job<N,C>> = listOf(), onTask: JobQueue<N, C>.(Job<N, C>) -> Unit): JobQueue<N, C>
     }
