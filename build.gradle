@@ -21,7 +21,7 @@ apply plugin: 'maven'
 apply plugin: 'jacoco'
 
 group = "com.github.sybila"
-archivesBaseName = "ctlModelChecker"
+archivesBaseName = "ctl-model-checker"
 version = '1.0.0'
 
 repositories {
@@ -98,5 +98,5 @@ buildStamp {
     repoBaseUrl "https://github.com/sybila/ctl-model-checker/tree/"
     // BuildInfo.java will be added under this package, in a
     // generated build/ directory.
-    packageName "cz.muni.fi.checker"
+    packageName "com.github.sybila.checker"
 }

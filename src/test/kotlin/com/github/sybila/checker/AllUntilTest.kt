@@ -1,4 +1,4 @@
-package cz.muni.fi.checker
+package com.github.sybila.checker
 
 import com.github.sybila.ctl.AU
 import com.github.sybila.ctl.False
@@ -55,7 +55,8 @@ class SequentialAllUntilTest {
             ) + it.verify(ReachModel.Prop.BORDER), it.verify(True AU ReachModel.Prop.BORDER))
             assertEquals(it.verify(ReachModel.Prop.BORDER), it.verify(False AU ReachModel.Prop.BORDER))
 
-            if (dimensionSize > 2) {    //if dimension is only of size 2, we can actually reach more!
+            if (dimensionSize > 2) {
+                //if dimension is only of size 2, we can actually reach more!
                 assertEquals(nodesOf(
                         model.states.filter { state ->
                             (0 until dimensions).any { model.extractCoordinate(state, it) == dimensionSize - 1 }

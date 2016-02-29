@@ -1,4 +1,4 @@
-package cz.muni.fi.checker
+package com.github.sybila.checker
 
 import com.github.daemontus.jafra.Terminator
 import com.github.daemontus.jafra.Token
@@ -49,7 +49,7 @@ abstract class CommunicatorTest {
                 it.addListener(TestMessage::class.java) {
                     throw IllegalStateException("Unexpected message!")
                 }
-                it.send((it.id + 1) % processCount, Token(0,0)) //trigger error
+                it.send((it.id + 1) % processCount, Token(0, 0)) //trigger error
                 barrier.await()
                 assertFails {
                     it.close()
@@ -82,7 +82,7 @@ abstract class CommunicatorTest {
                     it.send(it.id, TestMessage(0))
                 }
                 assertFails {
-                    it.send(processCount+1, TestMessage(0))
+                    it.send(processCount + 1, TestMessage(0))
                 }
                 it.close()
             }
@@ -189,8 +189,8 @@ abstract class CommunicatorTest {
                     initBarrier.await() //don't start sending before everyone is initialized!
 
                     (0..(processCount - 1))
-                        .filter { it != comm.id }
-                        .map { comm.send(it, TestMessage(comm.id)) }
+                            .filter { it != comm.id }
+                            .map { comm.send(it, TestMessage(comm.id)) }
 
                     terminationBarrier.await()
 
@@ -221,7 +221,8 @@ abstract class CommunicatorTest {
 
             communicatorConstructor(processCount).map { comm ->
                 Pair(comm, guardedThread {
-                    for (iteration in 1..10) {  //repeat to test if we are able to recreate messengers
+                    for (iteration in 1..10) {
+                        //repeat to test if we are able to recreate messengers
                         val received = ArrayList<TestMessage>()
                         val expected = (allMessages - TestMessage(comm.id)).flatRepeat(messageCount)
 
@@ -235,7 +236,8 @@ abstract class CommunicatorTest {
                         initBarrier.await()
 
                         for (p in 0..(processCount * messageCount - 1)) {
-                            if (p % comm.size != comm.id) {      //Don't send to yourself
+                            if (p % comm.size != comm.id) {
+                                //Don't send to yourself
                                 comm.send(p % comm.size, TestMessage(comm.id))
                             }
                         }
@@ -283,7 +285,8 @@ abstract class CommunicatorTest {
                 val sent = HashMap((1..comm.size).associateBy({ it - 1 }, { ArrayList<TestMessage>() }))
 
                 val worker = guardedThread {
-                    for (i in 1..5) {   //Create more messengers in a row in order to fully test the communicator
+                    for (i in 1..5) {
+                        //Create more messengers in a row in order to fully test the communicator
 
                         //save this for later ;) - after init round
                         val terminator = lazy { terminators.createNew() }

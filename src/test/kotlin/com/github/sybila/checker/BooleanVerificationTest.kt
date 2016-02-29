@@ -1,4 +1,4 @@
-package cz.muni.fi.checker
+package com.github.sybila.checker
 
 import com.github.sybila.ctl.*
 import org.junit.Test
@@ -24,7 +24,7 @@ class RegularKripkeFragment(
             get() = throw UnsupportedOperationException()
 
     override fun allNodes(): Nodes<IDNode, IDColors>
-            = bounds.map { Pair(IDNode(it), IDColors(1,2,3,4)) }.toIDNodes()
+            = bounds.map { Pair(IDNode(it), IDColors(1, 2, 3, 4)) }.toIDNodes()
 
     override fun validNodes(a: Atom): Nodes<IDNode, IDColors> = when (a) {
         p1 -> bounds.filter { it % 2 == 0 }.map {
@@ -261,7 +261,7 @@ class NegationTest {
                 var c = IDColors()
                 if (it % 2 != 0 || it % 4 != 0) c += IDColors(1)
                 if (it % 2 != 0 || it % 4 == 0) c += IDColors(2)
-                if (it % 2 != 0) c += IDColors(3,4)
+                if (it % 2 != 0) c += IDColors(3, 4)
                 Pair(IDNode(it), c)
             }.toIDNodes()
 
@@ -281,8 +281,8 @@ class NegationTest {
             val result = checker.verify(not(not(p1)))
 
             val expected = (bounds).filter { it % 2 == 0 }.map {
-                var c = IDColors(3,4)
-                if (it % 4 == 0) c += IDColors(1) else c+= IDColors(2)
+                var c = IDColors(3, 4)
+                if (it % 4 == 0) c += IDColors(1) else c += IDColors(2)
                 Pair(IDNode(it), c)
             }.toIDNodes()
 
@@ -310,7 +310,7 @@ class NegationTest {
             var c = IDColors()
             if (it % 2 != 0 || it % 4 != 0) c += IDColors(1)
             if (it % 2 != 0 || it % 4 == 0) c += IDColors(2)
-            if (it % 2 != 0) c += IDColors(3,4)
+            if (it % 2 != 0) c += IDColors(3, 4)
             Pair(IDNode(it), c)
         }.toIDNodes()
 
@@ -333,7 +333,7 @@ class NegationTest {
 
 
         val expected = (0..8000).filter { it % 2 == 0 }.map {
-            var c = IDColors(3,4)
+            var c = IDColors(3, 4)
             if (it % 4 == 0) c += IDColors(1) else c+= IDColors(2)
             Pair(IDNode(it), c)
         }.toIDNodes()

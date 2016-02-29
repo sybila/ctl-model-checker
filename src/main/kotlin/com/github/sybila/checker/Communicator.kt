@@ -1,4 +1,4 @@
-package cz.muni.fi.checker
+package com.github.sybila.checker
 
 import com.github.daemontus.jafra.IdTokenMessenger
 import com.github.daemontus.jafra.Token

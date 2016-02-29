@@ -1,4 +1,4 @@
-package cz.muni.fi.checker
+package com.github.sybila.checker
 
 import com.github.sybila.ctl.*
 
@@ -40,7 +40,7 @@ class ReachModel(
 
     val states = Array(stateCount) { index -> IDNode(index) }
 
-    val parameters = IDColors((0..((dimensionSize-1) * dimensions + 1)).toSet())
+    val parameters = IDColors((0..((dimensionSize - 1) * dimensions + 1)).toSet())
 
     /**
      * Helper function to extract a coordinate from node id
@@ -59,7 +59,7 @@ class ReachModel(
      */
     fun stateColors(state: IDNode): IDColors {
         return IDColors(0) + IDColors((0 until dimensions).flatMap { dim ->
-            (1..extractCoordinate(state, dim)).map { it + (dimensionSize-1) * dim }
+            (1..extractCoordinate(state, dim)).map { it + (dimensionSize - 1) * dim }
         }.toSet())
     }
 
@@ -87,7 +87,7 @@ class ReachModel(
         val r = when (a) {
             True -> allNodes()
             False -> emptyIDNodes
-            Prop.CENTER -> nodesOf(Pair(states[toStateIndex((1..dimensions).map { dimensionSize/2 })], parameters))
+            Prop.CENTER -> nodesOf(Pair(states[toStateIndex((1..dimensions).map { dimensionSize / 2 })], parameters))
             Prop.BORDER -> states.filter { state ->
                 (0 until dimensions).any { val c = extractCoordinate(state, it); c == 0 || c == dimensionSize - 1 }
             }.associate { Pair(it, parameters) }.toIDNodes()

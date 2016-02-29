@@ -1,4 +1,4 @@
-package cz.muni.fi.checker
+package com.github.sybila.checker
 
 import com.github.daemontus.jafra.Terminator
 import java.util.*
@@ -38,7 +38,7 @@ sealed class Maybe<T: Any> {
     }
 
     class Nothing<T: Any>(): Maybe<T>() {
-        override fun equals(other: Any?): Boolean = other is Maybe.Nothing<*>
+        override fun equals(other: Any?): Boolean = other is Nothing<*>
         override fun hashCode(): Int = 23
     }
 }

@@ -1,4 +1,4 @@
-package cz.muni.fi.checker
+package com.github.sybila.checker
 
 import com.github.sybila.ctl.Atom
 import com.github.sybila.ctl.Formula

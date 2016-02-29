@@ -1,4 +1,4 @@
-package cz.muni.fi.checker
+package com.github.sybila.checker
 
 import com.github.daemontus.jafra.Terminator
 import java.util.concurrent.LinkedBlockingQueue
@@ -51,13 +51,13 @@ interface JobQueue<N: Node, C: Colors<C>> {
          * You can also assume that the callback won't be called concurrently, so in general there is no need
          * for synchronization on fields accessed from it.
          */
-        fun createNew(initial: List<Job<N,C>> = listOf(), onTask: JobQueue<N, C>.(Job<N, C>) -> Unit): JobQueue<N, C>
+        fun createNew(initial: List<Job<N, C>> = listOf(), onTask: JobQueue<N, C>.(Job<N, C>) -> Unit): JobQueue<N, C>
     }
 
 }
 
 class SingleThreadJobQueue<N: Node, C: Colors<C>>(
-        initial: List<Job<N,C>>,
+        initial: List<Job<N, C>>,
         private val comm: Communicator,
         private val terminators: Terminator.Factory,
         partitioning: PartitionFunction<N>,
@@ -138,7 +138,7 @@ class SingleThreadJobQueue<N: Node, C: Colors<C>>(
 
 fun <N: Node, C: Colors<C>> createSingleThreadJobQueues(
         processCount: Int,
-        partitioning: List<PartitionFunction<N>> = (1..processCount).map { UniformPartitionFunction<N>(it-1) },
+        partitioning: List<PartitionFunction<N>> = (1..processCount).map { UniformPartitionFunction<N>(it - 1) },
         communicators: List<Communicator>,
         terminators: List<Terminator.Factory>
 ): List<JobQueue.Factory<N, C>> {

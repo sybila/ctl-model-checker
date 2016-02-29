@@ -1,4 +1,4 @@
-package cz.muni.fi.checker
+package com.github.sybila.checker
 
 import com.github.daemontus.jafra.Terminator
 import org.junit.Test
@@ -32,11 +32,11 @@ abstract class SingleThreadJobQueueTest: JobQueueTest() {
             terminators: List<Terminator.Factory>
     ): List<JobQueue.Factory<IDNode, IDColors>>
             = createSingleThreadJobQueues(
-                processCount = processCount,
-                partitioning = partitioning,
-                terminators = terminators,
-                communicators = communicators
-            )
+            processCount = processCount,
+            partitioning = partitioning,
+            terminators = terminators,
+            communicators = communicators
+    )
 
 }
 
@@ -60,7 +60,7 @@ abstract class JobQueueTest {
 
     abstract fun createJobQueues(
             processCount: Int,
-            partitioning: List<PartitionFunction<IDNode>> = (1..processCount).map { UniformPartitionFunction<IDNode>(it-1) },
+            partitioning: List<PartitionFunction<IDNode>> = (1..processCount).map { UniformPartitionFunction<IDNode>(it - 1) },
             communicators: List<Communicator>,
             terminators: List<Terminator.Factory>
     ): List<JobQueue.Factory<IDNode, IDColors>>
@@ -75,7 +75,7 @@ abstract class JobQueueTest {
 
     //safely create and close communicators!
     private fun withQueues(
-            partitioning: List<PartitionFunction<IDNode>> = (1..processCount).map { UniformPartitionFunction<IDNode>(it-1) },
+            partitioning: List<PartitionFunction<IDNode>> = (1..processCount).map { UniformPartitionFunction<IDNode>(it - 1) },
             task: (List<JobQueue.Factory<IDNode, IDColors>>) -> Unit
     ) {
         val communicators = createSharedMemoryCommunicators(processCount)
@@ -93,10 +93,12 @@ abstract class JobQueueTest {
     @Test(timeout = 1000)
     fun noMessages() {
         withQueues {
-            it.map { f -> guardedThread {
-                val q = f.createNew() {  }
-                q.waitForTermination()
-            } }.map { it.join() }
+            it.map { f ->
+                guardedThread {
+                    val q = f.createNew() { }
+                    q.waitForTermination()
+                }
+            }.map { it.join() }
         }
     }
 
@@ -104,22 +106,26 @@ abstract class JobQueueTest {
     fun onlyInitialTest() {
         repeat(repetitions) {
             withQueues {
-                it.map { f -> guardedThread {
+                it.map { f ->
+                    guardedThread {
 
-                    val executed = ArrayList<Job<IDNode, IDColors>>()
-                    val jobs = (1..10).map { randomEuJob() }
+                        val executed = ArrayList<Job<IDNode, IDColors>>()
+                        val jobs = (1..10).map { randomEuJob() }
 
-                    val q = f.createNew(jobs) { synchronized(executed) {
-                        executed.add(it)
-                    } }
+                        val q = f.createNew(jobs) {
+                            synchronized(executed) {
+                                executed.add(it)
+                            }
+                        }
 
-                    q.waitForTermination()
+                        q.waitForTermination()
 
-                    assertEquals(
-                            jobs.sortedWith(jobComparator),
-                            executed.sortedWith(jobComparator)
-                    )
-                } }.map { it.join() }
+                        assertEquals(
+                                jobs.sortedWith(jobComparator),
+                                executed.sortedWith(jobComparator)
+                        )
+                    }
+                }.map { it.join() }
             }
         }
     }
@@ -131,34 +137,38 @@ abstract class JobQueueTest {
             //As in messenger tests, create a flood of jobs that will jump across state space
 
             withQueues(
-                    (1..processCount).map { i -> FunctionalPartitionFunction<IDNode>(i-1) { it.id % processCount } }
+                    (1..processCount).map { i -> FunctionalPartitionFunction<IDNode>(i - 1) { it.id % processCount } }
             ) {
-                val allJobs = it.map { f -> FutureTask {
+                val allJobs = it.map { f ->
+                    FutureTask {
 
-                    val executed = ArrayList<Job<IDNode, IDColors>>()
-                    val posted = HashMap((1..processCount).associateBy({ it - 1 }, { ArrayList<Job<IDNode, IDColors>>() }))
+                        val executed = ArrayList<Job<IDNode, IDColors>>()
+                        val posted = HashMap((1..processCount).associateBy({ it - 1 }, { ArrayList<Job<IDNode, IDColors>>() }))
 
-                    val initial = (1..(processCount)).map { randomEuJob() }
-                    initial.forEach { job -> synchronized(posted) {
-                        posted[job.target.id % processCount]!!.add(job)
-                    } }
-
-                    val queue = f.createNew(initial) {
-                        synchronized(executed) { executed.add(it) }
-                        if (it.target.id != 0) {
-                            val newNodeId = it.target.id - 1
-                            val newJob = Job(it.target, IDNode(newNodeId), it.colors)
+                        val initial = (1..(processCount)).map { randomEuJob() }
+                        initial.forEach { job ->
                             synchronized(posted) {
-                                posted[newNodeId % processCount]!!.add(newJob)
+                                posted[job.target.id % processCount]!!.add(job)
                             }
-                            this.post(newJob)
                         }
+
+                        val queue = f.createNew(initial) {
+                            synchronized(executed) { executed.add(it) }
+                            if (it.target.id != 0) {
+                                val newNodeId = it.target.id - 1
+                                val newJob = Job(it.target, IDNode(newNodeId), it.colors)
+                                synchronized(posted) {
+                                    posted[newNodeId % processCount]!!.add(newJob)
+                                }
+                                this.post(newJob)
+                            }
+                        }
+
+                        queue.waitForTermination()
+
+                        Pair(posted, executed)
                     }
-
-                    queue.waitForTermination()
-
-                    Pair(posted, executed)
-                } }.map { guardedThread { it.run() }; it }.map { it.get() }
+                }.map { guardedThread { it.run() }; it }.map { it.get() }
 
                 //Merge sent messages by their destinations into something that has same type as received list
                 val sent = allJobs.map { it.first }.foldRight(

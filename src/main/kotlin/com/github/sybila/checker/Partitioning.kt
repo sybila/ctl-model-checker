@@ -1,4 +1,4 @@
-package cz.muni.fi.checker
+package com.github.sybila.checker
 
 /**
  * Collection of various simple PartitionFunction implementations.

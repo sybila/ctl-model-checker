@@ -1,4 +1,4 @@
-package cz.muni.fi.checker
+package com.github.sybila.checker
 
 import com.github.sybila.ctl.EX
 import org.junit.Test
@@ -28,14 +28,14 @@ class SequentialExistsNextTest {
         withSingleModelChecker(model) {
             assertEquals(nodesOf(Pair(IDNode(0), model.parameters - IDColors(0))), it.verify(EX(ReachModel.Prop.LOWER_CORNER)))   //just self loop
             assertEquals(nodesOf(
-                    Pair(IDNode(chainSize-1), IDColors(chainSize)),
-                    Pair(IDNode(chainSize-2), IDColors((0 until (chainSize-1)).toSet()))
+                    Pair(IDNode(chainSize - 1), IDColors(chainSize)),
+                    Pair(IDNode(chainSize - 2), IDColors((0 until (chainSize - 1)).toSet()))
             ), it.verify(EX(ReachModel.Prop.UPPER_CORNER)))
             assertEquals(
                     model.validNodes(ReachModel.Prop.BORDER).entries
                             .map { model.predecessors.invoke(it.key) }
                             .fold(emptyIDNodes) { l, r -> l + r }
-            , it.verify(EX(ReachModel.Prop.BORDER)))
+                    , it.verify(EX(ReachModel.Prop.BORDER)))
         }
 
     }
@@ -50,14 +50,14 @@ class SequentialExistsNextTest {
             assertEquals(nodesOf(
                     (0..dimensions).map { IDNode(upperCorner.key.id - pow(dimensionSize, it)) }
                             .filter { it.id >= 0 }.map { Pair(it, model.stateColors(it)) }
-                    + Pair(upperCorner.key, IDColors((dimensionSize-1) * dimensions + 1))
+                            + Pair(upperCorner.key, IDColors((dimensionSize - 1) * dimensions + 1))
             ), it.verify(EX(ReachModel.Prop.UPPER_CORNER)))
             assertEquals(
                     //very slow, but works!
                     model.validNodes(ReachModel.Prop.BORDER).entries
                             .map { model.predecessors.invoke(it.key) }
                             .fold(emptyIDNodes) { l, r -> l + r }
-            , it.verify(EX(ReachModel.Prop.BORDER)))
+                    , it.verify(EX(ReachModel.Prop.BORDER)))
         }
 
     }
@@ -125,7 +125,7 @@ abstract class ConcurrentExistsNextTest {
 
         val partitions = (0 until workers).map { myId ->
             if (const == 0) UniformPartitionFunction<IDNode>(myId) else
-            FunctionalPartitionFunction<IDNode>(myId) { it.id / const }
+                FunctionalPartitionFunction<IDNode>(myId) { it.id / const }
         }
 
         val fragments = partitions.map {
@@ -148,7 +148,7 @@ abstract class ConcurrentExistsNextTest {
         assertEquals(nodesOf(
                 (0..dimensions).map { IDNode(upperCorner.key.id - pow(dimensionSize, it)) }
                         .filter { it.id >= 0 }.map { Pair(it, model.stateColors(it)) }
-                        + Pair(upperCorner.key, IDColors((dimensionSize-1) * dimensions + 1))
+                        + Pair(upperCorner.key, IDColors((dimensionSize - 1) * dimensions + 1))
         ), result[1])
 
         assertEquals(
@@ -156,7 +156,7 @@ abstract class ConcurrentExistsNextTest {
                 model.validNodes(ReachModel.Prop.BORDER).entries
                         .map { model.predecessors.invoke(it.key) }
                         .fold(emptyIDNodes) { l, r -> l + r }
-        , result[2])
+                , result[2])
 
     }
 
