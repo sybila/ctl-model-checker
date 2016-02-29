@@ -1,8 +1,8 @@
 package cz.muni.fi.checker
 
-import cz.muni.fi.ctl.EU
-import cz.muni.fi.ctl.False
-import cz.muni.fi.ctl.True
+import com.github.sybila.ctl.EU
+import com.github.sybila.ctl.False
+import com.github.sybila.ctl.True
 import org.junit.Test
 import kotlin.test.assertEquals
 

@@ -1,7 +1,7 @@
 package cz.muni.fi.checker
 
-import cz.muni.fi.ctl.CompareOp
-import cz.muni.fi.ctl.FloatProposition
+import com.github.sybila.ctl.CompareOp
+import com.github.sybila.ctl.FloatProposition
 import org.junit.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith

@@ -1,6 +1,6 @@
 package cz.muni.fi.checker
 
-import cz.muni.fi.ctl.*
+import com.github.sybila.ctl.*
 import org.junit.Test
 import kotlin.test.assertEquals
 

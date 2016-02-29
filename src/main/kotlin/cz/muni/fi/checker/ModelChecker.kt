@@ -1,8 +1,8 @@
 package cz.muni.fi.checker
 
-import cz.muni.fi.ctl.Atom
-import cz.muni.fi.ctl.Formula
-import cz.muni.fi.ctl.Op
+import com.github.sybila.ctl.Atom
+import com.github.sybila.ctl.Formula
+import com.github.sybila.ctl.Op
 import java.util.*
 
 class ModelChecker<N: Node, C: Colors<C>>(

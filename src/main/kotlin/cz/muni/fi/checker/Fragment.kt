@@ -1,6 +1,6 @@
 package cz.muni.fi.checker
 
-import cz.muni.fi.ctl.Atom
+import com.github.sybila.ctl.Atom
 
 /**
  * Represents a Node (empty for now, reserved for future use)

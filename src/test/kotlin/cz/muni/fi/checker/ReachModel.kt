@@ -1,6 +1,7 @@
 package cz.muni.fi.checker
 
-import cz.muni.fi.ctl.*
+import com.github.sybila.ctl.*
+
 
 /**
  * Representation of n-dimensional hypercube of size s where all transitions lead

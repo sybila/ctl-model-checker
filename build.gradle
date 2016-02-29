@@ -33,7 +33,7 @@ dependencies {
     testCompile group: 'junit', name: 'junit', version: '4.11'
     compile 'com.intellij:annotations:5.1'
     compile 'com.github.daemontus:jafra:1.0.8'
-    compile 'com.github.sybila:CTL-Parser:1.1.1'
+    compile 'com.github.sybila:ctl-parser:1.2.0'
     compile "org.jetbrains.kotlin:kotlin-stdlib:$kotlin_version"
     testCompile "org.jetbrains.kotlin:kotlin-test:$kotlin_version"
 }
