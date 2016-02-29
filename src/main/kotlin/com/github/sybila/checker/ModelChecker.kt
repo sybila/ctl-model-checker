@@ -99,7 +99,7 @@ class ModelChecker<N: Node, C: Colors<C>>(
         queueFactory.createNew(initial) {
             val target = it.target
             val colors = it.colors intersect phi_1[target]
-            logger.log(Level.FINEST) { "Add $colors to $target - pushed from ${it.source}" }
+            logger.lFinest { "Add $colors to $target - pushed from ${it.source}" }
             if (result.putOrUnion(target, colors)) {
                 target.pushBack(colors).map { post(it) }
             }
