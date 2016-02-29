@@ -8,6 +8,12 @@ import java.util.concurrent.CyclicBarrier
 import kotlin.test.assertEquals
 import kotlin.test.assertFails
 
+
+/**
+ * BIG ASS WARNING: SOME OF THESE TESTS SHOULD FAIL. DO NOT PANIC IF YOU SEE AN ERROR MESSAGE IN THE LOG.
+ * IF SOMETHING UNEXPECTED FAILS, A TEST WILL ALLWAYS FAIL OR DEADLOCK!!!!
+ */
+
 data class TestMessage(val number: Int): Comparable<TestMessage> {
     override fun compareTo(other: TestMessage): Int = number.compareTo(other.number)
 }

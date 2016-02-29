@@ -2,6 +2,9 @@ package com.github.sybila.checker
 
 import com.github.daemontus.jafra.Terminator
 import java.util.concurrent.LinkedBlockingQueue
+import java.util.logging.ConsoleHandler
+import java.util.logging.Level
+import java.util.logging.Logger
 
 
 /**
@@ -22,7 +25,7 @@ data class Job<N: Node, C: Colors<C>>(
  * Termination is reached when all queues are waiting for termination, all queues are empty,
  * all callbacks are finished and no inter-queue messages are waiting in the system.
  */
-interface JobQueue<N: Node, C: Colors<C>> {
+interface JobQueue<N: Node, C: Colors<C>> : WithStats {
 
     /**
      * Enqueue new job.
@@ -61,13 +64,28 @@ class SingleThreadJobQueue<N: Node, C: Colors<C>>(
         private val comm: Communicator,
         private val terminators: Terminator.Factory,
         partitioning: PartitionFunction<N>,
-        private val onTask: JobQueue<N, C>.(Job<N, C>) -> Unit
+        private val onTask: JobQueue<N, C>.(Job<N, C>) -> Unit,
+        private val logger: Logger = Logger.getLogger(SingleThreadJobQueue::class.java.canonicalName).apply {
+            this.level = Level.OFF
+        }
 ) :
         JobQueue<N, C>,
         PartitionFunction<N> by partitioning
 {
+    //Time spent processing jobs (including state space generation)
+    private var timeInJobs = 0L
+    //Number of processed jobs
+    private var jobsProcessed = 0L
+    //Number of jobs posted to this queue
+    private var jobsPosted = 0L
+    //Number of jobs sent by this queue
+    private var jobsSent = 0L
+    //Number of jobs received from communicator
+    private var jobsReceived = 0L
 
     private var active = false
+
+    private var lastProgressUpdate = 0L
 
     private val localQueue = LinkedBlockingQueue<Maybe<Job<N, C>>>()
 
@@ -80,6 +98,7 @@ class SingleThreadJobQueue<N: Node, C: Colors<C>>(
             synchronized(localQueue) {
                 //must be set first, otherwise we might process
                 //message before terminator is marked as working
+                jobsReceived += 1
                 workRound.messageReceived()
                 localQueue.add(Maybe.Just(it))
             }
@@ -91,6 +110,7 @@ class SingleThreadJobQueue<N: Node, C: Colors<C>>(
 
     init {
         //add initial jobs, if any
+        logger.fine { "Init queue with ${initial.size} jobs."}
         initial.map { post(it) }
         doneIfEmpty()   //at this point, worker is not running, so if something went into our queue, it's still there!
     }
@@ -98,11 +118,20 @@ class SingleThreadJobQueue<N: Node, C: Colors<C>>(
     //Last thing - start the worker
     //this can't be done sooner because we might be interleaving with job insertion
     private val worker = localQueue.threadUntilPoisoned { job ->
+        jobsProcessed += 1
+        val start = System.nanoTime()
         onTask(job)
+        timeInJobs += System.nanoTime() - start
+        if (start - lastProgressUpdate > 2 * 1000 * 1000 * 1000L) {
+            //print progress every two seconds
+            logger.info { "Remaining: ${localQueue.size}, $lastProgressUpdate, $start" }
+            lastProgressUpdate = start
+        }
         doneIfEmpty()
     }
 
     override fun post(job: Job<N, C>) {
+        jobsPosted += 1
         when {
             !active -> throw IllegalStateException("Posting on inactive JobQueue! $myId")
             job.target.ownerId() == myId -> {
@@ -111,13 +140,16 @@ class SingleThreadJobQueue<N: Node, C: Colors<C>>(
                 }
             }
             else -> {
+                jobsSent += 1
                 workRound.messageSent()
+                logger.finest { "Send job to ${job.target.ownerId()}" }
                 comm.send(job.target.ownerId(), job)
             }
         }
     }
 
     override fun waitForTermination() {
+        logger.fine { "Waiting for termination" }
         workRound.waitForTermination()
         active = false
         val finalRound = terminators.createNew()
@@ -132,6 +164,24 @@ class SingleThreadJobQueue<N: Node, C: Colors<C>>(
         synchronized(localQueue) {
             if (localQueue.isEmpty()) workRound.setDone()
         }
+    }
+
+    override fun getStats(): Map<String, Any> {
+        return mapOf(
+                "Jobs posted" to jobsPosted,
+                "Jobs received" to jobsReceived,
+                "Jobs sent" to jobsSent,
+                "Jobs processed" to jobsProcessed,
+                "Time in jobs" to timeInJobs
+                )
+    }
+
+    override fun resetStats() {
+        jobsPosted = 0L
+        jobsReceived = 0L
+        jobsSent = 0L
+        jobsProcessed = 0L
+        timeInJobs = 0L
     }
 
 }

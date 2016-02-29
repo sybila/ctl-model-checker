@@ -4,19 +4,32 @@ import com.github.sybila.ctl.Atom
 import com.github.sybila.ctl.Formula
 import com.github.sybila.ctl.Op
 import java.util.*
+import java.util.logging.Level
+import java.util.logging.Logger
 
 class ModelChecker<N: Node, C: Colors<C>>(
         fragment: KripkeFragment<N, C>,
-        private val queueFactory: JobQueue.Factory<N, C>
+        private val queueFactory: JobQueue.Factory<N, C>,
+        private val logger: Logger = Logger.getLogger(ModelChecker::class.java.canonicalName).apply {
+            level = Level.OFF
+        }
 ):
-        KripkeFragment<N, C> by fragment
+        KripkeFragment<N, C> by fragment, WithStats
 {
+
+    //Time spent in state space generator successor/predecessor methods
+    private var timeInGenerator = 0L
+    //Time spent verifying formulas (not necessarily working - can just sleep)
+    private var verificationTime = 0L
 
     /**
      * Push given colors to all predecessors of given node as jobs.
      */
     private val pushBack: N.(C) -> List<Job<N, C>> = { border ->
-        this.predecessors().entries.map {
+        val start = System.nanoTime()
+        val predecessors = this.predecessors()
+        timeInGenerator += System.nanoTime() - start
+        predecessors.entries.map {
             Job(this, it.key, it.value intersect border)
         }
     }
@@ -24,6 +37,8 @@ class ModelChecker<N: Node, C: Colors<C>>(
     private val results: MutableMap<Formula, Nodes<N, C>> = HashMap()
 
     fun verify(f: Formula): Nodes<N, C> {
+        logger.info { "Started processing formula $f"}
+        val start = System.nanoTime()
         if (f !in results) {
             results[f] = if (f is Atom) {
                 validNodes(f)
@@ -39,6 +54,8 @@ class ModelChecker<N: Node, C: Colors<C>>(
                 }
             }
         }
+        logger.info { "Finished processing formula $f"}
+        verificationTime += System.nanoTime() - start
         return results[f]!!
     }
 
@@ -52,13 +69,18 @@ class ModelChecker<N: Node, C: Colors<C>>(
 
         val phi = verify(f[0])
 
+        logger.fine { "Found ${phi.entries.count()} initial states."}
+
         val result = HashMap<N, C>().toMutableNodes(phi.emptyColors)
 
         val initial = phi.entries.flatMap { it.key.pushBack(it.value) }
 
         queueFactory.createNew(initial) {
             result.putOrUnion(it.target, it.colors)
+            logger.finest { "Add ${it.colors} to ${it.target}" }
         }.waitForTermination()
+
+        logger.fine { "Results contain ${results.entries.size} entries." }
 
         return result.toNodes() //defensive copy, maybe redundant
     }
@@ -68,6 +90,8 @@ class ModelChecker<N: Node, C: Colors<C>>(
         val phi_1 = verify(f[0])
         val phi_2 = verify(f[1])
 
+        logger.fine { "Found ${phi_1.entries.count()} and ${phi_2.entries.count()} initial states." }
+
         val result = phi_2.toMutableNodes() //this is the "initial step" where you mark as valid only the nodes where phi_2 holds.
 
         val initial = phi_2.entries.flatMap { it.key.pushBack(it.value) }
@@ -75,11 +99,13 @@ class ModelChecker<N: Node, C: Colors<C>>(
         queueFactory.createNew(initial) {
             val target = it.target
             val colors = it.colors intersect phi_1[target]
-
+            logger.log(Level.FINEST) { "Add $colors to $target - pushed from ${it.source}" }
             if (result.putOrUnion(target, colors)) {
                 target.pushBack(colors).map { post(it) }
             }
         }.waitForTermination()
+
+        logger.fine { "Results contain ${results.entries.size} entries." }
 
         return result.toNodes()
     }
@@ -88,6 +114,8 @@ class ModelChecker<N: Node, C: Colors<C>>(
 
         val phi_1 = verify(f[0])
         val phi_2 = verify(f[1])
+
+        logger.fine { "Found ${phi_1.entries.count()} and ${phi_2.entries.count()} initial states." }
 
         val result = phi_2.toMutableNodes() //this is the "initial step" where you mark as valid only the nodes where phi_2 holds.
 
@@ -101,7 +129,10 @@ class ModelChecker<N: Node, C: Colors<C>>(
 
         queueFactory.createNew(initial) {
             val uncoveredSuccessors = synchronized(uncoveredEdges) {
-                if (it.target !in uncoveredEdges) uncoveredEdges[it.target] = it.target.successors().toMutableMap()
+                val start = System.nanoTime()
+                val successors = it.target.successors()
+                timeInGenerator += System.nanoTime() - start
+                if (it.target !in uncoveredEdges) uncoveredEdges[it.target] = successors.toMutableMap()
                 uncoveredEdges[it.target]!!
             }
             val validColors = synchronized(uncoveredSuccessors) {
@@ -112,12 +143,27 @@ class ModelChecker<N: Node, C: Colors<C>>(
                 //Or should we cache results of this reduction?
                 phi_1[it.target] intersect (it.colors - uncoveredSuccessors.values.reduce { a, b -> a union b })
             }
+            logger.finest { "Add $validColors to ${it.target} - pushed from ${it.source}" }
             if (validColors.isNotEmpty() && result.putOrUnion(it.target, validColors)) { //if some colors survived all of this, mark them and push further
                 it.target.pushBack(validColors).map { post(it) }
             }
         }.waitForTermination()
 
+        logger.fine { "Results contain ${results.entries.size} entries." }
+
         return result.toNodes()
+    }
+
+    override fun getStats(): Map<String, Any> {
+        return mapOf(
+                "Time in generator" to timeInGenerator,
+                "Verification time" to verificationTime
+        )
+    }
+
+    override fun resetStats() {
+        timeInGenerator = 0L
+        verificationTime = 0L
     }
 
 }
