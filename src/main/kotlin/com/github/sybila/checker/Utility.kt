@@ -97,7 +97,8 @@ class GuardedThread(
         thread.setUncaughtExceptionHandler { thread, throwable ->
             ex = throwable
             //sometimes, thread won't join because of this exception. Print it so that we at least know something is wrong.
-            System.err.println("Uncaught exception in $thread: $throwable")
+            System.err.println("Uncaught exception in $thread")
+            ex?.printStackTrace()
         }
     }
 
