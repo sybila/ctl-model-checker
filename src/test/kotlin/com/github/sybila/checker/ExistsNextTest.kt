@@ -134,7 +134,7 @@ abstract class ConcurrentExistsNextTest {
         }
 
         val result = withModelCheckers(
-                fragments, partitions
+                fragments, { partitions[it] }
         ) {
             listOf(
                     it.verify(EX(ReachModel.Prop.LOWER_CORNER)),

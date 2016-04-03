@@ -134,7 +134,7 @@ abstract class ConcurrentExistsUntilTest {
         }
 
         val result = withModelCheckers(
-                fragments, partitions
+                fragments, { partitions[it] }
         ) {
             listOf(
                     it.verify(True EU ReachModel.Prop.LOWER_CORNER),

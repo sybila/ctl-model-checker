@@ -149,7 +149,7 @@ abstract class ConcurrentAllUntilTest {
         }
 
         val result = withModelCheckers(
-                fragments, partitions
+                fragments, { partitions[it] }
         ) {
             listOf(
                     it.verify(True AU ReachModel.Prop.LOWER_CORNER),

@@ -2,6 +2,7 @@ package com.github.sybila.checker
 
 import com.github.daemontus.egholm.thread.guardedThread
 import com.github.daemontus.jafra.Terminator
+import com.github.daemontus.jafra.Token
 import org.junit.Test
 import java.util.*
 import java.util.concurrent.FutureTask
@@ -80,8 +81,12 @@ abstract class JobQueueTest {
             task: (List<JobQueue.Factory<IDNode, IDColors>>) -> Unit
     ) {
         val communicators = createSharedMemoryCommunicators(processCount)
-        val messengers = communicators.map { CommunicatorTokenMessenger(it) }
-        val terminators = messengers.map { Terminator.Factory(it) }
+        val messengers = communicators.map { CommunicatorTokenMessenger(it.id, it.size) }
+        messengers.zip(communicators).forEach {
+            it.first.comm = it.second
+            it.second.addListener(Token::class.java) { m -> it.first.invoke(m) }
+        }
+        val terminators = messengers.toFactories()
 
         try {
             task(createJobQueues(processCount, partitioning, communicators, terminators))

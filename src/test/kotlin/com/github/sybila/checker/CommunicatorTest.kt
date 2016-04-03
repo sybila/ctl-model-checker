@@ -12,7 +12,7 @@ import kotlin.test.assertFails
 
 
 /**
- * BIG ASS WARNING: SOME OF THESE TESTS SHOULD FAIL. DO NOT PANIC IF YOU SEE AN ERROR MESSAGE IN THE LOG.
+ * BIG ASS WARNING: SOME OF THESE TESTS SHOULD PRODUCE AN EXCEPTION. DO NOT PANIC IF YOU SEE AN ERROR MESSAGE IN THE LOG.
  * IF SOMETHING UNEXPECTED FAILS, A TEST WILL ALLWAYS FAIL OR DEADLOCK!!!!
  */
 
@@ -53,10 +53,11 @@ abstract class CommunicatorTest {
     fun noListenerTest() {
         val barrier = CyclicBarrier(processCount)
         communicatorConstructor(processCount).map {
+            it.addListener(TestMessage::class.java) {
+                throw IllegalStateException("Unexpected message!")
+            }; it
+        }.map {
             guardedThread {
-                it.addListener(TestMessage::class.java) {
-                    throw IllegalStateException("Unexpected message!")
-                }
                 it.send((it.id + 1) % processCount, Token(0, 0)) //trigger error
                 barrier.await()
                 assertFails {
@@ -193,7 +194,6 @@ abstract class CommunicatorTest {
                             }
                         }
                     }
-
                     initBarrier.await() //don't start sending before everyone is initialized!
 
                     (0..(processCount - 1))
@@ -275,7 +275,11 @@ abstract class CommunicatorTest {
             val globalBarrier = CyclicBarrier(processCount)
 
             val allMessages = communicatorConstructor(processCount).map { comm ->
-                Pair(CommunicatorTokenMessenger(comm), comm)
+                val tokens = CommunicatorTokenMessenger(comm.id, comm.size)
+                tokens.comm = comm
+                comm.addListener(Token::class.java) { tokens.invoke(it) }
+                //map is going to guarantee a global sync, so we don't need to put this in initial listeners
+                Pair(tokens, comm)
             }.map {
 
                 val (termComm, comm) = it
