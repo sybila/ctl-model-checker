@@ -25,6 +25,8 @@ class ModelChecker<N: Node, C: Colors<C>>(
     //Time spent verifying formulas (not necessarily working - can just sleep)
     var verificationTime = 0L
 
+    var queueStats: MutableMap<String, Long> = HashMap()
+
     /**
      * Push given colors to all predecessors of given node as jobs.
      */
@@ -81,7 +83,7 @@ class ModelChecker<N: Node, C: Colors<C>>(
         queueFactory.createNew(initial) {
             result.putOrUnion(it.target, it.colors)
             logger.lFinest { "Add ${it.colors} to ${it.target}" }
-        }.waitForTermination()
+        }.apply { mergeQueueStats(this.collectStats()) }.waitForTermination()
 
         logger.lFine { "Results contain ${results.entries.size} entries." }
 
@@ -106,7 +108,7 @@ class ModelChecker<N: Node, C: Colors<C>>(
             if (result.putOrUnion(target, colors)) {
                 target.pushBack(colors).map { post(it) }
             }
-        }.waitForTermination()
+        }.apply { mergeQueueStats(this.collectStats()) }.waitForTermination()
 
         logger.lFine { "Results contain ${results.entries.size} entries." }
 
@@ -150,11 +152,17 @@ class ModelChecker<N: Node, C: Colors<C>>(
             if (validColors.isNotEmpty() && result.putOrUnion(it.target, validColors)) { //if some colors survived all of this, mark them and push further
                 it.target.pushBack(validColors).map { post(it) }
             }
-        }.waitForTermination()
+        }.apply { mergeQueueStats(this.collectStats()) }.waitForTermination()
 
         logger.lFine { "Results contain ${results.entries.size} entries." }
 
         return result.toNodes()
+    }
+
+    private fun mergeQueueStats(stats: Map<String, Long>) {
+        for ((key, value) in stats) {
+            queueStats[key] = value + (queueStats[key] ?: 0)
+        }
     }
 
 }

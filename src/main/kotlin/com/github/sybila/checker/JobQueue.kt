@@ -63,4 +63,5 @@ interface JobQueue<N: Node, C: Colors<C>> {
     //Number of jobs received from communicator
     var jobsReceived: Long
 
+    fun collectStats(): Map<String, Long>
 }
