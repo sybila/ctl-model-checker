@@ -1,11 +1,25 @@
 package com.github.sybila.checker
 
+import java.util.*
+
 /**
  * Add here everything you find useful for testing, but can't quite see in the main package
  * (it's unsafe/slow/ugly or just too good for anyone to use!)
  */
 
-fun <T> T.repeat(n: Int): List<T> = (1..n).map { this }
+
+/**
+ * Return random subset of this set - mainly for testing, etc.
+ */
+fun <T> Set<T>.randomSubset(): Set<T> {
+    val remove = (Math.random() * size).toInt()
+    val result = ArrayList<T>(this)
+    for (i in 0..remove) {
+        val victim = (Math.random() * result.size)
+        result.removeAt(victim.toInt())
+    }
+    return result.toSet()
+}
 
 fun pow (a: Int, b: Int): Int {
     if ( b == 0)        return 1;

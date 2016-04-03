@@ -1,5 +1,7 @@
 package com.github.sybila.checker
 
+import com.github.daemontus.egholm.collections.repeat
+import com.github.daemontus.egholm.thread.guardedThread
 import com.github.daemontus.jafra.Terminator
 import com.github.daemontus.jafra.Token
 import org.junit.Test
@@ -230,7 +232,7 @@ abstract class CommunicatorTest {
                     for (iteration in 1..10) {
                         //repeat to test if we are able to recreate messengers
                         val received = ArrayList<TestMessage>()
-                        val expected = (allMessages - TestMessage(comm.id)).flatRepeat(messageCount)
+                        val expected = (allMessages - TestMessage(comm.id)).repeat(messageCount).flatten()
 
                         comm.addListener(TestMessage::class.java) {
                             received.add(it)

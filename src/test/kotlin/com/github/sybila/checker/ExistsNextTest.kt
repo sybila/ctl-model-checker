@@ -1,5 +1,6 @@
 package com.github.sybila.checker
 
+import com.github.daemontus.egholm.collections.listWithInitial
 import com.github.sybila.ctl.EX
 import org.junit.Test
 import kotlin.test.assertEquals
@@ -140,7 +141,7 @@ abstract class ConcurrentExistsNextTest {
                     it.verify(EX(ReachModel.Prop.UPPER_CORNER)),
                     it.verify(EX(ReachModel.Prop.BORDER))
             )
-        }.fold(nodesOf().repeat(3)) { l, r -> l.zip(r).map { it.first union it.second } }
+        }.fold(listWithInitial(3, nodesOf())) { l, r -> l.zip(r).map { it.first union it.second } }
 
         assertEquals(nodesOf(Pair(IDNode(0), model.parameters - IDColors(0))), result[0])
 

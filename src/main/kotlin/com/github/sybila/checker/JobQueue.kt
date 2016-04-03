@@ -1,5 +1,11 @@
 package com.github.sybila.checker
 
+import com.github.daemontus.egholm.concurrent.guardedThreadUntilPoisoned
+import com.github.daemontus.egholm.concurrent.poison
+import com.github.daemontus.egholm.functional.Maybe
+import com.github.daemontus.egholm.logger.lFine
+import com.github.daemontus.egholm.logger.lFinest
+import com.github.daemontus.egholm.logger.lInfo
 import com.github.daemontus.jafra.Terminator
 import java.util.concurrent.LinkedBlockingQueue
 import java.util.logging.Level
@@ -116,7 +122,7 @@ class SingleThreadJobQueue<N: Node, C: Colors<C>>(
 
     //Last thing - start the worker
     //this can't be done sooner because we might be interleaving with job insertion
-    private val worker = localQueue.threadUntilPoisoned { job ->
+    private val worker = localQueue.guardedThreadUntilPoisoned { job ->
         jobsProcessed += 1
         val start = System.nanoTime()
         onTask(job)

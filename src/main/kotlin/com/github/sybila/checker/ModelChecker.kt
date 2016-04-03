@@ -1,5 +1,8 @@
 package com.github.sybila.checker
 
+import com.github.daemontus.egholm.logger.lFine
+import com.github.daemontus.egholm.logger.lFinest
+import com.github.daemontus.egholm.logger.lInfo
 import com.github.sybila.ctl.Atom
 import com.github.sybila.ctl.Formula
 import com.github.sybila.ctl.Op

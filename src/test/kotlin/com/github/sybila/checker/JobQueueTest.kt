@@ -1,5 +1,6 @@
 package com.github.sybila.checker
 
+import com.github.daemontus.egholm.thread.guardedThread
 import com.github.daemontus.jafra.Terminator
 import org.junit.Test
 import java.util.*

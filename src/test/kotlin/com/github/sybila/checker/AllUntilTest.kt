@@ -1,5 +1,6 @@
 package com.github.sybila.checker
 
+import com.github.daemontus.egholm.collections.listWithInitial
 import com.github.sybila.ctl.AU
 import com.github.sybila.ctl.False
 import com.github.sybila.ctl.True
@@ -158,7 +159,7 @@ abstract class ConcurrentAllUntilTest {
                     it.verify(ReachModel.Prop.BORDER AU ReachModel.Prop.UPPER_CORNER),
                     it.verify(ReachModel.Prop.UPPER_HALF AU ReachModel.Prop.UPPER_CORNER)
             )
-        }.fold(nodesOf().repeat(6)) { l, r -> l.zip(r).map { it.first union it.second } }
+        }.fold(listWithInitial(6, nodesOf())) { l, r -> l.zip(r).map { it.first union it.second } }
 
         assertEquals(model.validNodes(ReachModel.Prop.LOWER_CORNER), result[0])
         assertEquals(nodesOf(
