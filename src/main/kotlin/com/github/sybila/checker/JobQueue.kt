@@ -30,7 +30,7 @@ data class Job<N: Node, C: Colors<C>>(
  * Termination is reached when all queues are waiting for termination, all queues are empty,
  * all callbacks are finished and no inter-queue messages are waiting in the system.
  */
-interface JobQueue<N: Node, C: Colors<C>> : WithStats {
+interface JobQueue<N: Node, C: Colors<C>> {
 
     /**
      * Enqueue new job.
@@ -62,6 +62,18 @@ interface JobQueue<N: Node, C: Colors<C>> : WithStats {
         fun createNew(initial: List<Job<N, C>> = listOf(), onTask: JobQueue<N, C>.(Job<N, C>) -> Unit): JobQueue<N, C>
     }
 
+    //Computation statistics
+    //Time spent processing jobs (including state space generation)
+    var timeInJobs: Long
+    //Number of processed jobs
+    var jobsProcessed: Long
+    //Number of jobs posted to this queue
+    var jobsPosted: Long
+    //Number of jobs sent by this queue
+    var jobsSent: Long
+    //Number of jobs received from communicator
+    var jobsReceived: Long
+
 }
 
 class SingleThreadJobQueue<N: Node, C: Colors<C>>(
@@ -78,15 +90,15 @@ class SingleThreadJobQueue<N: Node, C: Colors<C>>(
         PartitionFunction<N> by partitioning
 {
     //Time spent processing jobs (including state space generation)
-    private var timeInJobs = 0L
+    override var timeInJobs = 0L
     //Number of processed jobs
-    private var jobsProcessed = 0L
+    override var jobsProcessed = 0L
     //Number of jobs posted to this queue
-    private var jobsPosted = 0L
+    override var jobsPosted = 0L
     //Number of jobs sent by this queue
-    private var jobsSent = 0L
+    override var jobsSent = 0L
     //Number of jobs received from communicator
-    private var jobsReceived = 0L
+    override var jobsReceived = 0L
 
     private var active = false
 
@@ -169,24 +181,6 @@ class SingleThreadJobQueue<N: Node, C: Colors<C>>(
         synchronized(localQueue) {
             if (localQueue.isEmpty()) workRound.setDone()
         }
-    }
-
-    override fun getStats(): Map<String, Any> {
-        return mapOf(
-                "Jobs posted" to jobsPosted,
-                "Jobs received" to jobsReceived,
-                "Jobs sent" to jobsSent,
-                "Jobs processed" to jobsProcessed,
-                "Time in jobs" to timeInJobs
-                )
-    }
-
-    override fun resetStats() {
-        jobsPosted = 0L
-        jobsReceived = 0L
-        jobsSent = 0L
-        jobsProcessed = 0L
-        timeInJobs = 0L
     }
 
 }

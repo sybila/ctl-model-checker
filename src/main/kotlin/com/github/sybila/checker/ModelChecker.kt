@@ -17,13 +17,13 @@ class ModelChecker<N: Node, C: Colors<C>>(
             level = Level.OFF
         }
 ):
-        KripkeFragment<N, C> by fragment, WithStats
+        KripkeFragment<N, C> by fragment
 {
 
     //Time spent in state space generator successor/predecessor methods
-    private var timeInGenerator = 0L
+    var timeInGenerator = 0L
     //Time spent verifying formulas (not necessarily working - can just sleep)
-    private var verificationTime = 0L
+    var verificationTime = 0L
 
     /**
      * Push given colors to all predecessors of given node as jobs.
@@ -155,18 +155,6 @@ class ModelChecker<N: Node, C: Colors<C>>(
         logger.lFine { "Results contain ${results.entries.size} entries." }
 
         return result.toNodes()
-    }
-
-    override fun getStats(): Map<String, Any> {
-        return mapOf(
-                "Time in generator" to timeInGenerator,
-                "Verification time" to verificationTime
-        )
-    }
-
-    override fun resetStats() {
-        timeInGenerator = 0L
-        verificationTime = 0L
     }
 
 }
