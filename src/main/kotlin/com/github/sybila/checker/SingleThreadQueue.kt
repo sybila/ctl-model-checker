@@ -11,7 +11,7 @@ import com.github.daemontus.jafra.Terminator
 import java.util.concurrent.LinkedBlockingQueue
 import java.util.logging.Logger
 
-class SingleThreadJobQueue<N: Node, C: Colors<C>>(
+class SingleThreadQueue<N: Node, C: Colors<C>>(
         initial: List<Job<N, C>>,
         private val comm: Communicator,
         private val terminators: Terminator.Factory,

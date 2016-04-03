@@ -39,7 +39,7 @@ fun <N: Node, C: Colors<C>> createSingleThreadJobQueues(
     return (0..(processCount-1)).map { i ->
         object : JobQueue.Factory<N, C> {
             override fun createNew(initial: List<Job<N, C>>, onTask: JobQueue<N, C>.(Job<N, C>) -> Unit): JobQueue<N, C> {
-                return SingleThreadJobQueue(initial, communicators[i], terminators[i], partitioning[i], onTask)
+                return SingleThreadQueue(initial, communicators[i], terminators[i], partitioning[i], onTask)
             }
         }
     }

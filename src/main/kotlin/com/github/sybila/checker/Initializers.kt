@@ -81,7 +81,7 @@ fun <N: Node, C: Colors<C>, R> withModelCheckers(
         queues: (Int, Communicator, Terminator.Factory) -> JobQueue.Factory<N, C> =
         { id: Int, comm: Communicator, term: Terminator.Factory -> object : JobQueue.Factory<N, C> {
             override fun createNew(initial: List<Job<N, C>>, onTask: JobQueue<N, C>.(Job<N, C>) -> Unit): JobQueue<N, C> {
-                return SingleThreadJobQueue(initial, comm, term, partitions(id), onTask, loggers(id))
+                return SingleThreadQueue(initial, comm, term, partitions(id), onTask, loggers(id))
             }
         } },
         task: (ModelChecker<N, C>) -> R): List<R> {
