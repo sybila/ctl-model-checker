@@ -61,6 +61,12 @@ interface Communicator: Closeable {
      */
     fun send(dest: Int, message: Any)
 
+    //Communication statistics
+    var sendCount: Long
+    var sendSize: Long
+    var receiveCount: Long
+    var receiveSize: Long
+
 }
 
 class SharedMemoryCommunicator(
@@ -71,6 +77,12 @@ class SharedMemoryCommunicator(
         private val logger: Logger = Logger.getLogger(SharedMemoryCommunicator::class.java.canonicalName+"#$id")
 ) : Communicator {
 
+    override var sendCount = 0L
+    override var receiveCount = 0L
+    //we don't provide info about message size
+    override var sendSize = -1L
+    override var receiveSize = -1L
+
     private val listeners = HashMap<Class<*>, (Any) -> Unit>(initialListeners)
 
     private val channelListener = channels[id]!!.guardedThreadUntilPoisoned {
@@ -78,6 +90,7 @@ class SharedMemoryCommunicator(
         val listener = synchronized(listeners) {
             listeners[it.javaClass]
         } ?: throw IllegalStateException("Message with no listener received! $id $it - listeners: $listeners")
+        receiveCount += 1
         listener(it)
     }
 
@@ -103,6 +116,7 @@ class SharedMemoryCommunicator(
         logger.lFinest { "Sending to $dest: $message" }
         if (dest == id) throw IllegalArgumentException("Can't send message to yourself")
         channels[dest]!!.put(Maybe.Just(message))
+        sendCount += 1
     }
 
     //checks if all messages have been delivered
