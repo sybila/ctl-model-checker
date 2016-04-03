@@ -68,6 +68,18 @@ abstract class CommunicatorTest {
     }
 
     @Test(timeout = 2000)
+    fun doubleCloseTest() {
+        communicatorConstructor(processCount).map {
+            guardedThread {
+                it.close()
+                assertFails {
+                    it.close()
+                }
+            }
+        }.map { it.join() }
+    }
+
+    @Test(timeout = 2000)
     fun doubleRemoveListenerTest() {
         communicatorConstructor(processCount).map {
             guardedThread {
