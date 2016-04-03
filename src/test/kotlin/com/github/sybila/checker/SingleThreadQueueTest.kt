@@ -9,23 +9,22 @@ import java.util.concurrent.FutureTask
 import kotlin.test.assertEquals
 
 
-class BigSingleThreadJobQueueTest : SingleThreadJobQueueTest() {
+class BigSingleThreadJobQueueTest : SingleThreadQueueTest() {
     override val repetitions: Int = 2
     override val processCount: Int = 24
-
 }
 
-class SmallSingleThreadJobQueueTest : SingleThreadJobQueueTest() {
+class SmallSingleThreadJobQueueTest : SingleThreadQueueTest() {
     override val repetitions: Int = 100
     override val processCount: Int = 4
 }
 
-class OneSingleThreadJobQueueTest : SingleThreadJobQueueTest() {
+class OneSingleThreadJobQueueTest : SingleThreadQueueTest() {
     override val repetitions: Int = 100
     override val processCount: Int = 1
 }
 
-abstract class SingleThreadJobQueueTest: JobQueueTest() {
+abstract class SingleThreadQueueTest : JobPreservingQueueTest() {
 
     override fun createJobQueues(
             processCount: Int,
@@ -34,20 +33,9 @@ abstract class SingleThreadJobQueueTest: JobQueueTest() {
             terminators: List<Terminator.Factory>
     ): List<JobQueue.Factory<IDNode, IDColors>>
             = createSingleThreadJobQueues(
-            processCount = processCount,
-            partitioning = partitioning,
-            terminators = terminators,
-            communicators = communicators
+            processCount, partitioning, communicators, terminators
     )
 
-}
-
-val jobComparator = Comparator<Job<IDNode, IDColors>> { o1, o2 ->
-    when {
-        o1.source == o2.source && o1.target == o2.target -> o1.colors.toString().compareTo(o2.colors.toString())
-        o1.source == o2.source -> o1.target.id.compareTo(o2.target.id)
-        else -> o1.source.id.compareTo(o2.source.id)
-    }
 }
 
 /**
@@ -55,7 +43,7 @@ val jobComparator = Comparator<Job<IDNode, IDColors>> { o1, o2 ->
  * Just override queue constructor.
  */
 
-abstract class JobQueueTest {
+abstract class JobPreservingQueueTest {
 
     abstract val processCount: Int
     abstract val repetitions: Int

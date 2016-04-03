@@ -9,6 +9,14 @@ import java.util.*
  */
 
 
+val jobComparator = Comparator<Job<IDNode, IDColors>> { o1, o2 ->
+    when {
+        o1.source == o2.source && o1.target == o2.target -> o1.colors.toString().compareTo(o2.colors.toString())
+        o1.source == o2.source -> o1.target.id.compareTo(o2.target.id)
+        else -> o1.source.id.compareTo(o2.source.id)
+    }
+}
+
 /**
  * Return random subset of this set - mainly for testing, etc.
  */

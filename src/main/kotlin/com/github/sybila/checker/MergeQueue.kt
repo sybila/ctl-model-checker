@@ -8,10 +8,9 @@ import com.github.daemontus.egholm.thread.GuardedThread
 import com.github.daemontus.jafra.Terminator
 import java.util.*
 import java.util.concurrent.locks.ReentrantLock
-import java.util.logging.Level
 import java.util.logging.Logger
 
-private fun <N: Node, C: Colors<C>> Job<N, C>.path() = Pair(this.source, this.target)
+fun <N: Node, C: Colors<C>> Job<N, C>.path() = Pair(this.source, this.target)
 
 private class BlockingHashMap<K: Node, V: Colors<V>>() {
 
@@ -34,8 +33,8 @@ private class BlockingHashMap<K: Node, V: Colors<V>>() {
     }
 
     fun poison() {
-        terminate = true
         mapLock.lock()
+        terminate = true
         condition.signal()
         mapLock.unlock()
     }
@@ -44,6 +43,8 @@ private class BlockingHashMap<K: Node, V: Colors<V>>() {
         fun getJob(): Job<K, V>? {
             mapLock.lock()
             while (map.isEmpty()) {
+                //check two times, because someone might poison us before we even start
+                if (terminate) return null
                 condition.await()
                 if (terminate) return null
             }

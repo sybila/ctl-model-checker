@@ -1,16 +1,5 @@
 package com.github.sybila.checker
 
-import com.github.daemontus.egholm.concurrent.guardedThreadUntilPoisoned
-import com.github.daemontus.egholm.concurrent.poison
-import com.github.daemontus.egholm.functional.Maybe
-import com.github.daemontus.egholm.logger.lFine
-import com.github.daemontus.egholm.logger.lFinest
-import com.github.daemontus.egholm.logger.lInfo
-import com.github.daemontus.jafra.Terminator
-import java.util.concurrent.LinkedBlockingQueue
-import java.util.logging.Level
-import java.util.logging.Logger
-
 
 /**
  * A model checking job carrying info about source/target node and propagated color set.
