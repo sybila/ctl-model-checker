@@ -105,6 +105,7 @@ class MergeQueue<N: Node, C: Colors<C>>(
     private var active = false
 
     private var lastProgressUpdate = 0L
+    private var processedSinceLastUpdate = 0
 
     private val localQueue = BlockingHashMap<N, C>()
 
@@ -138,12 +139,14 @@ class MergeQueue<N: Node, C: Colors<C>>(
     //this can't be done sooner because we might be interleaving with job insertion
     private val worker = localQueue.threadGuardedUntilPoisoned { job ->
         jobsProcessed += 1
+        processedSinceLastUpdate += 1
         val start = System.nanoTime()
         onTask(job)
         timeInJobs += System.nanoTime() - start
         if (start - lastProgressUpdate > 2 * 1000 * 1000 * 1000L) {
+            processedSinceLastUpdate = 0
             //print progress every two seconds
-            logger.lInfo { "Remaining: ${localQueue.size()}, $lastProgressUpdate, $start" }
+            logger.lInfo { "Remaining: ${localQueue.size()}, processed: $processedSinceLastUpdate, total: $jobsProcessed" }
             lastProgressUpdate = start
         }
         doneIfEmpty()
