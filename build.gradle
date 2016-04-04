@@ -23,7 +23,7 @@ apply plugin: 'jacoco'
 sourceCompatibility = 1.7
 group = "com.github.sybila"
 archivesBaseName = "ctl-model-checker"
-version = '1.1.0'
+version = '1.1.1'
 
 repositories {
     mavenCentral()
