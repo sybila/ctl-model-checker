@@ -90,7 +90,7 @@ class UModelChecker<N: Node, C: Colors<C>>(
         val queue = HashMap<N, C>()
 
         fun enqueue(n: N, c: C) {
-            if (n in queue) {
+            if (n !in queue) {
                 queue[n] = c
             } else {
                 queue[n] = queue[n]!! union c
@@ -150,7 +150,7 @@ class UModelChecker<N: Node, C: Colors<C>>(
         val queue = HashMap<Pair<N, N>, C>()
 
         fun enqueue(n: Pair<N, N>, c: C) {
-            if (n in queue) {
+            if (n !in queue) {
                 queue[n] = c
             } else {
                 queue[n] = queue[n]!! union c
