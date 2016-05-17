@@ -141,6 +141,8 @@ class MutableMapNodes<N: Node, C: Colors<C>>(
         map: Map<N, C>
 ): MapNodes<N, C>(emptyColors, map), MutableNodes<N, C> {
 
+    //TODO: The updates are not visible, we have to update the get function!!!
+
     private val map = HashMap(map)  //defensive copy
 
     override fun toNodes(): Nodes<N, C> {

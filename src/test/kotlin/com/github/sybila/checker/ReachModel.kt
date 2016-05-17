@@ -1,5 +1,8 @@
 package com.github.sybila.checker
 
+import com.github.sybila.checker.uctl.DAnd
+import com.github.sybila.checker.uctl.DFormula
+import com.github.sybila.checker.uctl.DNot
 import com.github.sybila.ctl.*
 
 
@@ -18,7 +21,24 @@ import com.github.sybila.ctl.*
 class ReachModel(
         private val dimensions: Int,
         private val dimensionSize: Int
-) : KripkeFragment<IDNode, IDColors> {
+) : DirectedKripkeFragment<IDNode, IDColors> {
+
+    override fun checkTransition(from: IDNode, to: IDNode, formula: DFormula): Boolean {
+        return when (formula) {
+            is com.github.sybila.checker.uctl.Direction -> {
+                if (formula.dimension < 0) {
+                    formula.positive
+                } else if (formula.positive) {
+                    extractCoordinate(from, formula.dimension) + 1 == extractCoordinate(to, formula.dimension)
+                } else {
+                    extractCoordinate(from, formula.dimension) - 1 == extractCoordinate(to, formula.dimension)
+                }
+            }
+            is DAnd -> checkTransition(from, to, formula.left) && checkTransition(from, to, formula.right)
+            is DNot -> !checkTransition(from, to, formula.inner)
+            else -> throw IllegalStateException("Unknown direction formula: $formula")
+        }
+    }
 
     /**
      * Use these propositions in your model queries, nothing else is supported!

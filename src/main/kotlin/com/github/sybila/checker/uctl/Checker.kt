@@ -44,7 +44,7 @@ class UModelChecker<N: Node, C: Colors<C>>(
                             result.putOrUnion(entry.key, inner[entry.key])
                         }
                     }
-                    result
+                    result.toNodes()
                 }
                 is UAt -> {
                     val inner = verify(f.inner, vars)
@@ -56,7 +56,7 @@ class UModelChecker<N: Node, C: Colors<C>>(
                             result.putOrUnion(entry.key, inner[state.first])
                         }
                     }
-                    result
+                    result.toNodes()
                 }
                 is UExists -> {
                     var result = HashMap<N, C>().toNodes(emptyColors)
