@@ -15,15 +15,17 @@ class UModelChecker<N: Node, C: Colors<C>>(
         DirectedKripkeFragment<N, C> by fragment
 {
 
-    private val results: MutableMap<UFormula, Nodes<N, C>> = HashMap()
+    private val results: MutableMap<Pair<UFormula, Map<String, Pair<N, C>>>, Nodes<N, C>> = HashMap()
 
     fun verify(f: UFormula, vars: Map<String, Pair<N, C>>): Nodes<N, C> {
-        if (f !in results) {
-            results[f] = when (f) {
+        if (Pair(f, vars) !in results) {
+            results[Pair(f, vars)] = when (f) {
                 is UProposition -> validNodes(f.proposition)
                 is UNot -> allNodes() - verify(f.formula, vars)
                 is UAnd -> verify(f.left, vars) intersect verify(f.right, vars)
-                is UName -> nodesOf(emptyColors, vars[f.name] ?: throw IllegalStateException("Unknown name ${f.name}"))
+                is UName -> {
+                    nodesOf(emptyColors, vars[f.name] ?: throw IllegalStateException("Unknown name ${f.name}"))
+                }
                 is UEU -> checkExistUntil(f, vars)
                 is UAU -> checkAllUntil(f, vars)
                 is UEX -> {
@@ -87,7 +89,7 @@ class UModelChecker<N: Node, C: Colors<C>>(
                 else -> throw IllegalStateException("Unknown formula: $f")
             }
         }
-        return results[f]!!
+        return results[Pair(f, vars)]!!
     }
 
     private fun next(state: N, forward: Boolean): Nodes<N, C> {
