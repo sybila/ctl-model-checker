@@ -59,6 +59,18 @@ data class UBind(
         val inner: UFormula
 ) : UFormula
 
+data class UEX(
+        val forward: Boolean,
+        val inner: UFormula,
+        val direction: DFormula
+) : UFormula
+
+data class UAX(
+    val forward: Boolean,
+    val inner: UFormula,
+    val direction: DFormula
+) : UFormula
+
 data class UEU(
         val forward: Boolean,
         val path: UFormula,

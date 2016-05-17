@@ -15,16 +15,6 @@ class UModelChecker<N: Node, C: Colors<C>>(
         DirectedKripkeFragment<N, C> by fragment
 {
 
-    /**
-     * Push given colors to all predecessors of given node as jobs.
-     */
-    private val pushBack: N.(C) -> List<Job<N, C>> = { border ->
-        val predecessors = this.predecessors()
-        predecessors.entries.map {
-            Job(this, it.key, it.value intersect border)
-        }
-    }
-
     private val results: MutableMap<UFormula, Nodes<N, C>> = HashMap()
 
     fun verify(f: UFormula, vars: Map<String, Pair<N, C>>): Nodes<N, C> {
@@ -36,6 +26,34 @@ class UModelChecker<N: Node, C: Colors<C>>(
                 is UName -> nodesOf(emptyColors, vars[f.name] ?: throw IllegalStateException("Unknown name ${f.name}"))
                 is UEU -> checkExistUntil(f, vars)
                 is UAU -> checkAllUntil(f, vars)
+                is UEX -> {
+                    val result = HashMap<N, C>().toMutableNodes(emptyColors)
+                    val inner = verify(f.inner, vars)
+                    for (entry in allNodes().entries) {
+                        for ((succ, sCol) in next(entry.key, !f.forward).entries) {
+                            val push = sCol intersect inner[succ]
+                            if (push.isNotEmpty() && checkTransition(entry.key, succ, f.direction)) {
+                                result.putOrUnion(entry.key, push)
+                            }
+                        }
+                    }
+                    result.toNodes()
+                }
+                is UAX -> {
+                    throw IllegalStateException("Unsupported AX")
+                    /*val result = HashMap<N, C>().toMutableNodes(emptyColors)
+                    val inner = verify(f.inner, vars)
+                    for (entry in allNodes().entries) {
+                        val valid = fullColors
+                        for ((succ, sCol) in next(entry.key, !f.forward).entries) {
+                            val push = sCol intersect inner[succ]
+                            if (push.isNotEmpty() && checkTransition(entry.key, succ, f.direction)) {
+                                result.putOrUnion(entry.key, push)
+                            }
+                        }
+                    }
+                    result.toNodes()*/
+                }
                 is UBind -> {
                     val result = HashMap<N, C>().toMutableNodes(emptyColors)
                     for (entry in allNodes().entries) {
