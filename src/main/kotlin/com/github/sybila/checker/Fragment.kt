@@ -1,5 +1,6 @@
 package com.github.sybila.checker
 
+import com.github.sybila.checker.uctl.DFormula
 import com.github.sybila.ctl.Atom
 
 /**
@@ -82,5 +83,11 @@ interface KripkeFragment<N: Node, C: Colors<C>> {
      * Find all nodes (and respective colors) where given atomic proposition holds in this fragment.
      */
     fun validNodes(a: Atom): Nodes<N, C>
+
+}
+
+interface DirectedKripkeFragment<N: Node, C: Colors<C>> : KripkeFragment<N, C> {
+
+    fun checkTransition(from: N, to: N, formula: DFormula): Boolean
 
 }
