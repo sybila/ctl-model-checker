@@ -13,7 +13,7 @@ fun main(args: Array<String>) {
             UName("x"),
             anyDirection, anyDirection
     ))*/
-    val property = UBind("x", UEX(true, UAU(
+    val property = UBind("x", UEX(true, UEU(
             true, UProposition(True), UName("x"), anyDirection, anyDirection
     ), anyDirection))
     val fragment = ReachModel(2, 10)

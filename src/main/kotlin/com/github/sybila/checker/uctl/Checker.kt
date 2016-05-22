@@ -18,8 +18,7 @@ class UModelChecker<N: Node, C: Colors<C>>(
     private val results: MutableMap<Pair<UFormula, Map<String, Pair<N, C>>>, Nodes<N, C>> = HashMap()
 
     fun verify(f: UFormula, vars: Map<String, Pair<N, C>>): Nodes<N, C> {
-        if (Pair(f, vars) !in results) {
-            results[Pair(f, vars)] = when (f) {
+        return when (f) {
                 is UProposition -> validNodes(f.proposition)
                 is UNot -> allNodes() - verify(f.formula, vars)
                 is UAnd -> verify(f.left, vars) intersect verify(f.right, vars)
@@ -88,8 +87,6 @@ class UModelChecker<N: Node, C: Colors<C>>(
                 }
                 else -> throw IllegalStateException("Unknown formula: $f")
             }
-        }
-        return results[Pair(f, vars)]!!
     }
 
     private fun next(state: N, forward: Boolean): Nodes<N, C> {
