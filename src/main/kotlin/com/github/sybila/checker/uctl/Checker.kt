@@ -82,7 +82,7 @@ class UModelChecker<N: Node, C: Colors<C>>(
                     var counter = 0
                     for (entry in allNodes().entries) {
                         counter += 1
-                        println("Counter: $counter")
+                        if (counter % 1000 == 1) println("Counter: $counter")
                         val inner = verify(f.inner, vars + Pair(f.name, entry.toPair()))
                         result += inner
                     }
