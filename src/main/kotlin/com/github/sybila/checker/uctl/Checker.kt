@@ -41,7 +41,7 @@ class UModelChecker<N: Node, C: Colors<C>>(
                     result.toNodes()
                 }
                 is UAX -> {
-                    throw IllegalStateException("Unsupported AX")
+                    verify(UNot(UEX(true, UNot(f.inner), f.direction)), vars)
                     /*val result = HashMap<N, C>().toMutableNodes(emptyColors)
                     val inner = verify(f.inner, vars)
                     for (entry in allNodes().entries) {
