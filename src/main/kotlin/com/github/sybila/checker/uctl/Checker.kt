@@ -79,7 +79,10 @@ class UModelChecker<N: Node, C: Colors<C>>(
                 }
                 is UExists -> {
                     var result = HashMap<N, C>().toNodes(emptyColors)
+                    var counter = 0
                     for (entry in allNodes().entries) {
+                        counter += 1
+                        println("Counter: $counter")
                         val inner = verify(f.inner, vars + Pair(f.name, entry.toPair()))
                         result += inner
                     }
