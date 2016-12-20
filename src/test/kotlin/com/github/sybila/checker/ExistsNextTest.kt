@@ -1,64 +1,88 @@
 package com.github.sybila.checker
-/*
-import com.github.daemontus.egholm.collections.listWithInitial
-import com.github.sybila.ctl.EX
+
+import com.github.sybila.checker.ReachModel.Prop.*
+import com.github.sybila.checker.new.*
+import com.github.sybila.huctl.EX
 import org.junit.Test
-import kotlin.test.assertEquals
+import java.util.*
+import kotlin.test.assertFalse
 
 class SequentialExistsNextTest {
 
-    @Test
+    @Test(timeout = 500)
     fun oneStateModel() {
 
         val model = ReachModel(1, 1)
+        val solver = EnumerativeSolver(model.parameters)
 
-        withSingleModelChecker(model) {
-            val expected = nodesOf(Pair(IDNode(0), IDColors(1)))
-            assertEquals(expected, it.verify(EX(ReachModel.Prop.UPPER_CORNER)))
-            assertEquals(expected, it.verify(EX(ReachModel.Prop.LOWER_CORNER)))
-            assertEquals(expected, it.verify(EX(ReachModel.Prop.CENTER)))
-            assertEquals(expected, it.verify(EX(ReachModel.Prop.BORDER)))
-        }
+        val checker = Checker(listOf(model to solver))
+
+        val expected = mapOf(0 to setOf(1)).asStateMap(solver.ff)
+
+        expected.assertDeepEquals(checker.verify(EX(UPPER_CORNER()))[0], solver)
+        expected.assertDeepEquals(checker.verify(EX(LOWER_CORNER()))[0], solver)
+        expected.assertDeepEquals(checker.verify(EX(CENTER()))[0], solver)
+        expected.assertDeepEquals(checker.verify(EX(BORDER()))[0], solver)
 
     }
 
     fun chainModel(chainSize: Int) {
 
         val model = ReachModel(1, chainSize)
+        val solver = EnumerativeSolver(model.parameters)
 
-        withSingleModelChecker(model) {
-            assertEquals(nodesOf(Pair(IDNode(0), model.parameters - IDColors(0))), it.verify(EX(ReachModel.Prop.LOWER_CORNER)))   //just self loop
-            assertEquals(nodesOf(
-                    Pair(IDNode(chainSize - 1), IDColors(chainSize)),
-                    Pair(IDNode(chainSize - 2), IDColors((0 until (chainSize - 1)).toSet()))
-            ), it.verify(EX(ReachModel.Prop.UPPER_CORNER)))
-            assertEquals(
-                    model.validNodes(ReachModel.Prop.BORDER).entries
-                            .map { model.predecessors.invoke(it.key) }
-                            .fold(emptyIDNodes) { l, r -> l + r }
-                    , it.verify(EX(ReachModel.Prop.BORDER)))
+        val checker = Checker(listOf(model to solver))
+
+        mapOf(0 to model.parameters - 0).asStateMap(solver.ff).assertDeepEquals(
+                checker.verify(EX(LOWER_CORNER()))[0], solver
+        )
+        mapOf(chainSize - 1 to setOf(chainSize), chainSize - 2 to (0 until (chainSize - 1)).toSet()).asStateMap(solver.ff).assertDeepEquals(
+                checker.verify(EX(UPPER_CORNER()))[0], solver
+        )
+
+        solver.apply {
+            val expected = HashMap<Int, Set<Int>>()
+            model.eval(BORDER()).forEach {
+                for ((p, t, bound) in model.step(it, false)) {
+                    if (p in expected) {
+                        expected[p] = expected[p]!! or bound
+                    } else {
+                        expected[p] = bound
+                    }
+                }
+            }
+            expected.asStateMap(ff).assertDeepEquals(checker.verify(EX(BORDER()))[0], solver)
         }
-
     }
 
     fun generalModel(dimensions: Int, dimensionSize: Int) {
 
         val model = ReachModel(dimensions, dimensionSize)
+        val solver = EnumerativeSolver(model.parameters)
 
-        withSingleModelChecker(model) {
-            assertEquals(nodesOf(Pair(IDNode(0), model.parameters - IDColors(0))), it.verify(EX(ReachModel.Prop.LOWER_CORNER)))
-            val upperCorner = it.verify(ReachModel.Prop.UPPER_CORNER).entries.first()
-            assertEquals(nodesOf(
-                    (0..dimensions).map { IDNode(upperCorner.key.id - pow(dimensionSize, it)) }
-                            .filter { it.id >= 0 }.map { Pair(it, model.stateColors(it)) }
-                            + Pair(upperCorner.key, IDColors((dimensionSize - 1) * dimensions + 1))
-            ), it.verify(EX(ReachModel.Prop.UPPER_CORNER)))
-            assertEquals(
-                    //very slow, but works!
-                    model.validNodes(ReachModel.Prop.BORDER).entries
-                            .map { model.predecessors.invoke(it.key) }
-                            .fold(emptyIDNodes) { l, r -> l + r }
-                    , it.verify(EX(ReachModel.Prop.BORDER)))
+        val checker = Checker(listOf(model to solver))
+
+        mapOf(0 to model.parameters - 0).asStateMap(solver.ff).assertDeepEquals(
+                checker.verify(EX(LOWER_CORNER()))[0], solver
+        )
+
+        val upperCorner = model.eval(ReachModel.Prop.UPPER_CORNER()).first()
+        model.step(upperCorner, false).asSequence().associateBy({it.target}, {it.bound}).asStateMap(solver.ff).assertDeepEquals(
+                checker.verify(EX(UPPER_CORNER()))[0], solver
+        )
+
+        solver.apply {
+            val expected = HashMap<Int, Set<Int>>()
+            model.eval(BORDER()).forEach {
+                for ((p, t, bound) in model.step(it, false)) {
+                    if (p in expected) {
+                        expected[p] = expected[p]!! or bound
+                    } else {
+                        expected[p] = bound
+                    }
+                }
+            }
+            expected.asStateMap(ff).assertDeepEquals(checker.verify(EX(BORDER()))[0], solver)
         }
 
     }
@@ -119,73 +143,94 @@ abstract class ConcurrentExistsNextTest {
 
     fun generalModel(dimensions: Int, dimensionSize: Int) {
 
-        val model = ReachModel(dimensions, dimensionSize)
+        val stateCount = pow(dimensionSize, dimensions)
 
         //This might not work for the last state if it's not rounded correctly
-        val const = Math.ceil(model.stateCount.toDouble() / workers.toDouble()).toInt()
+        val const = Math.ceil(stateCount.toDouble() / workers.toDouble()).toInt()
 
         val partitions = (0 until workers).map { myId ->
-            if (const == 0) UniformPartitionFunction<IDNode>(myId) else
-                FunctionalPartitionFunction<IDNode>(myId) { it.id / const }
+            if (const == 0) UniformPartitionFunction(myId) else
+                FunctionalPartitionFunction(myId) { it / const }
         }
 
-        val fragments = partitions.map {
-            ReachModelPartition(model, it)
+        val models = partitions.map {
+            ReachModel(dimensions, dimensionSize, it)
         }
+        val solvers = models.map { EnumerativeSolver(it.parameters) }
 
-        val result = withModelCheckers(
-                fragments, { partitions[it] }
-        ) {
-            listOf(
-                    it.verify(EX(ReachModel.Prop.LOWER_CORNER)),
-                    it.verify(EX(ReachModel.Prop.UPPER_CORNER)),
-                    it.verify(EX(ReachModel.Prop.BORDER))
-            )
-        }.fold(listWithInitial(3, nodesOf())) { l, r -> l.zip(r).map { it.first union it.second } }
+        val checker = Checker(models.zip(solvers))
 
-        assertEquals(nodesOf(Pair(IDNode(0), model.parameters - IDColors(0))), result[0])
+        val r1 = checker.verify(EX(LOWER_CORNER()))
+        val r2 = checker.verify(EX(UPPER_CORNER()))
+        val r3 = checker.verify(EX(BORDER()))
 
-        val upperCorner = model.validNodes(ReachModel.Prop.UPPER_CORNER).entries.first()
-        assertEquals(nodesOf(
-                (0..dimensions).map { IDNode(upperCorner.key.id - pow(dimensionSize, it)) }
-                        .filter { it.id >= 0 }.map { Pair(it, model.stateColors(it)) }
-                        + Pair(upperCorner.key, IDColors((dimensionSize - 1) * dimensions + 1))
-        ), result[1])
-
-        assertEquals(
-                //very slow, but works!
-                model.validNodes(ReachModel.Prop.BORDER).entries
-                        .map { model.predecessors.invoke(it.key) }
-                        .fold(emptyIDNodes) { l, r -> l + r }
-                , result[2])
+        for ((m, s) in models.zip(solvers)) {
+            m.apply {
+            s.apply {
+                //r1
+                if (m.id == 0) {
+                    mapOf(0 to m.parameters - 0).asStateMap(ff).assertDeepEquals(r1[0], this)
+                } else {
+                    assertFalse(r1[m.id].iterator().hasNext())
+                }
+                //r2
+                val expectedR2 = HashMap<Int, Set<Int>>()
+                m.eval(UPPER_CORNER()).forEach {
+                    for ((p, t, bound) in m.step(it, false)) {
+                        if (p.owner() == id) {
+                            if (p in expectedR2) {
+                                expectedR2[p] = expectedR2[p]!! or bound
+                            } else {
+                                expectedR2[p] = bound
+                            }
+                        }
+                    }
+                }
+                expectedR2.asStateMap(ff).assertDeepEquals(r2[id], this)
+                //r3
+                val expectedR3 = HashMap<Int, Set<Int>>()
+                m.eval(BORDER()).forEach {
+                    for ((p, t, bound) in m.step(it, false)) {
+                        if (p.owner() == id) {
+                            if (p in expectedR2) {
+                                expectedR3[p] = expectedR3[p]!! or bound
+                            } else {
+                                expectedR3[p] = bound
+                            }
+                        }
+                    }
+                }
+                expectedR3.asStateMap(ff).assertDeepEquals(r3[id], this)
+            } }
+        }
 
     }
 
     @Test(timeout = 1000)
     fun smallCube() = generalModel(2, 2)
 
-    @Test
+    @Test(timeout = 1000)
     fun mediumCube() = generalModel(3, 3)
 
-    @Test
+    @Test(timeout = 1000)
     fun largeCube() = generalModel(5, 5)
 
-    @Test
+    @Test(timeout = 1000)
     fun smallAsymmetric1() = generalModel(2, 4)
 
-    @Test
+    @Test(timeout = 1000)
     fun smallAsymmetric2() = generalModel(4, 2)
 
-    @Test
+    @Test(timeout = 1000)
     fun mediumAsymmetric1() = generalModel(3, 6)
 
-    @Test
+    @Test(timeout = 1000)
     fun mediumAsymmetric2() = generalModel(6, 4)
 
-    @Test
+    @Test(timeout = 1000)
     fun largeAsymmetric1() = generalModel(6, 5)
 
-    @Test
+    @Test(timeout = 1000)
     fun largeAsymmetric2() = generalModel(5, 7)
 
-}*/
+}

@@ -71,7 +71,7 @@ class AndVerificationTest {
         }).asStateMap(setOf())
 
         assertEquals(expected.toSet(), result.toSet())
-        assertTrue(expected.deepEquals(result, solver), "Expected $expected, actual $result")
+        expected.assertDeepEquals(result, solver)
 
     }
 
@@ -98,7 +98,7 @@ class AndVerificationTest {
         }).asStateMap(setOf())
 
         assertEquals(expected.toSet(), result.toSet())
-        assertTrue(expected.deepEquals(result, solver), "Expected $expected, actual $result")
+        expected.assertDeepEquals(result, solver)
 
     }
 
@@ -126,7 +126,7 @@ class AndVerificationTest {
 
         for (p in partitions.indices) {
             assertEquals(expected[p].toSet(), result[p].toSet())
-            assertTrue(expected[p].deepEquals(result[p], solvers[p]), "Expected $expected, actual $result")
+            expected[p].assertDeepEquals(result[p], solvers[p])
         }
 
     }
@@ -155,7 +155,7 @@ class AndVerificationTest {
 
         for (p in partitions.indices) {
             assertEquals(expected[p].toSet(), result[p].toSet())
-            assertTrue(expected[p].deepEquals(result[p], solvers[p]), "Expected $expected, actual $result")
+            expected[p].assertDeepEquals(result[p], solvers[p])
         }
 
     }
@@ -186,7 +186,7 @@ class OrVerificationTest {
         }).asStateMap(setOf())
 
         assertEquals(expected.toSet(), result.toSet())
-        assertTrue(expected.deepEquals(result, solver), "Expected $expected, actual $result")
+        expected.assertDeepEquals(result, solver)
 
     }
 
@@ -212,7 +212,7 @@ class OrVerificationTest {
         }).asStateMap(setOf())
 
         assertEquals(expected.toSet(), result.toSet())
-        assertTrue(expected.deepEquals(result, solver), "Expected $expected, actual $result")
+        expected.assertDeepEquals(result, solver)
 
     }
 
@@ -240,7 +240,7 @@ class OrVerificationTest {
 
         for (p in partitions.indices) {
             assertEquals(expected[p].toSet(), result[p].toSet())
-            assertTrue(expected[p].deepEquals(result[p], solvers[p]), "Expected $expected, actual $result")
+            expected[p].assertDeepEquals(result[p], solvers[p])
         }
 
     }
@@ -270,7 +270,7 @@ class OrVerificationTest {
 
         for (p in partitions.indices) {
             assertEquals(expected[p].toSet(), result[p].toSet())
-            assertTrue(expected[p].deepEquals(result[p], solvers[p]), "Expected $expected, actual $result")
+            expected[p].assertDeepEquals(result[p], solvers[p])
         }
 
     }
@@ -300,7 +300,7 @@ class NegationTest {
         }).asStateMap(setOf())
 
         assertEquals(expected.toSet(), result.toSet())
-        assertTrue(expected.deepEquals(result, solver), "Expected $expected, actual $result")
+        expected.assertDeepEquals(result, solver)
 
     }
 
@@ -319,7 +319,7 @@ class NegationTest {
         val expected = model.eval(p1)
 
         assertEquals(expected.toSet(), result.toSet())
-        assertTrue(expected.deepEquals(result, solver), "Expected $expected, actual $result")
+        expected.assertDeepEquals(result, solver)
 
 
     }
@@ -349,7 +349,7 @@ class NegationTest {
 
         for (p in partitions.indices) {
             assertEquals(expected[p].toSet(), result[p].toSet())
-            assertTrue(expected[p].deepEquals(result[p], solvers[p]), "Expected $expected, actual $result")
+            expected[p].assertDeepEquals(result[p], solvers[p])
         }
 
     }
@@ -370,7 +370,7 @@ class NegationTest {
 
         for (p in partitions.indices) {
             assertEquals(expected[p].toSet(), result[p].toSet())
-            assertTrue(expected[p].deepEquals(result[p], solvers[p]), "Expected $expected, actual $result")
+            expected[p].assertDeepEquals(result[p], solvers[p])
         }
 
     }
@@ -400,7 +400,7 @@ class MixedBooleanTest() {
         }).filter { it.value.isNotEmpty() }.asStateMap(setOf())
 
         assertEquals(expected.toSet(), result.toSet())
-        assertTrue(expected.deepEquals(result, solver), "Expected $expected, actual $result")
+        expected.assertDeepEquals(result, solver)
 
     }
 
@@ -427,8 +427,10 @@ class MixedBooleanTest() {
             }).filter { it.value.isNotEmpty() }.asStateMap(setOf())
         }
 
-        assertEquals(expected, result)
-        assert(result.isNotEmpty())
+        for (p in partitions.indices) {
+            assertEquals(expected[p].toSet(), result[p].toSet())
+            expected[p].assertDeepEquals(result[p], solvers[p])
+        }
     }
 
 }

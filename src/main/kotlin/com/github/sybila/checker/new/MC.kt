@@ -2,6 +2,7 @@ package com.github.sybila.checker.new
 
 import com.github.sybila.huctl.DirectionFormula
 import com.github.sybila.huctl.Formula
+import com.github.sybila.huctl.PathQuantifier
 import com.github.sybila.huctl.True
 import java.nio.ByteBuffer
 import java.util.*
@@ -154,16 +155,21 @@ class Checker<Colors>(
     private val done = AtomicInteger(0)
 
     internal fun synchronize(result: HashMap<Int, Colors>, op: Worker): Boolean {
+        println("Synchronize ${Thread.currentThread()}")
         waiting[op.id] = op
         barrier.await()
         //make local copy
         val fixPoints = waiting.toList().requireNoNulls()
         //exchange messages
+        println("${op.id} Sending data...")
         op.sendData(result, fixPoints)
         done.set(0)
+        println("${op.id} Data sent")
         barrier.await()
+        println("${op.id} Receiving data")
         if (op.receiveData(result)) done.incrementAndGet()
         barrier.await()
+        println("${op.id} Data done ${done.get()}")
         return done.get() == 0
     }
 
@@ -172,6 +178,70 @@ class Checker<Colors>(
             val solver: Solver<Colors>,
             val workerCount: Int
     ) : Fragment<Colors> by fragment, Solver<Colors> by solver {
+
+        /**
+         *
+         * Fixpoint algorithms
+         * --------------------
+
+        BigFixpoint(init) {
+        add(s)
+        onAdded(s)
+        }
+
+        SmallFixpoint(init) {
+        remove(s)
+        onRemoved(s)
+        }
+
+        EF: BigFixpoint(inner)
+        onAdded s:
+        for p in s.predecessors:
+        if p is local: add(p)
+        else: remote_add(p)
+
+        AG: SmallFixpoint(inner)
+        onRemoved s:
+        for p in s.predecessors:
+        if p is local: remove(p)
+        else: remote_remove(p)
+
+
+        AF: BigFixpoint(inner)
+        onAdded s:
+        for p in s.predecessors:
+        if (p is remote) remote_add(s, p.owner)
+        else if (p is covered) add(p)
+
+        EG: SmallFixpoint(inner)
+        onRemoved s:
+        for p in s.predecessors:
+        if (p is remote) remote_remove(s, p.owner)
+        else if (p !is covered) remove(p)
+
+         */
+        private inner abstract class BigFixpoint(initial: StateMap<Colors>) {
+
+            private val queue = ArrayDeque<Int>()
+            private val localData = HashMap<Int, Colors>()
+            private val remoteData = HashMap<Int, Colors>()
+
+            abstract fun onIncrease(state: Int)
+
+            private fun increase(state: Int, value: Colors) {
+                val storage = if (state.owner() == id) localData else remoteData
+                val current = storage[state]
+                if (current == null) {
+                    storage[state] = value
+                    queue.add(state)
+                } else if (value superset current) {
+                    storage[state] = value or current
+                    queue.add(state)
+                }
+            }
+
+
+        }
 
         private val incoming = arrayOfNulls<ByteBuffer>(workerCount)
         private val notification = Array(workerCount) { HashSet<Int>() }
@@ -193,7 +263,7 @@ class Checker<Colors>(
                 is Formula.Bool<*> -> {
                     val left = verify(formula.left, assignment)
                     val right = verify(formula.right, assignment)
-                    @Suppress("USELESS_CAST")   //not s useless after all...
+                    @Suppress("USELESS_CAST")   //not so useless after all...
                     when (formula as Formula.Bool<*>) {
                         is Formula.Bool.And -> {
                             left.asSequence()
@@ -228,6 +298,31 @@ class Checker<Colors>(
                         }
                     }.toMap().asStateMap(ff)
                 }
+                is Formula.Simple<*> -> {
+                    val timeFlow = formula.quantifier == PathQuantifier.A || formula.quantifier == PathQuantifier.E
+                    val somePath = formula.quantifier == PathQuantifier.E || formula.quantifier == PathQuantifier.pE
+                    val inner = verify(formula.inner, assignment)
+                    val result = HashMap<Int, Colors>()
+                    @Suppress("USELESS_CAST")   //not so useless after all...
+                    when (formula as Formula.Simple<*>) {
+                        is Formula.Simple.Next -> {
+                            if (somePath) { //EX
+                                inner.forEach { state ->
+                                    for ((p, t, bound) in step(state, !timeFlow)) {
+                                        if (formula.direction.eval(t)) {
+                                            result.push(state, p, inner[state] and bound)
+                                        }
+                                    }
+                                }
+                                fixpoint(result) {} //transmit to other workers
+                            } else {    //AX
+
+                            }
+                        }
+                        else -> throw IllegalStateException("Unsupported formula $formula")
+                    }
+                    result.asStateMap(ff)
+                }
                 else -> throw IllegalStateException("Unsupported formula $formula")
             }
         }
@@ -235,7 +330,7 @@ class Checker<Colors>(
         private fun fixpoint(result: HashMap<Int, Colors>, onChange: (Int) -> Unit) {
             do {
                 while (queue.isNotEmpty()) onChange(queue.remove())
-            } while (synchronize(result, this))
+            } while (!synchronize(result, this))
         }
 
         /* Map manipulation */
@@ -250,10 +345,14 @@ class Checker<Colors>(
 
         private val queue = ArrayDeque<Int>()
 
+        //TODO add border map
+
         fun HashMap<Int, Colors>.push(source: Int, target: Int, value: Colors) {
+            if (id == 1) println("Push $target")
             if (target.owner() == id) {
                 this.enqueue(target, value)
             } else {
+                this.add(target, value)
                 notification[target.owner()].add(source)
             }
         }
@@ -266,13 +365,19 @@ class Checker<Colors>(
         /* Communication */
 
         fun sendData(result: HashMap<Int, Colors>, workers: List<Worker>) {
+            if (id == 1) println("Start transmission")
             for (target in 0 until workerCount) {
+                if (id == 1) println("for $target")
                 val worker = workers[target]
                 val notify = notification[target]
+                if (id == 1) println("for $target $notify")
                 val transmission = notify.map {
+                    println("Map $it to ${result[target]}")
                     it to result[target]!!.minimize()
                 }
+                if (id == 1) println("for $target 2")
                 val bufferSize = transmission.fold(0) { a, i -> 4 + i.second.byteSize() }
+                if (id == 1) println("for $target buffer $bufferSize")
                 if (bufferSize > 0) {
                     val buffer = obtainBuffer(bufferSize)
                     buffer.clear()

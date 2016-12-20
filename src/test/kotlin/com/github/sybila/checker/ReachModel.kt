@@ -1,6 +1,7 @@
 package com.github.sybila.checker
-/*
-import com.github.sybila.ctl.*
+
+import com.github.sybila.checker.new.*
+import com.github.sybila.huctl.*
 
 
 /**
@@ -8,8 +9,10 @@ import com.github.sybila.ctl.*
  * from one lower corner (0,0..) to upper corner (s-1,s-1,...), while each transition "adds" one color.
  * So border of upper corner can "go through" with almost all colors, while
  * lower corner transitions have only one color (zero)
- * So total number of colors is (size - 1) * dimensions + 1
+ * Total number of colors is (size - 1) * dimensions + 1
  * Color zero goes through the whole model, last color does not have any transitions.
+ *
+ * Note: All transition are increasing.
  *
  * WARNING: This implementation is hilariously inefficient. Really just use for testing.
  *
@@ -17,17 +20,12 @@ import com.github.sybila.ctl.*
  */
 class ReachModel(
         private val dimensions: Int,
-        private val dimensionSize: Int
-) : KripkeFragment<IDNode, IDColors> {
-
-    /**
-     * Use these propositions in your model queries, nothing else is supported!
-     */
-    enum class Prop : Atom {
-        UPPER_CORNER, LOWER_CORNER, CENTER, BORDER, UPPER_HALF;
-        override val operator: Op = Op.ATOM
-        override val subFormulas: List<Formula> = emptyList()
-    }
+        private val dimensionSize: Int,
+        private val partitionFunction: PartitionFunction = object : PartitionFunction {
+            override val id: Int = 0
+            override fun Int.owner(): Int = 0
+        }
+) : Fragment<Set<Int>>, PartitionFunction by partitionFunction {
 
     init {
         assert(dimensionSize > 0)
@@ -38,14 +36,32 @@ class ReachModel(
 
     val stateCount = pow(dimensionSize, dimensions)
 
-    val states = Array(stateCount) { index -> IDNode(index) }
+    val states = Array(stateCount) { it }
 
-    val parameters = IDColors((0..((dimensionSize - 1) * dimensions + 1)).toSet())
+    val parameters = (0..((dimensionSize - 1) * dimensions + 1)).toSet()
+
+    /**
+     * Use these propositions in your model queries, nothing else is supported!
+     */
+    enum class Prop : () -> Formula.Atom {
+        UPPER_CORNER, LOWER_CORNER, CENTER, BORDER, UPPER_HALF;
+
+        override fun invoke(): Formula.Atom {
+            return when (this) {
+                //TODO: Change to references
+                UPPER_CORNER -> "upper".positiveIn()
+                LOWER_CORNER -> "lower".positiveIn()
+                CENTER -> "center".positiveIn()
+                BORDER -> "border".positiveIn()
+                UPPER_HALF -> "upper_half".positiveIn()
+            }
+        }
+    }
 
     /**
      * Helper function to extract a coordinate from node id
      */
-    fun extractCoordinate(node: IDNode, i: Int): Int = (node.id / pow(dimensionSize, i)) % dimensionSize
+    fun extractCoordinate(node: Int, i: Int): Int = (node / pow(dimensionSize, i)) % dimensionSize
 
     /**
      * Encode node coordinates into an index
@@ -54,72 +70,45 @@ class ReachModel(
         e * pow(dimensionSize, i)
     }.sum()
 
+
     /**
      * Returns the set of colors that can reach upper corner from given state. Very useful ;)
      */
-    fun stateColors(state: IDNode): IDColors {
-        return IDColors(0) + IDColors((0 until dimensions).flatMap { dim ->
+    fun stateColors(state: Int): Set<Int> {
+        return setOf(0) + (0 until dimensions).flatMap { dim ->
             (1..extractCoordinate(state, dim)).map { it + (dimensionSize - 1) * dim }
-        }.toSet())
+        }.toSet()
     }
 
-    override val successors: IDNode.() -> Nodes<IDNode, IDColors> = {
-        ((0 until dimensions)
-            .filter { extractCoordinate(this, it) + 1 < dimensionSize }
-            .map { this.id + pow(dimensionSize, it) }
-            .associate { id -> Pair(states[id], stateColors(this)) }
-             + Pair(this, parameters - stateColors(this))).toIDNodes()
+    override fun step(from: Int, future: Boolean): Iterator<Transition<Set<Int>>> {
+        val r = (if (future) {
+            (0 until dimensions)
+                    .filter { extractCoordinate(from, it) + 1 < dimensionSize } //don't escape from model
+                    .map { from + pow(dimensionSize, it) }
+        } else {
+            (0 until dimensions)
+                    .filter { extractCoordinate(from, it) - 1 > -1 }            //don't escape from model
+                    .map { from - pow(dimensionSize, it) }                   //create new id
+        }.map { Transition(it, it.toString().increaseProp(), stateColors(it)) } +
+                listOf(Transition(from, DirectionFormula.Atom.Proposition("loop", Facet.POSITIVE), parameters - stateColors(from))))
+        //TODO loops + listOf(Transition(from, LOOP, parameters - stateColors(from)))
+        return r.iterator()
     }
 
-    override val predecessors: IDNode.() -> Nodes<IDNode, IDColors> = {
-        ((0 until dimensions)
-                .filter { extractCoordinate(this, it) - 1 >= 0 }
-                .map { this.id - pow(dimensionSize, it) }
-                .associate { id -> Pair(states[id], stateColors(states[id])) }
-                 + Pair(this, parameters - stateColors(this))).toIDNodes()
-    }
-
-    override fun allNodes(): Nodes<IDNode, IDColors> {
-        return states.associate { Pair(it, parameters) }.toIDNodes()
-    }
-
-    override fun validNodes(a: Atom): Nodes<IDNode, IDColors> {
-        val r = when (a) {
-            True -> allNodes()
-            False -> emptyIDNodes
-            Prop.CENTER -> nodesOf(Pair(states[toStateIndex((1..dimensions).map { dimensionSize / 2 })], parameters))
-            Prop.BORDER -> states.filter { state ->
+    override fun eval(atom: com.github.sybila.huctl.Formula.Atom): StateMap<Set<Int>> {
+        return (when (atom) {
+            True -> states.asIterable()
+            False -> listOf<Int>()
+            Prop.CENTER() -> listOf(states[toStateIndex((1..dimensions).map { dimensionSize / 2 })])
+            Prop.BORDER() -> states.filter { state ->
                 (0 until dimensions).any { val c = extractCoordinate(state, it); c == 0 || c == dimensionSize - 1 }
-            }.associate { Pair(it, parameters) }.toIDNodes()
-            Prop.UPPER_CORNER -> nodesOf(Pair(states[toStateIndex((1..dimensions).map { dimensionSize - 1 })], parameters))
-            Prop.LOWER_CORNER -> nodesOf(Pair(states[toStateIndex((1..dimensions).map { 0 })], parameters))
-            Prop.UPPER_HALF -> states.filter { state -> (0 until dimensions).all { extractCoordinate(state, it) >= dimensionSize/2 } }
-                    .associate { Pair(it, parameters) }.toIDNodes()
-            else -> throw IllegalArgumentException("Unsupported atom: $a")
-        }
-        return r
+            }
+            Prop.UPPER_CORNER() -> listOf(states[toStateIndex((1..dimensions).map { dimensionSize - 1 })])
+            Prop.LOWER_CORNER() -> listOf(states[toStateIndex((1..dimensions).map { 0 })])
+            Prop.UPPER_HALF() -> states.filter { state ->
+                (0 until dimensions).all { extractCoordinate(state, it) >= dimensionSize/2 }
+            }
+            else -> throw IllegalArgumentException("Unknown proposition $atom")
+        }).filter { it.owner() == id }.associateBy({it}, {parameters}).asStateMap(setOf())
     }
-
 }
-
-/**
- * Wrapper around ReachModel that hides nodes that are not defined by partition function.
- * Inefficient, but it works fine and is basically a one liner! :)
- */
-class ReachModelPartition(
-        private val model: ReachModel,
-        private val partition: PartitionFunction<IDNode>
-) :
-        KripkeFragment<IDNode, IDColors> by model,
-        PartitionFunction<IDNode> by partition
-{
-
-    override fun allNodes(): Nodes<IDNode, IDColors> {
-        return model.allNodes().entries.filter { partition.myId == it.key.ownerId() }.associate { it.toPair() }.toIDNodes()
-    }
-
-    override fun validNodes(a: Atom): Nodes<IDNode, IDColors> {
-        return model.validNodes(a).entries.filter { partition.myId == it.key.ownerId() }.associate { it.toPair() }.toIDNodes()
-    }
-
-}*/
