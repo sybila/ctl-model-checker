@@ -1,5 +1,5 @@
 package com.github.sybila.checker
-
+/*
 import com.github.sybila.ctl.*
 
 
@@ -122,4 +122,4 @@ class ReachModelPartition(
         return model.validNodes(a).entries.filter { partition.myId == it.key.ownerId() }.associate { it.toPair() }.toIDNodes()
     }
 
-}
+}*/

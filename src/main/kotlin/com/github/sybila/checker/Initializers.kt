@@ -1,5 +1,5 @@
 package com.github.sybila.checker
-
+/*
 import com.github.daemontus.egholm.functional.Maybe
 import com.github.daemontus.egholm.logger.severeLoggers
 import com.github.daemontus.egholm.thread.guardedThread
@@ -90,4 +90,4 @@ fun <N: Node, C: Colors<C>, R> withModelCheckers(
         val queue = queues(comm.id, comm, terminator)
         task(ModelChecker(models[comm.id], queue))
     }
-}
+}*/

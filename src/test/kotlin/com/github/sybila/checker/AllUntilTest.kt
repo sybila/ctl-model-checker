@@ -1,5 +1,5 @@
 package com.github.sybila.checker
-
+/*
 import com.github.daemontus.egholm.collections.listWithInitial
 import com.github.sybila.ctl.AU
 import com.github.sybila.ctl.False
@@ -217,4 +217,4 @@ abstract class ConcurrentAllUntilTest {
     @Test
     fun largeAsymmetric2() = generalModel(5, 7)
 
-}
+}*/

@@ -1,42 +1,50 @@
 package com.github.sybila.checker
 
-import com.github.sybila.ctl.*
+import com.github.sybila.checker.new.*
+import com.github.sybila.huctl.*
 import org.junit.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertTrue
 
-val p1 = FloatProposition("x", CompareOp.EQ, 3.0)
-val p2 = FloatProposition("y", CompareOp.GT, 3.4)
-val p3 = FloatProposition("z", CompareOp.LT, 1.4)
+//TODO: Tests for implication and equivalence
+
+private val p1 = "x".asVariable() eq 3.0.asConstant()
+private val p2 = "y".asVariable() gt 3.4.asConstant()
+private val p3 = "z".asVariable() lt 1.4.asConstant()
+
+private val fullColors = (1..4).toSet()
 
 /**
- * This is a simple model with fixed number of states, no transitions and
+ * This is a simple one dimensional model with fixed number of states, no transitions and
  * propositions distributed using modular arithmetic, so that their
  * validity can be easily predicted (although it might require some nontrivial
  * control flow)
  */
-class RegularKripkeFragment(
+private class RegularFragment(
         private val bounds: IntRange
-) : KripkeFragment<IDNode, IDColors> {
+) : Fragment<Set<Int>> {
 
-    override val successors: IDNode.() -> Nodes<IDNode, IDColors>
-            get() = throw UnsupportedOperationException()
-    override val predecessors: IDNode.() -> Nodes<IDNode, IDColors>
-            get() = throw UnsupportedOperationException()
+    override val id: Int = 0
+    override fun Int.owner(): Int = 0
 
-    override fun allNodes(): Nodes<IDNode, IDColors>
-            = bounds.map { Pair(IDNode(it), IDColors(1, 2, 3, 4)) }.toIDNodes()
+    override fun step(from: Int, future: Boolean): Iterator<Transition<Set<Int>>> {
+        throw UnsupportedOperationException("not implemented")
+    }
 
-    override fun validNodes(a: Atom): Nodes<IDNode, IDColors> = when (a) {
-        p1 -> bounds.filter { it % 2 == 0 }.map {
-            Pair(IDNode(it), IDColors(3, 4, if (it % 4 == 0) 1 else 2))
-        }.toIDNodes()
-        p2 -> bounds.filter { it % 3 == 0 }.map {
-            Pair(IDNode(it), IDColors(2, 3, if (it % 9 == 0) 1 else 4))
-        }.toIDNodes()
-        p3 -> bounds.filter { it % 5 == 0 }.map {
-            Pair(IDNode(it), IDColors(1, 4, if (it % 25 == 0) 3 else 2))
-        }.toIDNodes()
-        else -> emptyIDNodes
+    override fun eval(atom: Formula.Atom): StateMap<Set<Int>> {
+        return when (atom) {
+            Formula.Atom.True -> bounds.associateBy({it}, { fullColors }).asStateMap(setOf())
+            p1 -> bounds.filter { it % 2 == 0 }.associateBy({it}, {
+                setOf(3, 4, if (it % 4 == 0) 1 else 2)
+            }).asStateMap(setOf())
+            p2 -> bounds.filter { it % 3 == 0 }.associateBy({it}, {
+                setOf(2, 3, if (it % 9 == 0) 1 else 4)
+            }).asStateMap(setOf())
+            p3 -> bounds.filter { it % 5 == 0 }.associateBy({it}, {
+                setOf(1, 4, if (it % 25 == 0) 3 else 2)
+            }).asStateMap(setOf())
+            else -> mapOf<Int, Set<Int>>().asStateMap(setOf())
+        }
     }
 
 }
@@ -45,100 +53,110 @@ class AndVerificationTest {
 
     @Test
     fun simpleTest() {
-
         val bounds = 0..2000
 
-        val model = RegularKripkeFragment(bounds)
+        val model = RegularFragment(bounds)
+        val solver = EnumerativeSolver(fullColors)
 
-        withSingleModelChecker(model) { checker ->
+        val checker = Checker(listOf(model to solver))
 
-            val result = checker.verify(p1 and p2)
+        val result = checker.verify(p1 and p2)[0]
 
-            val expected = (bounds).filter { it % 2 == 0 && it % 3 == 0 }.map {
-                var c = IDColors(3)
-                if (it % 4 == 0 && it % 9 == 0) c += IDColors(1)
-                if (it % 4 != 0) c += IDColors(2)
-                if (it % 9 != 0) c += IDColors(4)
-                Pair(IDNode(it), c)
-            }.toIDNodes()
+        val expected = (bounds).filter { it % 2 == 0 && it % 3 == 0 }.associateBy({it}, {
+            var c = setOf(3)
+            if (it % 4 == 0 && it % 9 == 0) c += setOf(1)
+            if (it % 4 != 0) c += setOf(2)
+            if (it % 9 != 0) c += setOf(4)
+            c
+        }).asStateMap(setOf())
 
-            assertEquals(expected, result)
-            assert(result.isNotEmpty())
-        }
+        assertEquals(expected.toSet(), result.toSet())
+        assertTrue(expected.deepEquals(result, solver), "Expected $expected, actual $result")
 
     }
+
 
     @Test
     fun nestedTest() {
 
         val bounds = 0..2000
 
-        val model = RegularKripkeFragment(bounds)
+        val model = RegularFragment(bounds)
+        val solver = EnumerativeSolver(fullColors)
 
-        withSingleModelChecker(model) { checker ->
+        val checker = Checker(listOf(model to solver))
 
-            val result = checker.verify(p1 and p2 and p3)
+        val result = checker.verify(p1 and p2 and p3)[0]
 
-            val expected = (bounds).filter { it % 2 == 0 && it % 3 == 0 && it % 5 == 0 }.map {
-                var c = IDColors()
-                if (it % 4 == 0 && it % 9 == 0) c += IDColors(1)
-                if (it % 4 != 0 && it % 25 != 0) c += IDColors(2)
-                if (it % 25 == 0) c += IDColors(3)
-                if (it % 9 != 0) c += IDColors(4)
-                Pair(IDNode(it), c)
-            }.toIDNodes()
+        val expected = (bounds).filter { it % 2 == 0 && it % 3 == 0 && it % 5 == 0 }.associateBy({it}, {
+            var c = setOf<Int>()
+            if (it % 4 == 0 && it % 9 == 0) c += setOf(1)
+            if (it % 4 != 0 && it % 25 != 0) c += setOf(2)
+            if (it % 25 == 0) c += setOf(3)
+            if (it % 9 != 0) c += setOf(4)
+            c
+        }).asStateMap(setOf())
 
-            assertEquals(expected, result)
-            assert(result.isNotEmpty())
-        }
+        assertEquals(expected.toSet(), result.toSet())
+        assertTrue(expected.deepEquals(result, solver), "Expected $expected, actual $result")
+
     }
 
     @Test
     fun nestedConcurrentTest() {
 
-        val models = listOf(0..1667, 1668..4232, 4232..8000).map { bounds ->
-            RegularKripkeFragment(bounds)
+        val partitions = listOf(0..1667, 1668..4232, 4232..8000)
+
+        val models = partitions.map(::RegularFragment)
+        val solvers = partitions.indices.map { EnumerativeSolver(fullColors) }
+        val checker = Checker(models.zip(solvers))
+
+        val result = checker.verify(p1 and p2 and p3)
+
+        val expected = partitions.map {
+            it.filter { it % 2 == 0 && it % 3 == 0 && it % 5 == 0 }.associateBy({ it }, {
+                var c = setOf<Int>()
+                if (it % 4 == 0 && it % 9 == 0) c += 1
+                if (it % 4 != 0 && it % 25 != 0) c += 2
+                if (it % 25 == 0) c += 3
+                if (it % 9 != 0) c += 4
+                c
+            }).asStateMap(setOf())
         }
 
-        val result = withModelCheckers(models) {
-            it.verify(p1 and p2 and p3)
-        }.fold(emptyIDNodes) { r, l -> r union l }
-
-        val expected = (0..8000).filter { it % 2 == 0 && it % 3 == 0 && it % 5 == 0 }.map {
-            var c = IDColors()
-            if (it % 4 == 0 && it % 9 == 0) c += IDColors(1)
-            if (it % 4 != 0 && it % 25 != 0) c += IDColors(2)
-            if (it % 25 == 0) c += IDColors(3)
-            if (it % 9 != 0) c += IDColors(4)
-            Pair(IDNode(it), c)
-        }.toIDNodes()
-
-        assertEquals(expected, result)
-        assert(result.isNotEmpty())
+        for (p in partitions.indices) {
+            assertEquals(expected[p].toSet(), result[p].toSet())
+            assertTrue(expected[p].deepEquals(result[p], solvers[p]), "Expected $expected, actual $result")
+        }
 
     }
 
     @Test
     fun simpleConcurrentTest() {
 
-        val models = listOf(0..1867, 1868..4000).map { bounds ->
-            RegularKripkeFragment(bounds)
+        val partitions = listOf(0..1867, 1868..4000)
+
+        val models = partitions.map(::RegularFragment)
+        val solvers = partitions.map { EnumerativeSolver(fullColors) }
+
+        val checker = Checker(models.zip(solvers))
+
+        val result = checker.verify(p1 and p2)
+
+        val expected = partitions.map {
+            it.filter { it % 2 == 0 && it % 3 == 0 }.associateBy({ it }, {
+                var c = setOf(3)
+                if (it % 4 == 0 && it % 9 == 0) c += 1
+                if (it % 4 != 0) c += 2
+                if (it % 9 != 0) c += 4
+                c
+            }).asStateMap(setOf())
         }
 
-        val result = withModelCheckers(models) {
-            it.verify(p1 and p2)
-        }.fold(emptyIDNodes) { r, l -> r union l }
-
-        val expected = (0..4000).filter { it % 2 == 0 && it % 3 == 0 }.map {
-            var c = IDColors(3)
-            if (it % 4 == 0 && it % 9 == 0) c += IDColors(1)
-            if (it % 4 != 0) c += IDColors(2)
-            if (it % 9 != 0) c += IDColors(4)
-            Pair(IDNode(it), c)
-        }.toIDNodes()
-
-        assertEquals(expected, result)
-        assert(result.isNotEmpty())
+        for (p in partitions.indices) {
+            assertEquals(expected[p].toSet(), result[p].toSet())
+            assertTrue(expected[p].deepEquals(result[p], solvers[p]), "Expected $expected, actual $result")
+        }
 
     }
 
@@ -152,20 +170,23 @@ class OrVerificationTest {
 
         val bounds = 0..2000
 
-        withSingleModelChecker(RegularKripkeFragment(bounds)) { checker ->
-            val result = checker.verify(p1 or p2)
+        val model = RegularFragment(bounds)
+        val solver = EnumerativeSolver(fullColors)
 
-            val expected = (bounds).filter { it % 2 == 0 || it % 3 == 0 }.map {
-                var c = IDColors(3)
-                if (it % 3 == 0 || it % 4 != 0) c += IDColors(2)
-                if (it % 9 == 0 || it % 4 == 0) c += IDColors(1)
-                if (it % 2 == 0 || it % 9 != 0) c += IDColors(4)
-                Pair(IDNode(it), c)
-            }.toIDNodes()
+        val checker = Checker(listOf(model to solver))
 
-            assertEquals(expected, result)
-            assert(result.isNotEmpty())
-        }
+        val result = checker.verify(p1 or p2)[0]
+
+        val expected = (bounds).filter { it % 2 == 0 || it % 3 == 0 }.associateBy({it}, {
+            var c = setOf(3)
+            if (it % 3 == 0 || it % 4 != 0) c += 2
+            if (it % 9 == 0 || it % 4 == 0) c += 1
+            if (it % 2 == 0 || it % 9 != 0) c += 4
+            c
+        }).asStateMap(setOf())
+
+        assertEquals(expected.toSet(), result.toSet())
+        assertTrue(expected.deepEquals(result, solver), "Expected $expected, actual $result")
 
     }
 
@@ -174,44 +195,53 @@ class OrVerificationTest {
 
         val bounds = 0..2000
 
-        withSingleModelChecker(RegularKripkeFragment(bounds)) { checker ->
-            val result = checker.verify(p1 or p2 or p3)
+        val model = RegularFragment(bounds)
+        val solver = EnumerativeSolver(fullColors)
 
-            val expected = (bounds).filter { it % 2 == 0 || it % 3 == 0 || it % 5 == 0 }.map {
-                var c = IDColors()
-                if (it % 5 == 0 || it % 9 == 0 || it % 4 == 0) c += IDColors(1)
-                if (it % 3 == 0 || (it % 4 != 0 && it % 2 == 0) || (it % 25 != 0 && it % 5 == 0)) c += IDColors(2)
-                if (it % 2 == 0 || it % 3 == 0 || it % 25 == 0) c += IDColors(3)
-                if (it % 2 == 0 || (it % 9 != 0 && it % 3 == 0) || it % 5 == 0) c += IDColors(4)
-                Pair(IDNode(it), c)
-            }.toIDNodes()
+        val checker = Checker(listOf(model to solver))
 
-            assertEquals(expected, result)
-            assert(result.isNotEmpty())
-        }
+        val result = checker.verify(p1 or p2 or p3)[0]
+
+        val expected = (bounds).filter { it % 2 == 0 || it % 3 == 0 || it % 5 == 0 }.associateBy({it}, {
+            var c = setOf<Int>()
+            if (it % 5 == 0 || it % 9 == 0 || it % 4 == 0) c += 1
+            if (it % 3 == 0 || (it % 4 != 0 && it % 2 == 0) || (it % 25 != 0 && it % 5 == 0)) c += 2
+            if (it % 2 == 0 || it % 3 == 0 || it % 25 == 0) c += 3
+            if (it % 2 == 0 || (it % 9 != 0 && it % 3 == 0) || it % 5 == 0) c += 4
+            c
+        }).asStateMap(setOf())
+
+        assertEquals(expected.toSet(), result.toSet())
+        assertTrue(expected.deepEquals(result, solver), "Expected $expected, actual $result")
 
     }
 
     @Test
     fun simpleConcurrentTest() {
 
-        val models = listOf(0..1896,1897..4000).map {
-            RegularKripkeFragment(it)
+        val partitions = listOf(0..1867, 1868..4000)
+
+        val models = partitions.map(::RegularFragment)
+        val solvers = partitions.map { EnumerativeSolver(fullColors) }
+
+        val checker = Checker(models.zip(solvers))
+
+        val result = checker.verify(p1 or p2)
+
+        val expected = partitions.map {
+            it.filter { it % 2 == 0 || it % 3 == 0 }.associateBy({ it }, {
+                var c = setOf(3)
+                if (it % 3 == 0 || it % 4 != 0) c += 2
+                if (it % 9 == 0 || it % 4 == 0) c += 1
+                if (it % 2 == 0 || it % 9 != 0) c += 4
+                c
+            }).asStateMap(setOf())
         }
-        val result = withModelCheckers(models) {
-            it.verify(p1 or p2)
-        }.foldRight(emptyIDNodes) { l, r -> l union r }
 
-        val expected = (0..4000).filter { it % 2 == 0 || it % 3 == 0 }.map {
-            var c = IDColors(3)
-            if (it % 3 == 0 || it % 4 != 0) c += IDColors(2)
-            if (it % 9 == 0 || it % 4 == 0) c += IDColors(1)
-            if (it % 2 == 0 || it % 9 != 0) c += IDColors(4)
-            Pair(IDNode(it), c)
-        }.toIDNodes()
-
-        assertEquals(expected, result)
-        assert(result.isNotEmpty())
+        for (p in partitions.indices) {
+            assertEquals(expected[p].toSet(), result[p].toSet())
+            assertTrue(expected[p].deepEquals(result[p], solvers[p]), "Expected $expected, actual $result")
+        }
 
     }
 
@@ -219,26 +249,29 @@ class OrVerificationTest {
     @Test
     fun nestedConcurrentTest() {
 
-        val models = listOf(0..1896,1897..3975, 3976..8000).map {
-            RegularKripkeFragment(it)
+        val partitions = listOf(0..1667, 1668..4232, 4232..8000)
+
+        val models = partitions.map(::RegularFragment)
+        val solvers = partitions.indices.map { EnumerativeSolver(fullColors) }
+        val checker = Checker(models.zip(solvers))
+
+        val result = checker.verify(p1 or p2 or p3)
+
+        val expected = partitions.map {
+            it.filter { it % 2 == 0 || it % 3 == 0 || it % 5 == 0 }.associateBy({ it }, {
+                var c = setOf<Int>()
+                if (it % 5 == 0 || it % 9 == 0 || it % 4 == 0) c += 1
+                if (it % 3 == 0 || (it % 4 != 0 && it % 2 == 0) || (it % 25 != 0 && it % 5 == 0)) c += 2
+                if (it % 2 == 0 || it % 3 == 0 || it % 25 == 0) c += 3
+                if (it % 2 == 0 || (it % 9 != 0 && it % 3 == 0) || it % 5 == 0) c += 4
+                c
+            }).asStateMap(setOf())
         }
 
-        val result = withModelCheckers(models) {
-            it.verify(p1 or p2 or p3)
-        }.foldRight(emptyIDNodes) { l, r -> l union r }
-
-
-        val expected = (0..8000).filter { it % 2 == 0 || it % 3 == 0 || it % 5 == 0 }.map {
-            var c = IDColors()
-            if (it % 5 == 0 || it % 9 == 0 || it % 4 == 0) c += IDColors(1)
-            if (it % 3 == 0 || (it % 4 != 0 && it % 2 == 0) || (it % 25 != 0 && it % 5 == 0)) c += IDColors(2)
-            if (it % 2 == 0 || it % 3 == 0 || it % 25 == 0) c += IDColors(3)
-            if (it % 2 == 0 || (it % 9 != 0 && it % 3 == 0) || it % 5 == 0) c += IDColors(4)
-            Pair(IDNode(it), c)
-        }.toIDNodes()
-
-        assertEquals(expected, result)
-        assert(result.isNotEmpty())
+        for (p in partitions.indices) {
+            assertEquals(expected[p].toSet(), result[p].toSet())
+            assertTrue(expected[p].deepEquals(result[p], solvers[p]), "Expected $expected, actual $result")
+        }
 
     }
 
@@ -251,23 +284,24 @@ class NegationTest {
 
         val bounds = 0..2000
 
-        val model = RegularKripkeFragment(bounds)
+        val model = RegularFragment(bounds)
+        val solver = EnumerativeSolver(fullColors)
 
-        withSingleModelChecker(model) { checker ->
+        val checker = Checker(listOf(model to solver))
 
-            val result = checker.verify(not(p1))
+        val result = checker.verify(not(p1))[0]
 
-            val expected = (bounds).map {
-                var c = IDColors()
-                if (it % 2 != 0 || it % 4 != 0) c += IDColors(1)
-                if (it % 2 != 0 || it % 4 == 0) c += IDColors(2)
-                if (it % 2 != 0) c += IDColors(3, 4)
-                Pair(IDNode(it), c)
-            }.toIDNodes()
+        val expected = (bounds).associateBy({it}, {
+            var c = setOf<Int>()
+            if (it % 2 != 0 || it % 4 != 0) c += 1
+            if (it % 2 != 0 || it % 4 == 0) c += 2
+            if (it % 2 != 0) c += setOf(3, 4)
+            c
+        }).asStateMap(setOf())
 
-            assertEquals(expected, result)
-            assert(result.isNotEmpty())
-        }
+        assertEquals(expected.toSet(), result.toSet())
+        assertTrue(expected.deepEquals(result, solver), "Expected $expected, actual $result")
+
     }
 
     @Test
@@ -275,21 +309,17 @@ class NegationTest {
 
         val bounds = 0..2000
 
-        val model = RegularKripkeFragment(bounds)
+        val model = RegularFragment(bounds)
+        val solver = EnumerativeSolver(fullColors)
 
-        withSingleModelChecker(model) { checker ->
-            val result = checker.verify(not(not(p1)))
+        val checker = Checker(listOf(model to solver))
 
-            val expected = (bounds).filter { it % 2 == 0 }.map {
-                var c = IDColors(3, 4)
-                if (it % 4 == 0) c += IDColors(1) else c += IDColors(2)
-                Pair(IDNode(it), c)
-            }.toIDNodes()
+        val result = checker.verify(not(not(p1)))[0]
 
-            assertEquals(expected, result)
-            assertEquals(model.validNodes(p1), result)
-            assert(result.isNotEmpty())
-        }
+        val expected = model.eval(p1)
+
+        assertEquals(expected.toSet(), result.toSet())
+        assertTrue(expected.deepEquals(result, solver), "Expected $expected, actual $result")
 
 
     }
@@ -298,24 +328,29 @@ class NegationTest {
     @Test
     fun simpleConcurrentTest() {
 
-        val models = listOf(0..1896,1897..4000).map {
-            RegularKripkeFragment(it)
+        val partitions = listOf(0..1867, 1868..4000)
+
+        val models = partitions.map(::RegularFragment)
+        val solvers = partitions.map { EnumerativeSolver(fullColors) }
+
+        val checker = Checker(models.zip(solvers))
+
+        val result = checker.verify(not(p1))
+
+        val expected = partitions.map {
+            it.associateBy({ it }, {
+                var c = setOf<Int>()
+                if (it % 2 != 0 || it % 4 != 0) c += 1
+                if (it % 2 != 0 || it % 4 == 0) c += 2
+                if (it % 2 != 0) c += setOf(3, 4)
+                c
+            }).asStateMap(setOf())
         }
-        val result = withModelCheckers(models) {
-            it.verify(not(p1))
-        }.foldRight(emptyIDNodes) { l, r -> l union r }
 
-
-        val expected = (0..4000).map {
-            var c = IDColors()
-            if (it % 2 != 0 || it % 4 != 0) c += IDColors(1)
-            if (it % 2 != 0 || it % 4 == 0) c += IDColors(2)
-            if (it % 2 != 0) c += IDColors(3, 4)
-            Pair(IDNode(it), c)
-        }.toIDNodes()
-
-        assertEquals(expected, result)
-        assert(result.isNotEmpty())
+        for (p in partitions.indices) {
+            assertEquals(expected[p].toSet(), result[p].toSet())
+            assertTrue(expected[p].deepEquals(result[p], solvers[p]), "Expected $expected, actual $result")
+        }
 
     }
 
@@ -323,23 +358,20 @@ class NegationTest {
     @Test
     fun nestedConcurrentTest() {
 
+        val partitions = listOf(0..1667, 1668..4232, 4232..8000)
 
-        val models = listOf(0..1896,1897..3975, 3976..8000).map {
-            RegularKripkeFragment(it)
+        val models = partitions.map(::RegularFragment)
+        val solvers = partitions.indices.map { EnumerativeSolver(fullColors) }
+        val checker = Checker(models.zip(solvers))
+
+        val result = checker.verify(not(not(p1)))
+
+        val expected = models.map { it.eval(p1) }
+
+        for (p in partitions.indices) {
+            assertEquals(expected[p].toSet(), result[p].toSet())
+            assertTrue(expected[p].deepEquals(result[p], solvers[p]), "Expected $expected, actual $result")
         }
-        val result = withModelCheckers(models) {
-            it.verify(not(not(p1)))
-        }.foldRight(emptyIDNodes) { l, r -> l union r }
-
-
-        val expected = (0..8000).filter { it % 2 == 0 }.map {
-            var c = IDColors(3, 4)
-            if (it % 4 == 0) c += IDColors(1) else c+= IDColors(2)
-            Pair(IDNode(it), c)
-        }.toIDNodes()
-
-        assertEquals(expected, result)
-        assert(result.isNotEmpty())
 
     }
 }
@@ -351,46 +383,49 @@ class MixedBooleanTest() {
 
         val bounds = 0..2000
 
-        val model = RegularKripkeFragment(bounds)
+        val model = RegularFragment(bounds)
+        val solver = EnumerativeSolver(fullColors)
+        val checker = Checker(listOf(model to solver))
 
-        withSingleModelChecker(model) { checker ->
-            //obfuscated (p1 || p2) && !p3
-            val result = checker.verify((p1 or not(not(p2)) or p2) and not(p3) and (p1 or p2))
+        //obfuscated (p1 || p2) && !p3
+        val result = checker.verify((p1 or not(not(p2)) or p2) and not(p3) and (p1 or p2))[0]
 
-            val expected = (bounds).filter { (it % 2 == 0 || it % 3 == 0) }.map {
-                var c = IDColors()
-                if ((it % 9 == 0 || it % 4 == 0) && it % 5 != 0) c += IDColors(1)
-                if ((it % 4 != 0 || it % 3 == 0) && (it % 5 != 0 || it % 25 == 0)) c += IDColors(2)
-                if (it % 5 != 0 || it % 25 != 0) c += IDColors(3)
-                if ((it % 2 == 0 || it % 9 != 0) && it % 5 != 0) c += IDColors(4)
-                Pair(IDNode(it), c)
-            }.filter { it.second.isNotEmpty() }.toIDNodes()
+        val expected = (bounds).filter { (it % 2 == 0 || it % 3 == 0) }.associateBy({it}, {
+            var c = setOf<Int>()
+            if ((it % 9 == 0 || it % 4 == 0) && it % 5 != 0) c += 1
+            if ((it % 4 != 0 || it % 3 == 0) && (it % 5 != 0 || it % 25 == 0)) c += 2
+            if (it % 5 != 0 || it % 25 != 0) c += 3
+            if ((it % 2 == 0 || it % 9 != 0) && it % 5 != 0) c += 4
+            c
+        }).filter { it.value.isNotEmpty() }.asStateMap(setOf())
 
-            assertEquals(expected, result)
-            assert(result.isNotEmpty())
-        }
+        assertEquals(expected.toSet(), result.toSet())
+        assertTrue(expected.deepEquals(result, solver), "Expected $expected, actual $result")
 
     }
 
     @Test
     fun complexConcurrentTest() {
 
+        val partitions = listOf(0..1896, 1897..3975, 3976..8000)
 
-        val models = listOf(0..1896,1897..3975, 3976..8000).map {
-            RegularKripkeFragment(it)
+        val models = partitions.map(::RegularFragment)
+        val solvers = partitions.map { EnumerativeSolver(fullColors) }
+
+        val checker = Checker(models.zip(solvers))
+
+        val result = checker.verify((p1 or not(not(p2)) or p2) and not(p3) and (p1 or p2))
+
+        val expected = partitions.map {
+            it.filter { (it % 2 == 0 || it % 3 == 0) }.associateBy({it}, {
+                var c = setOf<Int>()
+                if ((it % 9 == 0 || it % 4 == 0) && it % 5 != 0) c += 1
+                if ((it % 4 != 0 || it % 3 == 0) && (it % 5 != 0 || it % 25 == 0)) c += 2
+                if (it % 5 != 0 || it % 25 != 0) c += 3
+                if ((it % 2 == 0 || it % 9 != 0) && it % 5 != 0) c += 4
+                c
+            }).filter { it.value.isNotEmpty() }.asStateMap(setOf())
         }
-        val result = withModelCheckers(models) {
-            it.verify((p1 or not(not(p2)) or p2) and not(p3) and (p1 or p2))
-        }.foldRight(emptyIDNodes) { l, r -> l union r }
-
-        val expected = (0..8000).filter { (it % 2 == 0 || it % 3 == 0) }.map {
-            var c = IDColors()
-            if ((it % 9 == 0 || it % 4 == 0) && it % 5 != 0) c += IDColors(1)
-            if ((it % 4 != 0 || it % 3 == 0) && (it % 5 != 0 || it % 25 == 0)) c += IDColors(2)
-            if (it % 5 != 0 || it % 25 != 0) c += IDColors(3)
-            if ((it % 2 == 0 || it % 9 != 0) && it % 5 != 0) c += IDColors(4)
-            Pair(IDNode(it), c)
-        }.filter { it.second.isNotEmpty() }.toIDNodes()
 
         assertEquals(expected, result)
         assert(result.isNotEmpty())

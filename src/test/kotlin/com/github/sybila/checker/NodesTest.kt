@@ -1,5 +1,5 @@
 package com.github.sybila.checker
-
+/*
 import org.junit.Test
 import java.util.*
 import kotlin.test.assertEquals
@@ -183,4 +183,4 @@ class MapNodesTest {
         assertEquals(r2, s2 - s1)
     }
 
-}
+}*/

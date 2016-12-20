@@ -1,5 +1,5 @@
 package com.github.sybila.checker
-
+/*
 import com.github.daemontus.egholm.logger.lFine
 import com.github.daemontus.egholm.logger.lFinest
 import com.github.daemontus.egholm.logger.lInfo
@@ -165,4 +165,4 @@ class ModelChecker<N: Node, C: Colors<C>>(
         }
     }
 
-}
+}*/

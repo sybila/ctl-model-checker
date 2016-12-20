@@ -1,5 +1,5 @@
 package com.github.sybila.checker
-
+/*
 import com.github.daemontus.egholm.concurrent.guardedThreadUntilPoisoned
 import com.github.daemontus.egholm.concurrent.poison
 import com.github.daemontus.egholm.functional.Maybe
@@ -119,4 +119,4 @@ class SingleThreadQueue<N: Node, C: Colors<C>>(
         }
     }
 
-}
+}*/

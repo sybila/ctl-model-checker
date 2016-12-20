@@ -1,5 +1,5 @@
 package com.github.sybila.checker
-
+/*
 import java.util.*
 
 /**
@@ -176,3 +176,4 @@ fun <N: Node, C: Colors<C>> MutableMap<N, C>.toMutableNodes(value: C): MutableNo
 fun <N: Node, C: Colors<C>> nodesOf(default: C, vararg pairs: Pair<N, C>): Nodes<N, C>
         = MapNodes(default, pairs.associateBy({ it.first }, { it.second }))
 
+*/

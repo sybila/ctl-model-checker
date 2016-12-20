@@ -1,5 +1,5 @@
 package com.github.sybila.checker
-
+/*
 import com.github.daemontus.egholm.collections.repeat
 import com.github.daemontus.egholm.thread.guardedThread
 import com.github.daemontus.jafra.Terminator
@@ -397,4 +397,4 @@ abstract class CommunicatorTest {
 
     }
 
-}
+}*/

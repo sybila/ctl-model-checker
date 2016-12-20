@@ -1,5 +1,5 @@
 package com.github.sybila.checker
-
+/*
 import com.github.sybila.ctl.Atom
 
 /**
@@ -83,4 +83,4 @@ interface KripkeFragment<N: Node, C: Colors<C>> {
      */
     fun validNodes(a: Atom): Nodes<N, C>
 
-}
+}*/

@@ -1,5 +1,7 @@
 package com.github.sybila.checker
 
+
+/*
 import com.github.daemontus.jafra.Terminator
 import java.util.*
 
@@ -66,4 +68,4 @@ fun <N: Node, C: Colors<C>> createMergeQueues(
             }
         }
     }
-}
+}*/

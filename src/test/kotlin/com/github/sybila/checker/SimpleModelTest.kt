@@ -1,5 +1,5 @@
 package com.github.sybila.checker
-
+/*
 import com.github.sybila.ctl.CompareOp
 import com.github.sybila.ctl.FloatProposition
 import org.junit.Test
@@ -357,4 +357,4 @@ class IDColorsTest {
         assertTrue { IDColors(1).isNotEmpty() }
     }
 
-}
+}*/

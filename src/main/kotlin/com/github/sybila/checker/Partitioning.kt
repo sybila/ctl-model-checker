@@ -1,5 +1,5 @@
 package com.github.sybila.checker
-
+/*
 /**
  * Collection of various simple PartitionFunction implementations.
  */
@@ -49,3 +49,4 @@ class UniformPartitionFunction<N: Node>(private val id: Int = 0) : PartitionFunc
     override val ownerId: N.() -> Int = { id }
     override val myId: Int = id
 }
+*/

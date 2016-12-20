@@ -1,5 +1,5 @@
 package com.github.sybila.checker
-
+/*
 import com.github.daemontus.egholm.thread.guardedThread
 import com.github.daemontus.jafra.Terminator
 import com.github.daemontus.jafra.Token
@@ -187,4 +187,4 @@ abstract class JobPreservingQueueTest {
         }
     }
 
-}
+}*/

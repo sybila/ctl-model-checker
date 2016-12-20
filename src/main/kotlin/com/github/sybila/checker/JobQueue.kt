@@ -1,6 +1,6 @@
 package com.github.sybila.checker
 
-
+/*
 /**
  * A model checking job carrying info about source/target node and propagated color set.
  */
@@ -72,4 +72,4 @@ interface JobQueue<N: Node, C: Colors<C>> {
                 "jobs received" to jobsReceived
         )
     }
-}
+}*/

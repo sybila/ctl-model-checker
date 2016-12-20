@@ -1,5 +1,5 @@
 package com.github.sybila.checker
-
+/*
 /**
  * This is a utility file for all the goodies you won't find anywhere else.
  * Remember, with great power comes great responsibility.
@@ -12,3 +12,4 @@ package com.github.sybila.checker
  * Helper method to reify a generic class at compile time (Since you can't write K<A,B>::class)
  */
 inline fun <reified T: Any> genericClass(): Class<T> = T::class.java
+*/

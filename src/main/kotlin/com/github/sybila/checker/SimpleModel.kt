@@ -1,5 +1,5 @@
 package com.github.sybila.checker
-
+/*
 import com.github.sybila.ctl.Atom
 import java.util.*
 
@@ -101,4 +101,4 @@ fun Iterable<Pair<IDNode, IDColors>>.toIDNodes(): Nodes<IDNode, IDColors>
 fun Map<IDNode, IDColors>.toIDNodes(): Nodes<IDNode, IDColors>
         = MapNodes(IDColors(), this)
 
-
+*/
