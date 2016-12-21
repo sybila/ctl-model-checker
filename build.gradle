@@ -20,7 +20,7 @@ apply plugin: 'kotlin'
 apply plugin: 'maven'
 apply plugin: 'jacoco'
 
-sourceCompatibility = 1.8
+sourceCompatibility = 1.7
 group = "com.github.sybila"
 archivesBaseName = "ctl-model-checker"
 version = '2.0.0'
