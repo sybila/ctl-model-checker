@@ -4,7 +4,6 @@ import com.github.sybila.checker.new.*
 import com.github.sybila.huctl.*
 import org.junit.Test
 import kotlin.test.assertEquals
-import kotlin.test.assertTrue
 
 //TODO: Tests for implication and equivalence
 
@@ -58,7 +57,7 @@ class AndVerificationTest {
         val model = RegularFragment(bounds)
         val solver = EnumerativeSolver(fullColors)
 
-        val checker = Checker(listOf(model to solver))
+        val checker = Checker(model, solver)
 
         val result = checker.verify(p1 and p2)[0]
 
@@ -84,7 +83,7 @@ class AndVerificationTest {
         val model = RegularFragment(bounds)
         val solver = EnumerativeSolver(fullColors)
 
-        val checker = Checker(listOf(model to solver))
+        val checker = Checker(model, solver)
 
         val result = checker.verify(p1 and p2 and p3)[0]
 
@@ -109,7 +108,7 @@ class AndVerificationTest {
 
         val models = partitions.map(::RegularFragment)
         val solvers = partitions.indices.map { EnumerativeSolver(fullColors) }
-        val checker = Checker(models.zip(solvers))
+        val checker = Checker(SharedMemComm(models.size), models.zip(solvers))
 
         val result = checker.verify(p1 and p2 and p3)
 
@@ -139,7 +138,7 @@ class AndVerificationTest {
         val models = partitions.map(::RegularFragment)
         val solvers = partitions.map { EnumerativeSolver(fullColors) }
 
-        val checker = Checker(models.zip(solvers))
+        val checker = Checker(SharedMemComm(models.size), models.zip(solvers))
 
         val result = checker.verify(p1 and p2)
 
@@ -173,7 +172,7 @@ class OrVerificationTest {
         val model = RegularFragment(bounds)
         val solver = EnumerativeSolver(fullColors)
 
-        val checker = Checker(listOf(model to solver))
+        val checker = Checker(model, solver)
 
         val result = checker.verify(p1 or p2)[0]
 
@@ -198,7 +197,7 @@ class OrVerificationTest {
         val model = RegularFragment(bounds)
         val solver = EnumerativeSolver(fullColors)
 
-        val checker = Checker(listOf(model to solver))
+        val checker = Checker(model, solver)
 
         val result = checker.verify(p1 or p2 or p3)[0]
 
@@ -224,7 +223,7 @@ class OrVerificationTest {
         val models = partitions.map(::RegularFragment)
         val solvers = partitions.map { EnumerativeSolver(fullColors) }
 
-        val checker = Checker(models.zip(solvers))
+        val checker = Checker(SharedMemComm(models.size), models.zip(solvers))
 
         val result = checker.verify(p1 or p2)
 
@@ -253,7 +252,7 @@ class OrVerificationTest {
 
         val models = partitions.map(::RegularFragment)
         val solvers = partitions.indices.map { EnumerativeSolver(fullColors) }
-        val checker = Checker(models.zip(solvers))
+        val checker = Checker(SharedMemComm(models.size), models.zip(solvers))
 
         val result = checker.verify(p1 or p2 or p3)
 
@@ -287,7 +286,7 @@ class NegationTest {
         val model = RegularFragment(bounds)
         val solver = EnumerativeSolver(fullColors)
 
-        val checker = Checker(listOf(model to solver))
+        val checker = Checker(model, solver)
 
         val result = checker.verify(not(p1))[0]
 
@@ -312,7 +311,7 @@ class NegationTest {
         val model = RegularFragment(bounds)
         val solver = EnumerativeSolver(fullColors)
 
-        val checker = Checker(listOf(model to solver))
+        val checker = Checker(model, solver)
 
         val result = checker.verify(not(not(p1)))[0]
 
@@ -333,7 +332,7 @@ class NegationTest {
         val models = partitions.map(::RegularFragment)
         val solvers = partitions.map { EnumerativeSolver(fullColors) }
 
-        val checker = Checker(models.zip(solvers))
+        val checker = Checker(SharedMemComm(models.size), models.zip(solvers))
 
         val result = checker.verify(not(p1))
 
@@ -362,7 +361,7 @@ class NegationTest {
 
         val models = partitions.map(::RegularFragment)
         val solvers = partitions.indices.map { EnumerativeSolver(fullColors) }
-        val checker = Checker(models.zip(solvers))
+        val checker = Checker(SharedMemComm(models.size), models.zip(solvers))
 
         val result = checker.verify(not(not(p1)))
 
@@ -385,7 +384,7 @@ class MixedBooleanTest() {
 
         val model = RegularFragment(bounds)
         val solver = EnumerativeSolver(fullColors)
-        val checker = Checker(listOf(model to solver))
+        val checker = Checker(model, solver)
 
         //obfuscated (p1 || p2) && !p3
         val result = checker.verify((p1 or not(not(p2)) or p2) and not(p3) and (p1 or p2))[0]
@@ -412,7 +411,7 @@ class MixedBooleanTest() {
         val models = partitions.map(::RegularFragment)
         val solvers = partitions.map { EnumerativeSolver(fullColors) }
 
-        val checker = Checker(models.zip(solvers))
+        val checker = Checker(SharedMemComm(models.size), models.zip(solvers))
 
         val result = checker.verify((p1 or not(not(p2)) or p2) and not(p3) and (p1 or p2))
 

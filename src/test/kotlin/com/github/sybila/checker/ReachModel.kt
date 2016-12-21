@@ -109,6 +109,6 @@ class ReachModel(
                 (0 until dimensions).all { extractCoordinate(state, it) >= dimensionSize/2 }
             }
             else -> throw IllegalArgumentException("Unknown proposition $atom")
-        }).filter { it.owner() == id }.associateBy({it}, {parameters}).asStateMap(setOf())
+        }).filter { it.owner() == id }.associateBy({it}, { parameters }).asStateMap(setOf())
     }
 }

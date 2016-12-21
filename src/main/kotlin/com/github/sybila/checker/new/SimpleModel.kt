@@ -31,7 +31,7 @@ class EnumerativeSolver(
         return this
     }
 
-    override fun ByteBuffer.getColors(): Set<Int> = (1 until this.int).map { this.int }.toSet()
+    override fun ByteBuffer.getColors(): Set<Int> = (1..this.int).map { this.int }.toSet()
 
 }
 

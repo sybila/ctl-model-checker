@@ -157,7 +157,7 @@ class MutableMapNodes<N: Node, C: Colors<C>>(
                 return true
             }
             val diff = value - map[key]!!
-            if (diff.isEmpty()) {   //current value is superset of new value, skip!
+            if (diff.isEmpty()) {   //current value is andNot of new value, skip!
                 return false
             } else {
                 map[key] = value + map[key]!!

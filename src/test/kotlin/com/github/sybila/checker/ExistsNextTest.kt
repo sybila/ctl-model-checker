@@ -15,7 +15,7 @@ class SequentialExistsNextTest {
         val model = ReachModel(1, 1)
         val solver = EnumerativeSolver(model.parameters)
 
-        val checker = Checker(listOf(model to solver))
+        val checker = Checker(model, solver)
 
         val expected = mapOf(0 to setOf(1)).asStateMap(solver.ff)
 
@@ -31,11 +31,12 @@ class SequentialExistsNextTest {
         val model = ReachModel(1, chainSize)
         val solver = EnumerativeSolver(model.parameters)
 
-        val checker = Checker(listOf(model to solver))
+        val checker = Checker(model, solver)
 
         mapOf(0 to model.parameters - 0).asStateMap(solver.ff).assertDeepEquals(
                 checker.verify(EX(LOWER_CORNER()))[0], solver
         )
+
         mapOf(chainSize - 1 to setOf(chainSize), chainSize - 2 to (0 until (chainSize - 1)).toSet()).asStateMap(solver.ff).assertDeepEquals(
                 checker.verify(EX(UPPER_CORNER()))[0], solver
         )
@@ -60,7 +61,7 @@ class SequentialExistsNextTest {
         val model = ReachModel(dimensions, dimensionSize)
         val solver = EnumerativeSolver(model.parameters)
 
-        val checker = Checker(listOf(model to solver))
+        val checker = Checker(model, solver)
 
         mapOf(0 to model.parameters - 0).asStateMap(solver.ff).assertDeepEquals(
                 checker.verify(EX(LOWER_CORNER()))[0], solver
@@ -158,7 +159,7 @@ abstract class ConcurrentExistsNextTest {
         }
         val solvers = models.map { EnumerativeSolver(it.parameters) }
 
-        val checker = Checker(models.zip(solvers))
+        val checker = Checker(SharedMemComm(models.size), models.zip(solvers))
 
         val r1 = checker.verify(EX(LOWER_CORNER()))
         val r2 = checker.verify(EX(UPPER_CORNER()))
@@ -186,6 +187,9 @@ abstract class ConcurrentExistsNextTest {
                         }
                     }
                 }
+                println(m.eval(UPPER_CORNER()))
+                println(m.eval(UPPER_CORNER()).map { m.step(it, true) })
+                println(m.step(1, false).asSequence().toList())
                 expectedR2.asStateMap(ff).assertDeepEquals(r2[id], this)
                 //r3
                 val expectedR3 = HashMap<Int, Set<Int>>()
@@ -208,7 +212,7 @@ abstract class ConcurrentExistsNextTest {
 
     @Test(timeout = 1000)
     fun smallCube() = generalModel(2, 2)
-
+/*
     @Test(timeout = 1000)
     fun mediumCube() = generalModel(3, 3)
 
@@ -232,5 +236,5 @@ abstract class ConcurrentExistsNextTest {
 
     @Test(timeout = 1000)
     fun largeAsymmetric2() = generalModel(5, 7)
-
+*/
 }
