@@ -2,6 +2,7 @@ package com.github.sybila.checker.new
 
 import com.github.sybila.huctl.DirectionFormula
 import com.github.sybila.huctl.Formula
+import java.awt.Color
 
 /**
  * Represents a partitioned piece of model
@@ -36,14 +37,32 @@ interface StateMap<Colors> : Iterable<Int> {
 
 
 /**
+ * Both state maps must be managed by the same solver.
  * Very slow, but very precise equality operation - use only for tests.
  */
-fun <Colors> StateMap<Colors>.deepEquals(right: StateMap<Colors>, solver: Solver<Colors>): Boolean {
-    val left = this
+fun <Colors> deepEquals(left: StateMap<Colors>, right: StateMap<Colors>, solver: Solver<Colors>): Boolean {
     return solver.run {
-        (left + right).all {
+        (left + right).toSet().all {
             val l = left[it]
             val r = right[it]
+            !(l andNot r) && !(r andNot l)
+        }
+    }
+}
+
+/**
+ * Each partition has it's own solver, and the last one is for the original set.
+ */
+fun <Colors> deepEquals(
+        full: Pair<StateMap<Colors>, Solver<Colors>>,
+        partitions: List<Pair<StateMap<Colors>, Solver<Colors>>>
+): Boolean {
+    val solver = full.second
+    val data = full.first
+    return solver.run {
+        (data + partitions.flatMap { it.first }).toSet().all {
+            val l = data[it]
+            val r = partitions.fold(ff) { a, b -> a or b.second.run { b.first[it].transferTo(solver) }}
             !(l andNot r) && !(r andNot l)
         }
     }

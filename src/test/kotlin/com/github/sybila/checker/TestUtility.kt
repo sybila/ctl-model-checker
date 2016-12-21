@@ -12,9 +12,11 @@ fun pow (a: Int, b: Int): Int {
     else                return a * pow (a * a, b / 2); //odd  a=a*(a^2)^b/2
 }
 
-fun <Colors> StateMap<Colors>.assertDeepEquals(other: StateMap<Colors>, solver: Solver<Colors>)
-        = assertTrue(this.deepEquals(other, solver), "Expected $this, actual $other")
+fun <Colors> assertDeepEquals(expected: StateMap<Colors>, actual: StateMap<Colors>, solver: Solver<Colors>)
+        = assertTrue(deepEquals(expected, actual, solver), "Expected $expected, actual $actual")
 
+fun <Colors> assertDeepEquals(full: Pair<StateMap<Colors>, Solver<Colors>>, partitions: List<Pair<StateMap<Colors>, Solver<Colors>>>)
+        = assertTrue(deepEquals(full, partitions), "Expected ${full.first}, actual ${partitions.map { it.first }}")
 /*
 import com.github.daemontus.jafra.Terminator
 import java.util.*

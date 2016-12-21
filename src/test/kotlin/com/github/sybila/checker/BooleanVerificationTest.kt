@@ -55,7 +55,7 @@ class AndVerificationTest {
         val bounds = 0..2000
 
         val model = RegularFragment(bounds)
-        val solver = EnumerativeSolver(fullColors)
+        val solver = EnumeratedSolver(fullColors)
 
         val checker = Checker(model, solver)
 
@@ -70,7 +70,7 @@ class AndVerificationTest {
         }).asStateMap(setOf())
 
         assertEquals(expected.toSet(), result.toSet())
-        expected.assertDeepEquals(result, solver)
+        assertDeepEquals(expected, result, solver)
 
     }
 
@@ -81,7 +81,7 @@ class AndVerificationTest {
         val bounds = 0..2000
 
         val model = RegularFragment(bounds)
-        val solver = EnumerativeSolver(fullColors)
+        val solver = EnumeratedSolver(fullColors)
 
         val checker = Checker(model, solver)
 
@@ -97,7 +97,7 @@ class AndVerificationTest {
         }).asStateMap(setOf())
 
         assertEquals(expected.toSet(), result.toSet())
-        expected.assertDeepEquals(result, solver)
+        assertDeepEquals(expected, result, solver)
 
     }
 
@@ -107,7 +107,7 @@ class AndVerificationTest {
         val partitions = listOf(0..1667, 1668..4232, 4232..8000)
 
         val models = partitions.map(::RegularFragment)
-        val solvers = partitions.indices.map { EnumerativeSolver(fullColors) }
+        val solvers = partitions.indices.map { EnumeratedSolver(fullColors) }
         val checker = Checker(SharedMemComm(models.size), models.zip(solvers))
 
         val result = checker.verify(p1 and p2 and p3)
@@ -125,7 +125,7 @@ class AndVerificationTest {
 
         for (p in partitions.indices) {
             assertEquals(expected[p].toSet(), result[p].toSet())
-            expected[p].assertDeepEquals(result[p], solvers[p])
+            assertDeepEquals(expected[p], result[p], solvers[p])
         }
 
     }
@@ -136,7 +136,7 @@ class AndVerificationTest {
         val partitions = listOf(0..1867, 1868..4000)
 
         val models = partitions.map(::RegularFragment)
-        val solvers = partitions.map { EnumerativeSolver(fullColors) }
+        val solvers = partitions.map { EnumeratedSolver(fullColors) }
 
         val checker = Checker(SharedMemComm(models.size), models.zip(solvers))
 
@@ -154,7 +154,7 @@ class AndVerificationTest {
 
         for (p in partitions.indices) {
             assertEquals(expected[p].toSet(), result[p].toSet())
-            expected[p].assertDeepEquals(result[p], solvers[p])
+            assertDeepEquals(expected[p], result[p], solvers[p])
         }
 
     }
@@ -170,7 +170,7 @@ class OrVerificationTest {
         val bounds = 0..2000
 
         val model = RegularFragment(bounds)
-        val solver = EnumerativeSolver(fullColors)
+        val solver = EnumeratedSolver(fullColors)
 
         val checker = Checker(model, solver)
 
@@ -185,7 +185,7 @@ class OrVerificationTest {
         }).asStateMap(setOf())
 
         assertEquals(expected.toSet(), result.toSet())
-        expected.assertDeepEquals(result, solver)
+        assertDeepEquals(expected, result, solver)
 
     }
 
@@ -195,7 +195,7 @@ class OrVerificationTest {
         val bounds = 0..2000
 
         val model = RegularFragment(bounds)
-        val solver = EnumerativeSolver(fullColors)
+        val solver = EnumeratedSolver(fullColors)
 
         val checker = Checker(model, solver)
 
@@ -211,7 +211,7 @@ class OrVerificationTest {
         }).asStateMap(setOf())
 
         assertEquals(expected.toSet(), result.toSet())
-        expected.assertDeepEquals(result, solver)
+        assertDeepEquals(expected, result, solver)
 
     }
 
@@ -221,7 +221,7 @@ class OrVerificationTest {
         val partitions = listOf(0..1867, 1868..4000)
 
         val models = partitions.map(::RegularFragment)
-        val solvers = partitions.map { EnumerativeSolver(fullColors) }
+        val solvers = partitions.map { EnumeratedSolver(fullColors) }
 
         val checker = Checker(SharedMemComm(models.size), models.zip(solvers))
 
@@ -239,7 +239,7 @@ class OrVerificationTest {
 
         for (p in partitions.indices) {
             assertEquals(expected[p].toSet(), result[p].toSet())
-            expected[p].assertDeepEquals(result[p], solvers[p])
+            assertDeepEquals(expected[p], result[p], solvers[p])
         }
 
     }
@@ -251,7 +251,7 @@ class OrVerificationTest {
         val partitions = listOf(0..1667, 1668..4232, 4232..8000)
 
         val models = partitions.map(::RegularFragment)
-        val solvers = partitions.indices.map { EnumerativeSolver(fullColors) }
+        val solvers = partitions.indices.map { EnumeratedSolver(fullColors) }
         val checker = Checker(SharedMemComm(models.size), models.zip(solvers))
 
         val result = checker.verify(p1 or p2 or p3)
@@ -269,7 +269,7 @@ class OrVerificationTest {
 
         for (p in partitions.indices) {
             assertEquals(expected[p].toSet(), result[p].toSet())
-            expected[p].assertDeepEquals(result[p], solvers[p])
+            assertDeepEquals(expected[p], result[p], solvers[p])
         }
 
     }
@@ -284,7 +284,7 @@ class NegationTest {
         val bounds = 0..2000
 
         val model = RegularFragment(bounds)
-        val solver = EnumerativeSolver(fullColors)
+        val solver = EnumeratedSolver(fullColors)
 
         val checker = Checker(model, solver)
 
@@ -299,7 +299,7 @@ class NegationTest {
         }).asStateMap(setOf())
 
         assertEquals(expected.toSet(), result.toSet())
-        expected.assertDeepEquals(result, solver)
+        assertDeepEquals(expected, result, solver)
 
     }
 
@@ -309,7 +309,7 @@ class NegationTest {
         val bounds = 0..2000
 
         val model = RegularFragment(bounds)
-        val solver = EnumerativeSolver(fullColors)
+        val solver = EnumeratedSolver(fullColors)
 
         val checker = Checker(model, solver)
 
@@ -318,7 +318,7 @@ class NegationTest {
         val expected = model.eval(p1)
 
         assertEquals(expected.toSet(), result.toSet())
-        expected.assertDeepEquals(result, solver)
+        assertDeepEquals(expected, result, solver)
 
 
     }
@@ -330,7 +330,7 @@ class NegationTest {
         val partitions = listOf(0..1867, 1868..4000)
 
         val models = partitions.map(::RegularFragment)
-        val solvers = partitions.map { EnumerativeSolver(fullColors) }
+        val solvers = partitions.map { EnumeratedSolver(fullColors) }
 
         val checker = Checker(SharedMemComm(models.size), models.zip(solvers))
 
@@ -348,7 +348,7 @@ class NegationTest {
 
         for (p in partitions.indices) {
             assertEquals(expected[p].toSet(), result[p].toSet())
-            expected[p].assertDeepEquals(result[p], solvers[p])
+            assertDeepEquals(expected[p], result[p], solvers[p])
         }
 
     }
@@ -360,7 +360,7 @@ class NegationTest {
         val partitions = listOf(0..1667, 1668..4232, 4232..8000)
 
         val models = partitions.map(::RegularFragment)
-        val solvers = partitions.indices.map { EnumerativeSolver(fullColors) }
+        val solvers = partitions.indices.map { EnumeratedSolver(fullColors) }
         val checker = Checker(SharedMemComm(models.size), models.zip(solvers))
 
         val result = checker.verify(not(not(p1)))
@@ -369,7 +369,7 @@ class NegationTest {
 
         for (p in partitions.indices) {
             assertEquals(expected[p].toSet(), result[p].toSet())
-            expected[p].assertDeepEquals(result[p], solvers[p])
+            assertDeepEquals(expected[p], result[p], solvers[p])
         }
 
     }
@@ -383,7 +383,7 @@ class MixedBooleanTest() {
         val bounds = 0..2000
 
         val model = RegularFragment(bounds)
-        val solver = EnumerativeSolver(fullColors)
+        val solver = EnumeratedSolver(fullColors)
         val checker = Checker(model, solver)
 
         //obfuscated (p1 || p2) && !p3
@@ -399,7 +399,7 @@ class MixedBooleanTest() {
         }).filter { it.value.isNotEmpty() }.asStateMap(setOf())
 
         assertEquals(expected.toSet(), result.toSet())
-        expected.assertDeepEquals(result, solver)
+        assertDeepEquals(expected, result, solver)
 
     }
 
@@ -409,7 +409,7 @@ class MixedBooleanTest() {
         val partitions = listOf(0..1896, 1897..3975, 3976..8000)
 
         val models = partitions.map(::RegularFragment)
-        val solvers = partitions.map { EnumerativeSolver(fullColors) }
+        val solvers = partitions.map { EnumeratedSolver(fullColors) }
 
         val checker = Checker(SharedMemComm(models.size), models.zip(solvers))
 
@@ -428,7 +428,7 @@ class MixedBooleanTest() {
 
         for (p in partitions.indices) {
             assertEquals(expected[p].toSet(), result[p].toSet())
-            expected[p].assertDeepEquals(result[p], solvers[p])
+            assertDeepEquals(expected[p], result[p], solvers[p])
         }
     }
 

@@ -2,10 +2,15 @@ package com.github.sybila.checker.new
 
 import com.github.sybila.huctl.Formula
 import java.nio.ByteBuffer
+import java.util.*
 
-class EnumerativeSolver(
+class EnumeratedSolver(
         override val tt: Set<Int>
 ) : Solver<Set<Int>> {
+
+    override fun Set<Int>.transferTo(solver: Solver<Set<Int>>): Set<Int> {
+        return HashSet(this)    //just make a copy
+    }
 
     override val ff: Set<Int> = setOf()
 

@@ -70,4 +70,9 @@ interface Solver<Colors> {
     fun ByteBuffer.putColors(colors: Colors): ByteBuffer
     fun ByteBuffer.getColors(): Colors
 
+    /**
+     * Create a copy of this color set with transferred ownership
+     */
+    fun Colors.transferTo(solver: Solver<Colors>): Colors
+
 }
