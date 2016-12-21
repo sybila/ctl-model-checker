@@ -154,14 +154,14 @@ abstract class FixPoint<Colors>(
 
     fun reduce(): Boolean {
         return incoming.fold(false) { received, buffer ->
-            buffer?.let { buffer ->
+            (buffer?.let { buffer ->
                 repeat(buffer.int) {
                     update(buffer.int, buffer.getColors())
                 }
                 buffer.flip()
                 recycleBuffer(buffer)
                 true
-            } ?: false
+            } ?: false) || received
         }
     }
 

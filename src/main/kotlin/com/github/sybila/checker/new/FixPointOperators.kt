@@ -105,10 +105,14 @@ class EU<Colors>(
     //Maximality: If EF holds at s but s is not marked, none of s|dir successor has been marked.
     override fun onAdded(state: Int, value: Colors) {
         for ((predecessor, dir, bound) in step(state, !timeFlow)) {
-            val witness = value and bound and path[predecessor]
-            if (direction.eval(dir)) {
-                if (add(predecessor, witness) && predecessor.owner() != id) {
-                    sync(predecessor, predecessor.owner())
+            if (predecessor.owner() != id && state.owner() == id) {
+                sync(state, predecessor.owner())
+            } else if (predecessor.owner() == id) {
+                val witness = value and bound and path[predecessor]
+                if (direction.eval(dir)) {
+                    if (add(predecessor, witness) && predecessor.owner() != id) {
+                        sync(predecessor, predecessor.owner())
+                    }
                 }
             }
         }
@@ -150,6 +154,7 @@ class AF<Colors>(
     override fun onAdded(state: Int, value: Colors) {
         for ((predecessor, dir, bound) in step(state, !timeFlow)) {
             if (predecessor.owner() != id) {
+                //TODO: What if I don't own state?
                 sync(state, predecessor.owner())
             } else {
                 if (direction.eval(dir)) {  //otherwise can't propagate anything along this edge
@@ -171,6 +176,7 @@ class AF<Colors>(
 class AU<Colors>(
         private val timeFlow: Boolean,
         private val direction: DirectionFormula,
+        private val path: StateMap<Colors>,
         initial: StateMap<Colors>, comm: Comm<Colors>, solver: Solver<Colors>, fragment: Fragment<Colors>
 ) : GreatestFixPoint<Colors>(initial, comm, solver, fragment) {
 
@@ -191,7 +197,7 @@ class AU<Colors>(
                         val add = if (!direction.eval(sDir)) ff else (sValue and sBound)
                         a and add
                     }
-                    add(predecessor, witness)   //we own the predecessor, no need to sync
+                    add(predecessor, witness and path[predecessor])   //we own the predecessor, no need to sync
                 }
             }
         }

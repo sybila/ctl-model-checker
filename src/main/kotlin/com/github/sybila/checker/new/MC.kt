@@ -102,8 +102,33 @@ class Checker<Colors>(
                                 throw IllegalStateException("Unsupported formula $formula")
                             }
                         }
+                        is Formula.Simple.Future -> {
+                            if (existsPath) {
+                                EF(timeFlow, formula.direction, inner, comm, solver, fragment)
+                            } else {
+                                AF(timeFlow, formula.direction, inner, comm, solver, fragment)
+                            }.computeFixPoint().asStateMap()
+                        }
+                        is Formula.Simple.Globally -> {
+                            if (existsPath) {
+                                EG(timeFlow, formula.direction, inner, eval(True), comm, solver, fragment)
+                            } else {
+                                AG(timeFlow, formula.direction, inner, eval(True), comm, solver, fragment)
+                            }.computeFixPoint().asStateMap()
+                        }
                         else -> throw IllegalStateException("Unsupported formula $formula")
                     }
+                }
+                is Formula.Until -> {
+                    val timeFlow = formula.quantifier == PathQuantifier.A || formula.quantifier == PathQuantifier.E
+                    val existsPath = formula.quantifier == PathQuantifier.E || formula.quantifier == PathQuantifier.pE
+                    val reach = verify(formula.reach, assignment)
+                    val path = verify(formula.path, assignment)
+                    if (existsPath) {
+                        EU(timeFlow, formula.direction, path, reach, comm, solver, fragment)
+                    } else {
+                        AU(timeFlow, formula.direction, path, reach, comm, solver, fragment)
+                    }.computeFixPoint().asStateMap()
                 }
                 else -> throw IllegalStateException("Unsupported formula $formula")
             }
