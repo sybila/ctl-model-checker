@@ -1,15 +1,14 @@
 package com.github.sybila.checker
 
-import com.github.sybila.huctl.EF
-import org.junit.Test
-import kotlin.test.assertEquals
-
 import com.github.sybila.checker.ReachModel.Prop.*
 import com.github.sybila.checker.new.*
+import com.github.sybila.huctl.EF
 import com.github.sybila.huctl.EU
 import com.github.sybila.huctl.False
 import com.github.sybila.huctl.True
+import org.junit.Test
 import java.util.*
+import kotlin.test.assertEquals
 
 class SequentialExistsFutureTest {
 

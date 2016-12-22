@@ -31,6 +31,10 @@ class Checker<Colors>(
         }
     }
 
+    fun shutdown() {
+        executor.shutdown()
+    }
+
     inner class Worker(
             val fragment: Fragment<Colors>,
             val solver: Solver<Colors>

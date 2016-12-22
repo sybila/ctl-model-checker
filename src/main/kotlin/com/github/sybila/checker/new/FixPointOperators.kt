@@ -81,6 +81,8 @@ class EF<Colors>(
     //Induction proof: state is added only if there is a successor where EF also holds under suitable direction.
     //Maximality: If EF holds at s but s is not marked, none of s|dir successor has been marked.
     override fun onAdded(state: Int, value: Colors) {
+        if (state.owner() != id) return //stop on border
+
         for ((predecessor, dir, bound) in step(state, !timeFlow)) {
             val witness = value and bound
             if (direction.eval(dir)) {
@@ -131,6 +133,8 @@ class AG<Colors>(
     //Minimality: All states are checked at least once. Dir condition doesn't change, so it is handled the first time.
     //The rest holds by induction: If AG holds, no successor has been removed.
     override fun onRemoved(state: Int, value: Colors) {
+        if (state.owner() != id) return
+
         for ((predecessor, dir, bound) in step(state, !timeFlow)) {
             val counterExample = if (!direction.eval(dir)) bound else (value and bound)
             if (remove(predecessor, counterExample) && predecessor.owner() != id) {
@@ -153,10 +157,9 @@ class AF<Colors>(
     //there is a direction problem.
     override fun onAdded(state: Int, value: Colors) {
         for ((predecessor, dir, bound) in step(state, !timeFlow)) {
-            if (predecessor.owner() != id) {
-                //TODO: What if I don't own state?
+            if (predecessor.owner() != id && state.owner() == id) {
                 sync(state, predecessor.owner())
-            } else {
+            } else if (predecessor.owner() == id) {
                 if (direction.eval(dir)) {  //otherwise can't propagate anything along this edge
                     //TODO: This can be done faster if we cache the results
                     val witness = step(predecessor, timeFlow).asSequence().fold(value and bound) { a, t ->
@@ -186,9 +189,9 @@ class AU<Colors>(
     //there is a direction problem.
     override fun onAdded(state: Int, value: Colors) {
         for ((predecessor, dir, bound) in step(state, !timeFlow)) {
-            if (predecessor.owner() != id) {
+            if (predecessor.owner() != id && state.owner() == id) {
                 sync(state, predecessor.owner())
-            } else {
+            } else if (predecessor.owner() == id) {
                 if (direction.eval(dir)) {  //otherwise can't propagate anything along this edge
                     //TODO: This can be done faster if we cache the results
                     val witness = step(predecessor, timeFlow).asSequence().fold(value and bound) { a, t ->
@@ -216,9 +219,9 @@ class EG<Colors>(
     //Minimality: All states are checked at least once. This will handle direction deadlocks. Rest is induction.
     override fun onRemoved(state: Int, value: Colors) {
         for ((predecessor, dir, bound) in step(state, !timeFlow)) {
-            if (predecessor.owner() != id) {
+            if (predecessor.owner() != id && state.owner() == id) {
                 sync(state, predecessor.owner())
-            } else {
+            } else if (predecessor.owner() == id) {
                 //TODO: This can be done faster if we cache the results
                 val counterExample = step(predecessor, timeFlow).asSequence().fold(value and bound) { a, t ->
                     val (successor, sDir, sBound) = t
