@@ -1,6 +1,5 @@
 package com.github.sybila.checker.new
 
-import com.github.sybila.huctl.Formula
 import java.nio.ByteBuffer
 import java.util.*
 
@@ -40,25 +39,28 @@ class EnumeratedSolver(
 
 }
 
-class ExplicitKripkeFragment<Colors>(
-        private val successorMap: Map<Int, List<Transition<Colors>>>,
-        private val validity: Map<Formula.Atom, Map<Int, Colors>>,
-        solver: Solver<Colors>
-) : Fragment<Colors>, Solver<Colors> by solver {
+val BOOL_SOLVER = object : Solver<Boolean> {
 
-    private val predecessorMap = successorMap.asSequence().flatMap {
-        //direction is not flipped, because we are not going back in time
-        it.value.asSequence().map { t -> t.target to Transition(it.key, t.direction, t.bound) }
-    }.groupBy({ it.first }, { it.second })
+    override val tt: Boolean = true
+    override val ff: Boolean = false
 
+    override fun Boolean.and(other: Boolean): Boolean = this && other
 
-    override val id: Int = 0
-    override fun Int.owner(): Int = 0
+    override fun Boolean.or(other: Boolean): Boolean = this || other
 
-    override fun step(from: Int, future: Boolean): Iterator<Transition<Colors>> {
-        return ((if (future) successorMap[from] else predecessorMap[from]) ?: listOf()).iterator()
-    }
+    override fun Boolean.not(): Boolean = !this
 
-    override fun eval(atom: Formula.Atom): StateMap<Colors> = (validity[atom] ?: mapOf()).asStateMap(ff)
+    override fun Boolean.isEmpty(): Boolean = !this
+
+    override fun Boolean.minimize(): Boolean = this
+
+    override fun Boolean.byteSize(): Int = 1
+
+    override fun ByteBuffer.putColors(colors: Boolean): ByteBuffer
+            = this.put((if (colors) 1 else 0).toByte())
+
+    override fun ByteBuffer.getColors(): Boolean = this.get() == 1.toByte()
+
+    override fun Boolean.transferTo(solver: Solver<Boolean>): Boolean = this
 
 }
