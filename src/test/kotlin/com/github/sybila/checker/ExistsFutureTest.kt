@@ -118,19 +118,19 @@ class SequentialExistsFutureTest {
 
 }
 
-class SmallConcurrentExistsUntilTest : ConcurrentExistsUntilTest() {
+class SmallConcurrentExistsFutureTest : ConcurrentExistsFutureTest() {
     override val workers: Int = 2
 }
 
-class MediumConcurrentExistsUntilTest : ConcurrentExistsUntilTest() {
+class MediumConcurrentExistsFutureTest : ConcurrentExistsFutureTest() {
     override val workers: Int = 4
 }
 
-class LargeConcurrentExistsUntilTest : ConcurrentExistsUntilTest() {
+class LargeConcurrentExistsFutureTest : ConcurrentExistsFutureTest() {
     override val workers: Int = 8
 }
 
-abstract class ConcurrentExistsUntilTest {
+abstract class ConcurrentExistsFutureTest {
 
     protected abstract val workers: Int
 
