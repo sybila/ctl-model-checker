@@ -9,6 +9,7 @@ import com.github.sybila.huctl.Formula
 import com.github.sybila.huctl.HUCTLParser
 import org.antlr.v4.runtime.ANTLRInputStream
 import org.antlr.v4.runtime.CommonTokenStream
+import org.antlr.v4.runtime.tree.ErrorNode
 import org.antlr.v4.runtime.tree.ParseTreeWalker
 import org.antlr.v4.runtime.tree.TerminalNode
 import java.util.*
@@ -58,6 +59,10 @@ fun String.asExperiment(): () -> Unit {
 
         Checker(SharedMemComm(fragments.size), fragments).use { checker ->
 
+            experiment.verify.forEach {
+                println("$it -> ${checker.verify(it)}")
+            }
+
             experiment.assert.forEach {
                 println("Check assert $it")
                 val (formula, input) = it
@@ -75,10 +80,6 @@ fun String.asExperiment(): () -> Unit {
                 if (!deepEquals(expected to globalSolver, result.zip(solvers))) {
                     throw IllegalStateException("$formula error: expected $expected, but got $result")
                 }
-            }
-
-            experiment.verify.forEach {
-                println(checker.verify(it))
             }
 
         }
@@ -139,6 +140,10 @@ private class ModelContext : ModelBaseListener() {
         atom.add(parser.atom(ctx.STRING().readString()) to ctx.stateParams().map {
             it.state().text to it.param().map { it.text }.toSet()
         }.toMap())
+    }
+
+    override fun visitErrorNode(node: ErrorNode) {
+        throw IllegalStateException("Syntax error at '${node.text}' in ${node.symbol.line}")
     }
 
     private fun TerminalNode.readString() = this.text.filter { it != '"' }
