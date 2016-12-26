@@ -13,3 +13,5 @@ build
 ## File-based project format:
 *.ipr
 *.iws
+
+src/*/gen
