@@ -13,11 +13,7 @@ class EnumeratedSolver(
 
     override val ff: Set<Int> = setOf()
 
-    override fun Set<Int>.and(other: Set<Int>): Set<Int> {
-        val copy = this.toHashSet()
-        copy.retainAll(other)
-        return copy
-    }
+    override fun Set<Int>.and(other: Set<Int>): Set<Int> = this.intersect(other)
 
     override fun Set<Int>.or(other: Set<Int>): Set<Int> = this + other
 
@@ -56,11 +52,17 @@ val BOOL_SOLVER = object : Solver<Boolean> {
 
     override fun Boolean.byteSize(): Int = 1
 
-    override fun ByteBuffer.putColors(colors: Boolean): ByteBuffer
-            = this.put((if (colors) 1 else 0).toByte())
+    override fun ByteBuffer.putColors(colors: Boolean): ByteBuffer {
+        this.put((if (colors) 1 else 0).toByte())
+        return this
+    }
 
-    override fun ByteBuffer.getColors(): Boolean = this.get() == 1.toByte()
+    override fun ByteBuffer.getColors(): Boolean {
+        return if (this.get() == 1.toByte()) true else false
+    }
 
-    override fun Boolean.transferTo(solver: Solver<Boolean>): Boolean = this
-
+    override fun Boolean.transferTo(solver: Solver<Boolean>): Boolean {
+        return this
+    }
 }
+
