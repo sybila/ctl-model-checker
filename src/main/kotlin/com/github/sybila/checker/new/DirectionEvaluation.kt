@@ -3,7 +3,7 @@ package com.github.sybila.checker.new
 import com.github.sybila.huctl.DirectionFormula
 import com.github.sybila.huctl.Facet
 
-fun DirectionFormula.eval(at: DirectionFormula.Atom.Proposition): Boolean = when (this) {
+fun DirectionFormula.eval(at: DirectionFormula.Atom): Boolean = when (this) {
     is DirectionFormula.Atom.True -> true
     is DirectionFormula.Atom.Proposition -> this == at
     is DirectionFormula.Bool.And -> this.left.eval(at) && this.right.eval(at)

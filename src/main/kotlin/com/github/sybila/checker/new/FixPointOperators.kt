@@ -81,6 +81,8 @@ class EF<Colors>(
     //Induction proof: state is added only if there is a successor where EF also holds under suitable direction.
     //Maximality: If EF holds at s but s is not marked, none of s|dir successor has been marked.
     override fun onAdded(state: Int, value: Colors) {
+        if (state.owner() != id) return
+
         for ((predecessor, dir, bound) in step(state, !timeFlow)) {
             val witness = value and bound
             if (direction.eval(dir)) {

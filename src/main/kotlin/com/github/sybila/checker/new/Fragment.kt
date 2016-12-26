@@ -17,7 +17,7 @@ interface Fragment<Colors> : PartitionFunction {
 
 data class Transition<out Colors>(
         val target: Int,
-        val direction: DirectionFormula.Atom.Proposition,
+        val direction: DirectionFormula.Atom,
         val bound: Colors
 )
 
