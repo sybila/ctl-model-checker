@@ -85,7 +85,7 @@ class AX<Colors>(
         for (state in initial) {
             update(state, initial[state])
             for (t in step(state, !timeFlow)) {
-                if (direction.eval(t.direction)) {
+                if (direction.eval(t.direction) && t.target.owner() != id) {
                     sync(state, t.target.owner())
                 }
             }

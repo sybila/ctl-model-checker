@@ -1,0 +1,69 @@
+/*
+
+Model: A cycle with sink on one of the states.
+
+Test all/exists operator behavior under non-determinism.
+
+*/
+
+:states t,f
+:edges t -> t, t -> f, f -> t
+:atom "x:in+" = [t]
+:atom "x:in-" = [f]
+
+:assert "AF EG x:in+" == [t,f]
+:assert "AG EF x:in-" == [t,f]
+
+//EX
+
+:assert "EX x:in+" == [f,t]
+:assert "pEX x:in+" == [f,t]
+:assert "EwX x:in+" == [f,t]
+:assert "pEwX x:in+" == [f,t]
+
+//AX
+
+:assert "AX x:in-" == []
+:assert "AX x:in+" == [f]
+:assert "pAX x:in+" == [f]
+:assert "AwX x:in+" == [f]
+:assert "pAwX x:in+" == [f]
+
+//EF
+
+:assert "EF x:in+" == [f,t]
+:assert "pEF x:in+" == [f,t]
+:assert "EwF x:in+" == [f,t]
+:assert "pEwF x:in+" == [f,t]
+
+//AF
+
+:assert "AF x:in-" == [f]
+:assert "AF x:in+" == [f,t]
+:assert "pAF x:in+" == [f,t]
+:assert "AwF x:in+" == [f,t]
+:assert "pAwF x:in+" == [f,t]
+
+//EU
+
+:assert "x:in+ EU x:in+" == [t]
+:assert "x:in+ pEU x:in+" == [t]
+:assert "x:in- EU x:in+" == [t,f]
+:assert "x:in- pEU x:in+" == [t,f]
+
+//AU
+
+:assert "x:in+ AU x:in+" == [t]
+:assert "x:in+ pAU x:in+" == [t]
+:assert "x:in- AU x:in+" == [t,f]
+:assert "x:in- pAU x:in+" == [t,f]
+
+//EG
+
+:assert "EG x:in+" == [t]
+:assert "pEG x:in+" == [t]
+
+//AG
+
+:assert "AG x:in+" == []
+:assert "pAG x:in+" == []

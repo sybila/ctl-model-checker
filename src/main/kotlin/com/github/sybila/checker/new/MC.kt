@@ -4,6 +4,7 @@ import com.github.sybila.huctl.Formula
 import com.github.sybila.huctl.PathQuantifier
 import com.github.sybila.huctl.True
 import com.github.sybila.huctl.not
+import java.io.Closeable
 import java.util.*
 import java.util.concurrent.Callable
 import java.util.concurrent.Executors
@@ -11,7 +12,7 @@ import java.util.concurrent.Executors
 class Checker<Colors>(
         private val comm: Comm<Colors>,
         private val setup: List<Pair<Fragment<Colors>, Solver<Colors>>>
-) {
+) : Closeable {
 
     constructor(fragment: Fragment<Colors>, solver: Solver<Colors>) : this(NoComm<Colors>(), listOf(fragment to solver))
 
@@ -33,7 +34,7 @@ class Checker<Colors>(
         }
     }
 
-    fun shutdown() {
+    override fun close() {
         executor.shutdown()
     }
 
@@ -44,6 +45,7 @@ class Checker<Colors>(
 
         fun verify(formula: Formula, assignment: Map<String, Int>): StateMap<Colors> {
             println("Verify: $formula at $assignment")
+            @Suppress("USELESS_CAST")   //Not so useless after all...
             return when (formula) {
                 //Propositions
                 is Formula.Atom.Reference -> {
@@ -53,52 +55,54 @@ class Checker<Colors>(
                 is Formula.Atom -> eval(formula)
 
                 //First order
-                is Formula.FirstOrder.ForAll -> {
-                    val result = HashMap<Int, Colors>()
-                    val assignmentCopy = HashMap(assignment)
-                    for (s in eval(True)) result[s] = tt
-                    for (state in verify(formula.bound, assignment)) {
-                        assignmentCopy[formula.name] = state
-                        val inner = verify(formula.target, assignmentCopy)
-                        result.keys.forEach { result[it] = result[it]!! and inner[it] }
+                is Formula.FirstOrder<*> -> when (formula as Formula.FirstOrder<*>) {
+                    is Formula.FirstOrder.ForAll -> {
+                        val result = HashMap<Int, Colors>()
+                        val assignmentCopy = HashMap(assignment)
+                        for (s in eval(True)) result[s] = tt
+                        for (state in verify(formula.bound, assignment)) {
+                            assignmentCopy[formula.name] = state
+                            val inner = verify(formula.target, assignmentCopy)
+                            result.keys.forEach { result[it] = result[it]!! and inner[it] }
+                        }
+                        result.asStateMap(ff)
                     }
-                    result.asStateMap(ff)
-                }
-                is Formula.FirstOrder.Exists -> {
-                    val result = HashMap<Int, Colors>()
-                    val assignmentCopy = HashMap(assignment)
-                    for (state in verify(formula.bound, assignment)) {
-                        assignmentCopy[formula.name] = state
-                        val inner = verify(formula.target, assignmentCopy)
-                        inner.forEach { result[it] = (result[it] ?: ff) or inner[it] }
+                    is Formula.FirstOrder.Exists -> {
+                        val result = HashMap<Int, Colors>()
+                        val assignmentCopy = HashMap(assignment)
+                        for (state in verify(formula.bound, assignment)) {
+                            assignmentCopy[formula.name] = state
+                            val inner = verify(formula.target, assignmentCopy)
+                            inner.forEach { result[it] = (result[it] ?: ff) or inner[it] }
+                        }
+                        result.asStateMap(ff)
                     }
-                    result.asStateMap(ff)
                 }
 
                 //Hybrid
-                is Formula.Hybrid.Bind -> {
-                    val assignmentCopy = HashMap(assignment)
-                    eval(True).asSequence().map {
-                        assignmentCopy[formula.name] = it
-                        val r = verify(formula.target, assignmentCopy)
-                        it to r[it]
-                    }.toMap().asStateMap(ff)
-                }
-                is Formula.Hybrid.At -> {
-                    val stateCount = eval(True).count()
-                    val state = assignment[formula.name] ?: throw IllegalStateException("Unbound name ${formula.name}")
-                    val inner = verify(formula.target, assignment)
-                    inner[state].asConstantStateMap(0 until stateCount)
+                is Formula.Hybrid<*> -> when (formula as Formula.Hybrid<*>) {
+                    is Formula.Hybrid.Bind -> {
+                        val assignmentCopy = HashMap(assignment)
+                        eval(True).asSequence().map {
+                            assignmentCopy[formula.name] = it
+                            val r = verify(formula.target, assignmentCopy)
+                            it to r[it]
+                        }.toMap().asStateMap(ff)
+                    }
+                    is Formula.Hybrid.At -> {
+                        val stateCount = eval(True).count()
+                        val state = assignment[formula.name] ?: throw IllegalStateException("Unbound name ${formula.name}")
+                        val inner = verify(formula.target, assignment)
+                        inner[state].asConstantStateMap(0 until stateCount)
+                    }
                 }
 
                 //Boolean logic
                 is Formula.Not -> {
                     val inner = verify(formula.inner, assignment)
                     val all = eval(True)
-                    println("Not!: $all")
                     all.asSequence()
                             .map {
-                                println("Check $it")
                                 it to if (it in inner) { all[it] and inner[it].not() } else all[it]
                             }
                             .filter { it.second.isNotEmpty() }
@@ -108,7 +112,6 @@ class Checker<Colors>(
                 is Formula.Bool<*> -> {
                     val left = verify(formula.left, assignment)
                     val right = verify(formula.right, assignment)
-                    @Suppress("USELESS_CAST")   //not so useless after all...
                     when (formula as Formula.Bool<*>) {
                         is Formula.Bool.And -> {
                             left.asSequence()
@@ -125,7 +128,7 @@ class Checker<Colors>(
                                     } }
                         }
                         is Formula.Bool.Implies -> {
-                            (left + right).toSet().asSequence()
+                            eval(True).asSequence()
                                     .map {
                                         it to when {
                                             it in left && it in right -> (left[it].not() or right[it])
@@ -135,7 +138,7 @@ class Checker<Colors>(
                                     }
                         }
                         is Formula.Bool.Equals -> {
-                            (left + right).toSet().asSequence()
+                            eval(True).asSequence()
                                     .map {
                                         it to ((left[it] and right[it]) or (left[it].not() and right[it].not()))
                                     }
@@ -149,7 +152,6 @@ class Checker<Colors>(
                     val timeFlow = formula.quantifier == PathQuantifier.A || formula.quantifier == PathQuantifier.E
                     val existsPath = formula.quantifier == PathQuantifier.E || formula.quantifier == PathQuantifier.pE
                     val inner = verify(formula.inner, assignment)
-                    @Suppress("USELESS_CAST")   //not so useless after all...
                     when (formula as Formula.Simple<*>) {
                         is Formula.Simple.Next -> {
                             if (existsPath) { //EX
@@ -191,7 +193,6 @@ class Checker<Colors>(
                                     formula.direction
                             )), assignment)
                         }
-                        else -> throw IllegalStateException("Unsupported formula $formula")
                     }
                 }
                 is Formula.Until -> {
@@ -205,7 +206,6 @@ class Checker<Colors>(
                         AU(timeFlow, formula.direction, path, reach, comm, solver, fragment)
                     }.computeFixPoint().asStateMap()
                 }
-                else -> throw IllegalStateException("Unsupported formula $formula")
             }.apply { println(this.toString()) }
         }
 

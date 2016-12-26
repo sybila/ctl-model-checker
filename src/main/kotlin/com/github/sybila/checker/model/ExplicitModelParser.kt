@@ -56,30 +56,33 @@ fun String.asExperiment(): () -> Unit {
             }.toSet(), transitionFunction, atom, solver) to solver
         }
 
-        val checker = Checker(SharedMemComm(fragments.size), fragments)
+        Checker(SharedMemComm(fragments.size), fragments).use { checker ->
 
-        experiment.assert.forEach {
-            println("Check assert $it")
-            val (formula, input) = it
+            experiment.assert.forEach {
+                println("Check assert $it")
+                val (formula, input) = it
 
 
-            val expected: StateMap<Set<Int>> = input.mapKeys {
-                stateMapping.indexOf(it.key)
-            }.mapValues {
-                it.value.readColors(globalSolver)
-            }.asStateMap(globalSolver.ff)
+                val expected: StateMap<Set<Int>> = input.mapKeys {
+                    stateMapping.indexOf(it.key)
+                }.mapValues {
+                    it.value.readColors(globalSolver)
+                }.asStateMap(globalSolver.ff)
 
-            val result = checker.verify(formula)
+                val result = checker.verify(formula)
 
-            println("Expected: $expected, got: $result")
-            if (!deepEquals(expected to globalSolver, result.zip(solvers))) {
-                throw IllegalStateException("$formula error: expected $expected, but got $result")
+                println("Expected: $expected, got: $result")
+                if (!deepEquals(expected to globalSolver, result.zip(solvers))) {
+                    throw IllegalStateException("$formula error: expected $expected, but got $result")
+                }
             }
+
+            experiment.verify.forEach {
+                println(checker.verify(it))
+            }
+
         }
 
-        experiment.verify.forEach {
-            println(checker.verify(it))
-        }
     }
 }
 
