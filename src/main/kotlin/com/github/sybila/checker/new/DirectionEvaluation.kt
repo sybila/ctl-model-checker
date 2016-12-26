@@ -2,6 +2,7 @@ package com.github.sybila.checker.new
 
 import com.github.sybila.huctl.DirectionFormula
 import com.github.sybila.huctl.Facet
+import com.github.sybila.huctl.PathQuantifier
 
 fun DirectionFormula.eval(at: DirectionFormula.Atom): Boolean = when (this) {
     is DirectionFormula.Atom.True -> true
@@ -16,3 +17,10 @@ fun DirectionFormula.eval(at: DirectionFormula.Atom): Boolean = when (this) {
 
 fun String.increaseProp(): DirectionFormula.Atom.Proposition = DirectionFormula.Atom.Proposition(this, Facet.POSITIVE)
 fun String.decreaseProp(): DirectionFormula.Atom.Proposition = DirectionFormula.Atom.Proposition(this, Facet.NEGATIVE)
+
+fun PathQuantifier.invertCardinality(): PathQuantifier = when (this) {
+    PathQuantifier.A -> PathQuantifier.E
+    PathQuantifier.E -> PathQuantifier.A
+    PathQuantifier.pA -> PathQuantifier.pE
+    PathQuantifier.pE -> PathQuantifier.pA
+}

@@ -18,9 +18,10 @@ class ExplicitTestExecutor {
             if (it.isDirectory) runTests(it)
             else if (it.name.endsWith(".model")) {
                 println("Executing $it")
-                val error = it.readLines().joinToString(separator = "\n").asExperiment().invoke()
-                if (error != null) {
-                    throw AssertionError("Experiment $it failed: $error")
+                try {
+                    it.readLines().joinToString(separator = "\n").asExperiment().invoke()
+                } catch (e: Exception) {
+                    throw AssertionError("Experiment $it failed: $e")
                 }
             }
         }

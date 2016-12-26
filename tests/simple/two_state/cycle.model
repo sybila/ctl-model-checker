@@ -1,0 +1,71 @@
+:states t,f
+:edges t -> f, f -> t
+:atom "x:in+" = [t]
+
+//EX
+
+:assert "EX x:in+" == [f]
+:assert "pEX x:in+" == [f]
+:assert "EwX x:in+" == [f]
+:assert "pEwX x:in+" == [f]
+
+//AX
+
+:assert "AX x:in+" == [f]
+:assert "pAX x:in+" == [f]
+:assert "AwX x:in+" == [f]
+:assert "pAwX x:in+" == [f]
+
+//EF
+
+:assert "EF x:in+" == [f,t]
+:assert "pEF x:in+" == [f,t]
+:assert "EwF x:in+" == [f,t]
+:assert "pEwF x:in+" == [f,t]
+
+//AF
+
+:assert "AF x:in+" == [f,t]
+:assert "pAF x:in+" == [f,t]
+:assert "AwF x:in+" == [f,t]
+:assert "pAwF x:in+" == [f,t]
+
+//EU
+
+:assert "x:in- EU x:in+" == [t]
+:assert "x:in- pEU x:in+" == [t]
+:assert "!x:in+ EU x:in+" == [t,f]
+:assert "!x:in+ pEU x:in+" == [t,f]
+
+//AU
+
+:assert "x:in- AU x:in+" == [t]
+:assert "x:in- pAU x:in+" == [t]
+:assert "!x:in+ AU x:in+" == [t,f]
+:assert "!x:in+ pAU x:in+" == [t,f]
+
+//EG
+
+:assert "EG x:in+" == []
+:assert "pEG x:in+" == []
+
+//AG
+
+:assert "AG x:in+" == []
+:assert "pAG x:in+" == []
+
+//Bind
+
+:assert "bind s: at s: x:in+" == [t]
+
+//First order
+
+:assert "forall s: x:in+" == [t]
+:assert "forall s: at s: x:in+" == []
+:assert "forall s in x:in+: x:in+" == [t]
+:assert "forall s in x:in+: at s: x:in+" == [f,t]
+:assert "exists s: x:in+" == [t]
+:assert "exists s: at s: x:in+" == [t, f]
+:assert "exists s: at s: x:in-" == []
+:assert "exists s in !(x:in+): x:in+" == [t]
+:assert "exists s in !(x:in+): at s: x:in+" == []

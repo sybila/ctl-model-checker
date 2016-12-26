@@ -13,7 +13,7 @@ import org.antlr.v4.runtime.tree.ParseTreeWalker
 import org.antlr.v4.runtime.tree.TerminalNode
 import java.util.*
 
-fun String.asExperiment(): () -> String? {
+fun String.asExperiment(): () -> Unit {
     val parser = ModelParser(CommonTokenStream(ModelLexer(ANTLRInputStream(this))))
     val experiment = ModelContext()
     ParseTreeWalker().walk(experiment, parser.root())
@@ -21,6 +21,7 @@ fun String.asExperiment(): () -> String? {
         val paramsMapping = experiment.params.toList()
         val stateMapping = experiment.states.flatMap { it }
         val fullParams = (0..Math.max(0, paramsMapping.size - 1)).toSet()
+        val globalSolver = EnumeratedSolver(fullParams)
         val partitionMapping = experiment.states.mapIndexed { i, set ->
             i to set.map { stateMapping.indexOf(it) }
         }.toMap()
@@ -30,51 +31,55 @@ fun String.asExperiment(): () -> String? {
 
         val solvers = partitions.map { EnumeratedSolver(fullParams) }
 
+        fun Set<String>.readColors(solver: Solver<Set<Int>>): Set<Int> = if (this.isEmpty()) solver.tt else {
+            this.map { paramsMapping.indexOf(it) }.toSet()
+        }
+
         val fragments: List<Pair<Fragment<Set<Int>>, Solver<Set<Int>>>> = partitions.zip(solvers).map {
-            val (partition, solver) = it
-            val transitionFunction: Map<Int, List<Transition<Set<Int>>>>
+        val (partition, solver) = it
+        val transitionFunction: Map<Int, List<Transition<Set<Int>>>>
                     = experiment.edges.groupBy { stateMapping.indexOf(it.from) }
                     .mapValues {
                         it.value.map {
                             val (from, to, dir, bound) = it
-                            Transition(stateMapping.indexOf(it.to), dir, if (bound.isEmpty()) {
-                                solver.tt
-                            } else bound.map { paramsMapping.indexOf(it) }.toSet())
+                            Transition(stateMapping.indexOf(it.to), dir, bound.readColors(solver))
                         }
                     }
-            val atom: Map<Formula.Atom, Map<Int, Set<Int>>> = experiment.atom.map {
+        val atom: Map<Formula.Atom, Map<Int, Set<Int>>> = experiment.atom.map {
                 val (atom, map) = it
                 atom to map.mapKeys { stateMapping.indexOf(it.key) }.mapValues {
-                    it.value.map { paramsMapping.indexOf(it) }.toSet()
+                    it.value.readColors(solver)
                 }
             }.toMap()
-            ExplicitFragment(partition, transitionFunction, atom, solver) to solver
+            ExplicitFragment(partition, stateMapping.indices.filter {
+                partition.run { it.owner() == partition.id }
+            }.toSet(), transitionFunction, atom, solver) to solver
         }
 
         val checker = Checker(SharedMemComm(fragments.size), fragments)
 
         experiment.assert.forEach {
+            println("Check assert $it")
             val (formula, input) = it
 
-            val globalSolver = EnumeratedSolver(fullParams)
 
             val expected: StateMap<Set<Int>> = input.mapKeys {
                 stateMapping.indexOf(it.key)
             }.mapValues {
-                it.value.map { paramsMapping.indexOf(it) }.toSet()
+                it.value.readColors(globalSolver)
             }.asStateMap(globalSolver.ff)
 
             val result = checker.verify(formula)
 
+            println("Expected: $expected, got: $result")
             if (!deepEquals(expected to globalSolver, result.zip(solvers))) {
-                throw IllegalStateException("Expected $expected, but got $result")
+                throw IllegalStateException("$formula error: expected $expected, but got $result")
             }
         }
 
         experiment.verify.forEach {
             println(checker.verify(it))
         }
-        null
     }
 }
 
@@ -128,7 +133,7 @@ private class ModelContext : ModelBaseListener() {
     }
 
     override fun exitAtom(ctx: ModelParser.AtomContext) {
-        assert.add(parser.formula(ctx.STRING().readString()) to ctx.stateParams().map {
+        atom.add(parser.atom(ctx.STRING().readString()) to ctx.stateParams().map {
             it.state().text to it.param().map { it.text }.toSet()
         }.toMap())
     }

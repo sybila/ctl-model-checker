@@ -3,6 +3,8 @@ package com.github.sybila.checker.new
 import com.github.sybila.huctl.Formula
 import com.github.sybila.huctl.PathQuantifier
 import com.github.sybila.huctl.True
+import com.github.sybila.huctl.not
+import java.util.*
 import java.util.concurrent.Callable
 import java.util.concurrent.Executors
 
@@ -41,13 +43,62 @@ class Checker<Colors>(
     ) : Fragment<Colors> by fragment, Solver<Colors> by solver {
 
         fun verify(formula: Formula, assignment: Map<String, Int>): StateMap<Colors> {
+            println("Verify: $formula at $assignment")
             return when (formula) {
+                //Propositions
+                is Formula.Atom.Reference -> {
+                    val state = assignment[formula.name] ?: throw IllegalStateException("Unknown reference ${formula.name}")
+                    (state to tt).asStateMap(ff)
+                }
                 is Formula.Atom -> eval(formula)
+
+                //First order
+                is Formula.FirstOrder.ForAll -> {
+                    val result = HashMap<Int, Colors>()
+                    val assignmentCopy = HashMap(assignment)
+                    for (s in eval(True)) result[s] = tt
+                    for (state in verify(formula.bound, assignment)) {
+                        assignmentCopy[formula.name] = state
+                        val inner = verify(formula.target, assignmentCopy)
+                        result.keys.forEach { result[it] = result[it]!! and inner[it] }
+                    }
+                    result.asStateMap(ff)
+                }
+                is Formula.FirstOrder.Exists -> {
+                    val result = HashMap<Int, Colors>()
+                    val assignmentCopy = HashMap(assignment)
+                    for (state in verify(formula.bound, assignment)) {
+                        assignmentCopy[formula.name] = state
+                        val inner = verify(formula.target, assignmentCopy)
+                        inner.forEach { result[it] = (result[it] ?: ff) or inner[it] }
+                    }
+                    result.asStateMap(ff)
+                }
+
+                //Hybrid
+                is Formula.Hybrid.Bind -> {
+                    val assignmentCopy = HashMap(assignment)
+                    eval(True).asSequence().map {
+                        assignmentCopy[formula.name] = it
+                        val r = verify(formula.target, assignmentCopy)
+                        it to r[it]
+                    }.toMap().asStateMap(ff)
+                }
+                is Formula.Hybrid.At -> {
+                    val stateCount = eval(True).count()
+                    val state = assignment[formula.name] ?: throw IllegalStateException("Unbound name ${formula.name}")
+                    val inner = verify(formula.target, assignment)
+                    inner[state].asConstantStateMap(0 until stateCount)
+                }
+
+                //Boolean logic
                 is Formula.Not -> {
                     val inner = verify(formula.inner, assignment)
                     val all = eval(True)
+                    println("Not!: $all")
                     all.asSequence()
                             .map {
+                                println("Check $it")
                                 it to if (it in inner) { all[it] and inner[it].not() } else all[it]
                             }
                             .filter { it.second.isNotEmpty() }
@@ -92,6 +143,8 @@ class Checker<Colors>(
                         }
                     }.toMap().asStateMap(ff)
                 }
+
+                //Temporal stuff
                 is Formula.Simple<*> -> {
                     val timeFlow = formula.quantifier == PathQuantifier.A || formula.quantifier == PathQuantifier.E
                     val existsPath = formula.quantifier == PathQuantifier.E || formula.quantifier == PathQuantifier.pE
@@ -101,10 +154,9 @@ class Checker<Colors>(
                         is Formula.Simple.Next -> {
                             if (existsPath) { //EX
                                 EX(timeFlow, formula.direction, inner, comm, solver, fragment)
-                                        .computeFixPoint().asStateMap()
                             } else {    //AX
-                                throw IllegalStateException("Unsupported formula $formula")
-                            }
+                                AX(timeFlow, formula.direction, inner, comm, solver, fragment)
+                            }.computeFixPoint().asStateMap()
                         }
                         is Formula.Simple.Future -> {
                             if (existsPath) {
@@ -119,6 +171,25 @@ class Checker<Colors>(
                             } else {
                                 AG(timeFlow, formula.direction, inner, eval(True), comm, solver, fragment)
                             }.computeFixPoint().asStateMap()
+                        }
+                        //Weak stuff is translated
+                        is Formula.Simple.WeakNext -> {
+                            //EwX = !AX!
+                            //AwX = !EX!
+                            verify(not(Formula.Simple.Next(
+                                    formula.quantifier.invertCardinality(),
+                                    not(formula.inner),
+                                    formula.direction
+                            )), assignment)
+                        }
+                        is Formula.Simple.WeakFuture -> {
+                            //EwF = !AG!
+                            //AwF = !EG!
+                            verify(not(Formula.Simple.Globally(
+                                    formula.quantifier.invertCardinality(),
+                                    not(formula.inner),
+                                    formula.direction
+                            )), assignment)
                         }
                         else -> throw IllegalStateException("Unsupported formula $formula")
                     }
@@ -135,7 +206,7 @@ class Checker<Colors>(
                     }.computeFixPoint().asStateMap()
                 }
                 else -> throw IllegalStateException("Unsupported formula $formula")
-            }
+            }.apply { println(this.toString()) }
         }
 
     }

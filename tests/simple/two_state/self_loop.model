@@ -1,3 +1,5 @@
+//Two disconnected self loops
+
 :states t, f
 :edges t -> t, f -> f
 :atom "x:in+" = [t]
@@ -6,8 +8,6 @@
 
 :assert "EX x:in+" == [t]
 :assert "pEX x:in+" == [t]
-
-/*
 :assert "EwX x:in+" == [t]
 :assert "pEwX x:in+" == [t]
 
@@ -52,15 +52,18 @@
 :assert "AG x:in+" == [t]
 :assert "pAG x:in+" == [t]
 
-
 //Bind
 
 :assert "bind s: at s: x:in+" == [t]
 
 //First order
 
-:assert "forall s: x:in+" == []
-:assert "forall s in x:in+: x:in+" == [t,f]
-:assert "exists s: x:in+" == [t,f]
-:assert "exists s in !(x:in+): x:in+" == []
-*/
+:assert "forall s: x:in+" == [t]
+:assert "forall s: at s: x:in+" == []
+:assert "forall s in x:in+: x:in+" == [t]
+:assert "forall s in x:in+: at s: x:in+" == [f,t]
+:assert "exists s: x:in+" == [t]
+:assert "exists s: at s: x:in+" == [t, f]
+:assert "exists s: at s: x:in-" == []
+:assert "exists s in !(x:in+): x:in+" == [t]
+:assert "exists s in !(x:in+): at s: x:in+" == []

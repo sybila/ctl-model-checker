@@ -1,6 +1,7 @@
 package com.github.sybila.checker.new
 
 import com.github.sybila.huctl.DirectionFormula
+import java.util.*
 
 
 /**
@@ -68,6 +69,45 @@ class EX<Colors>(
     override fun onUpdate(state: Int, value: Colors) { }    //do nothing
 
     override fun asStateMap(): StateMap<Colors> = localData.asStateMap(ff)
+
+}
+
+class AX<Colors>(
+        private val timeFlow: Boolean,
+        private val direction: DirectionFormula,
+        initial: StateMap<Colors>,
+        comm: Comm<Colors>, solver: Solver<Colors>, fragment: Fragment<Colors>
+) : FixPoint<Colors>(comm, solver, fragment) {
+
+    private val covered = HashMap<Int, Colors>()
+
+    init {
+        for (state in initial) {
+            update(state, initial[state])
+            for (t in step(state, !timeFlow)) {
+                if (direction.eval(t.direction)) {
+                    sync(state, t.target.owner())
+                }
+            }
+        }
+    }
+
+    override fun onUpdate(state: Int, value: Colors) {
+        for ((predecessor, dir, bound) in step(state, !timeFlow)) {
+            if (predecessor.owner() != id) continue
+
+            val witness = step(predecessor, timeFlow).asSequence().fold(value and bound) { a, t ->
+                val (successor, sDir, sBound) = t
+                val sValue = get(successor)
+                val add = if (!direction.eval(sDir)) ff else (sValue and sBound)
+                a and add
+            }
+
+            covered[predecessor] = (covered[predecessor] ?: ff) or witness
+        }
+    }
+
+    override fun asStateMap(): StateMap<Colors> = covered.asStateMap(ff)
 
 }
 

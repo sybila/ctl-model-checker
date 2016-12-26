@@ -1,11 +1,14 @@
 package com.github.sybila.checker.model
 
 import com.github.sybila.checker.new.*
+import com.github.sybila.huctl.False
 import com.github.sybila.huctl.Formula
+import com.github.sybila.huctl.True
 
 
 class ExplicitFragment<Colors>(
         partitionFunction: PartitionFunction,
+        private val states: Set<Int>,
         private val successorMap: Map<Int, List<Transition<Colors>>>,
         private val validity: Map<Formula.Atom, Map<Int, Colors>>,
         solver: Solver<Colors>
@@ -20,6 +23,12 @@ class ExplicitFragment<Colors>(
         return ((if (future) successorMap[from] else predecessorMap[from]) ?: listOf()).iterator()
     }
 
-    override fun eval(atom: Formula.Atom): StateMap<Colors> = (validity[atom] ?: mapOf()).asStateMap(ff)
+    override fun eval(atom: Formula.Atom): StateMap<Colors> {
+        return when (atom) {
+            False -> mapOf<Int, Colors>().asStateMap(ff)
+            True -> states.map { it to tt }.toMap().asStateMap(ff)
+            else -> (validity[atom] ?: mapOf()).asStateMap(ff)
+        }
+    }
 
 }
