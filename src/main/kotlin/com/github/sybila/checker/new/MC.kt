@@ -44,7 +44,6 @@ class Checker<Colors>(
     ) : Fragment<Colors> by fragment, Solver<Colors> by solver {
 
         fun verify(formula: Formula, assignment: Map<String, Int>): StateMap<Colors> {
-            println("Verify: $formula at $assignment")
             @Suppress("USELESS_CAST")   //Not so useless after all...
             return when (formula) {
                 //Propositions
@@ -56,24 +55,34 @@ class Checker<Colors>(
 
                 //First order
                 is Formula.FirstOrder<*> -> when (formula as Formula.FirstOrder<*>) {
+                    //Note: The bounded definitions seem little odd at first, but if you consider that
+                    //!forall!x = exists x, then there is really no better way to define this.
                     is Formula.FirstOrder.ForAll -> {
+                        //The bound:        forall x in A : B
+                        //actually means:   forall x: (at x: A) => B
+                        //not:              forall x: (at x: A) && B
                         val result = HashMap<Int, Colors>()
                         val assignmentCopy = HashMap(assignment)
                         for (s in eval(True)) result[s] = tt
-                        for (state in verify(formula.bound, assignment)) {
+                        val bound = verify(formula.bound, assignment)
+                        for (state in bound) {
                             assignmentCopy[formula.name] = state
                             val inner = verify(formula.target, assignmentCopy)
-                            result.keys.forEach { result[it] = result[it]!! and inner[it] }
+                            result.keys.forEach { result[it] = result[it]!! and (inner[it] or bound[state].not()) }
                         }
                         result.asStateMap(ff)
                     }
                     is Formula.FirstOrder.Exists -> {
+                        //The bound:        exists x in A : B
+                        //actually means:   exists x: (at x: A) && B
+                        //not:              exists x: (at x: A) => B
                         val result = HashMap<Int, Colors>()
                         val assignmentCopy = HashMap(assignment)
-                        for (state in verify(formula.bound, assignment)) {
+                        val bound = verify(formula.bound, assignment)
+                        for (state in bound) {
                             assignmentCopy[formula.name] = state
                             val inner = verify(formula.target, assignmentCopy)
-                            inner.forEach { result[it] = (result[it] ?: ff) or inner[it] }
+                            inner.forEach { result[it] = (result[it] ?: ff) or (inner[it] and bound[state]) }
                         }
                         result.asStateMap(ff)
                     }
@@ -206,7 +215,7 @@ class Checker<Colors>(
                         AU(timeFlow, formula.direction, path, reach, comm, solver, fragment)
                     }.computeFixPoint().asStateMap()
                 }
-            }.apply { println(this.toString()) }
+            }
         }
 
     }
