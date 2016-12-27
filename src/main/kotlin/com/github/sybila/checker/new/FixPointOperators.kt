@@ -99,8 +99,8 @@ class AX<Colors>(
             val witness = step(predecessor, timeFlow).asSequence().fold(value and bound) { a, t ->
                 val (successor, sDir, sBound) = t
                 val sValue = get(successor)
-                val add = if (!direction.eval(sDir)) ff else (sValue and sBound)
-                a and add
+                val covered = if (!direction.eval(sDir)) tt else (sValue or sBound.not())
+                a and covered
             }
 
             covered[predecessor] = (covered[predecessor] ?: ff) or witness
@@ -205,8 +205,8 @@ class AF<Colors>(
                     val witness = step(predecessor, timeFlow).asSequence().fold(value and bound) { a, t ->
                         val (successor, sDir, sBound) = t
                         val sValue = get(successor)
-                        val add = if (!direction.eval(sDir)) ff else (sValue and sBound)
-                        a and add
+                        val covered = if (!direction.eval(sDir)) ff else (sValue or sBound.not())
+                        (a and covered)
                     }
                     add(predecessor, witness)   //we own the predecessor, no need to sync
                 }
@@ -237,8 +237,8 @@ class AU<Colors>(
                     val witness = step(predecessor, timeFlow).asSequence().fold(value and bound) { a, t ->
                         val (successor, sDir, sBound) = t
                         val sValue = get(successor)
-                        val add = if (!direction.eval(sDir)) ff else (sValue and sBound)
-                        a and add
+                        val covered = if (!direction.eval(sDir)) ff else (sValue or sBound.not())
+                        a and covered
                     }
                     add(predecessor, witness and path[predecessor])   //we own the predecessor, no need to sync
                 }
@@ -262,11 +262,11 @@ class EG<Colors>(
             if (predecessor.owner() != id && state.owner() == id) {
                 sync(state, predecessor.owner())
             } else if (predecessor.owner() == id) {
-                //TODO: This can be done faster if we cache the results
+                //Note: This is a counter-example, not a witness, hence we don't use bound => s_value, but bound && s_value
                 val counterExample = step(predecessor, timeFlow).asSequence().fold(value and bound) { a, t ->
                     val (successor, sDir, sBound) = t
                     val sValue = get(successor)
-                    val remove = if (!direction.eval(sDir)) ff else (sValue and sBound)
+                    val remove = if (!direction.eval(sDir)) tt else (sValue and sBound)
                     a and remove
                 }
                 remove(predecessor, counterExample)

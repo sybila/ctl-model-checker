@@ -61,7 +61,6 @@ fun <Colors> deepEquals(
     val data = full.first
     val solver = full.second
     return solver.run {
-        println("Keys: ${(data + partitions.flatMap { it.first }).toSet()}")
         (data + partitions.flatMap { it.first }).toSet().all {
             val l = data[it]
             val r = partitions.fold(ff) { a, b -> a or b.second.run { b.first[it].transferTo(solver) }}
