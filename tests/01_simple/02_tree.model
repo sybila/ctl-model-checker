@@ -2,7 +2,7 @@
 
 Model: A binary tree model with various propositions. Name of the state is also it's path from root.
 
-The goal is to illustrate transitive propagation of certain properties.
+The goal is to illustrate transitive propagation of properties.
 
 */
 

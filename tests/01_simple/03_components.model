@@ -1,0 +1,82 @@
+/*
+
+Model: Three (non-terminal) SSCs (cycle, triangle, square) connected into a "triangle" S -> C, S -> T and T -> C.
+Additionally, each component has a "shadow" - a copy of itself that is not an SSC, but leads to the
+actual SSC.
+
+The goal is to test stability discovery and verification.
+
+*/
+
+// Cycle
+:states c1, c2
+:edges c1 -> c2, c2 -> c1
+
+:states sc1, sc2
+:edges sc1 -> c1, sc2 -> c2, sc1 -> sc2
+
+//Triangle
+:states t1, t2, t3
+:edges t1 -> t2, t2 -> t3, t3 -> t1
+
+:states st1, st2, st3
+:edges st1 -> t1, st2 -> t2, st3 -> t3, st1 -> st2, st3 -> st2
+
+//Square
+:states s1, s2, s3, s4
+:edges s1 -> s2, s2 -> s3, s3 -> s4, s4 -> s1
+
+:states ss1, ss2, ss3, ss4
+:edges ss1 -> s1, ss2 -> s2, ss3 -> s3, ss4 -> s4, ss1 -> ss2, ss2 -> ss3, ss4 -> ss3
+
+//Connections
+:edges s1 -> t1
+:edges s4 -> c2
+:edges t2 -> c1
+
+
+:atom "cycle == 1" = [c1, c2]
+:atom "triangle == 1" = [t1, t2, t3]
+:atom "square == 1" = [s1, s2, s3, s4]
+
+:atom "s_cycle == 1" = [sc1, sc2]
+:atom "s_triangle == 1" = [st1, st2, st3]
+:atom "s_square == 1" = [ss1, ss2, ss3, ss4]
+
+:atom "c1 == 1" = [c1]
+:atom "t1 == 1" = [t1]
+:atom "s1 == 1" = [s1]
+
+
+// s_triangle can reach cycle, byt it will have to go through triangle first
+:assert "EG (cycle == 1 || s_triangle == 1)" == [c1, c2]
+:assert "EG (cycle == 1 || s_cycle == 1)" == [c1, c2, sc1, sc2]
+
+:assert "EG EF (square == 1)" == [s1, s2, s3, s4, ss1, ss2, ss3, ss4]
+
+// can run off to cycle/triangle
+:assert "AG EF (square == 1)" == []
+
+// exists a possible stable state - equivalent to bind x: EF x (if I find a loop, EG is implicit)
+:assert "bind x: EG EF x" == [c1, c2, t1, t2, t3, s1, s2, s3, s4]
+
+:assert "bind x: AX AF x" == [c1, c2]
+
+:assert "bind x: EG AX AF x" == [c1, c2]
+
+// actual stable state
+:assert "bind x: AG AF x" == [c1, c2]
+:assert "exists x: x && AG AF x" == [c1, c2]
+:assert "exists x: AG AF x" == [sc1, sc2, c1, c2]
+
+// all cycles
+:assert "bind x: EX EF x" == [c1, c2, t1, t2, t3, s1, s2, s3, s4]
+
+// a cycle from which I can reach all other cycles
+:assert "bind x: (EX EF x && (forall y in (exists z: z && EX EF z): EF y))" == [s1, s2, s3, s4]
+// TODO: why this doesn't work? (Or at least why isn't it a tautology)
+//:assert "bind x: (EX EF x && (forall y in (bind z: EX EF z): EF y))" == [s1, s2, s3, s4]
+
+// a cycle from which the stable state (AG) is reachable indirectly (no EX)
+:assert "bind x: (EX EF x && (forall y in (exists z: z && AG AF z): EX EF y && !EX y))" == [t1, t3, s1, s2, s3]
+
