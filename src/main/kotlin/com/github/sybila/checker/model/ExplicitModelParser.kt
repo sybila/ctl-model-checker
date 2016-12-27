@@ -24,7 +24,7 @@ fun String.asExperiment(): () -> Unit {
             if (this == -1) throw IllegalStateException("${this@mapParam} is not a parameter name")
         }
 
-        val stateMapping = experiment.states.flatMap { it }
+        val stateMapping = experiment.states.flatMap { it }.sorted()
         fun String.mapState(): Int = stateMapping.indexOf(this).apply {
             if (this == -1) throw IllegalStateException("${this@mapState} is not a state name")
         }
@@ -45,22 +45,22 @@ fun String.asExperiment(): () -> Unit {
         }
 
         val fragments: List<Pair<Fragment<Set<Int>>, Solver<Set<Int>>>> = partitions.zip(solvers).map {
-        val (partition, solver) = it
-        val transitionFunction: Map<Int, List<Transition<Set<Int>>>>
-                    = experiment.edges.groupBy { it.from.mapState() }
-                    .mapValues {
-                        it.value.map {
-                            val (from, to, dir, bound) = it
-                            Transition(it.to.mapState(), dir, bound.readColors(solver))
+            val (partition, solver) = it
+            val transitionFunction: Map<Int, List<Transition<Set<Int>>>>
+                        = experiment.edges.groupBy { it.from.mapState() }
+                        .mapValues {
+                            it.value.map {
+                                val (from, to, dir, bound) = it
+                                Transition(it.to.mapState(), dir, bound.readColors(solver))
+                            }
                         }
-                    }
-        val atom: Map<Formula.Atom, Map<Int, Set<Int>>> = experiment.atom.map {
-                val (atom, map) = it
-                atom to map.mapKeys { it.key.mapState() }.mapValues {
-                    it.value.readColors(solver)
-                }
-            }.toMap()
-            ExplicitFragment(partition, stateMapping.indices.filter {
+            val atom: Map<Formula.Atom, Map<Int, Set<Int>>> = experiment.atom.map {
+                    val (atom, map) = it
+                    atom to map.mapKeys { it.key.mapState() }.mapValues {
+                        it.value.readColors(solver)
+                    }.filterKeys { partition.run { it.owner() == id } }
+                }.toMap()
+            ExplicitFragment(partition, stateMapping.size, stateMapping.indices.filter {
                 partition.run { it.owner() == partition.id }
             }.toSet(), transitionFunction, atom, solver) to solver
         }
@@ -68,7 +68,12 @@ fun String.asExperiment(): () -> Unit {
         Checker(SharedMemComm(fragments.size), fragments).use { checker ->
 
             experiment.verify.forEach {
-                println("$it -> ${checker.verify(it)}")
+                val result = checker.verify(it)
+                println("$it -> ${result.map { map ->
+                    map.map {
+                        stateMapping[it] to map[it].map { paramsMapping[it] }
+                    }.filter { it.second.isNotEmpty() }
+                }}")
             }
 
             experiment.assert.forEach {

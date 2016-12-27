@@ -8,6 +8,7 @@ import com.github.sybila.huctl.True
 
 class ExplicitFragment<Colors>(
         partitionFunction: PartitionFunction,
+        override val stateCount: Int,
         private val states: Set<Int>,
         private val successorMap: Map<Int, List<Transition<Colors>>>,
         private val validity: Map<Formula.Atom, Map<Int, Colors>>,

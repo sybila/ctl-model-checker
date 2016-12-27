@@ -23,6 +23,8 @@ private class RegularFragment(
         private val bounds: IntRange
 ) : Fragment<Set<Int>> {
 
+    override val stateCount: Int = bounds.count()
+
     override val id: Int = 0
     override fun Int.owner(): Int = 0
 

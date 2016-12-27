@@ -49,12 +49,19 @@ class Checker<Colors>(
                 //Propositions
                 is Formula.Atom.Reference -> {
                     val state = assignment[formula.name] ?: throw IllegalStateException("Unknown reference ${formula.name}")
-                    (state to tt).asStateMap(ff)
+                    if (state.owner() == id) {
+                        (state to tt).asStateMap(ff)
+                    } else {
+                        mapOf<Int, Colors>().asStateMap(ff)
+                    }
                 }
                 is Formula.Atom -> eval(formula)
 
                 //First order
                 is Formula.FirstOrder<*> -> when (formula as Formula.FirstOrder<*>) {
+                    //TODO: Parallelism is screwing up the bounds - can we add some pre-processing/synchronization
+                    //round to ensure that they all agree on the verified states?
+
                     //Note: The bounded definitions seem little odd at first, but if you consider that
                     //!forall!x = exists x, then there is really no better way to define this.
                     is Formula.FirstOrder.ForAll -> {
@@ -65,10 +72,12 @@ class Checker<Colors>(
                         val assignmentCopy = HashMap(assignment)
                         for (s in eval(True)) result[s] = tt
                         val bound = verify(formula.bound, assignment)
-                        for (state in bound) {
+                        for (state in 0 until stateCount) {
                             assignmentCopy[formula.name] = state
                             val inner = verify(formula.target, assignmentCopy)
-                            result.keys.forEach { result[it] = result[it]!! and (inner[it] or bound[state].not()) }
+                            result.keys.forEach {
+                                result[it] = result[it]!! and (inner[it] or bound[state].not())
+                            }
                         }
                         result.asStateMap(ff)
                     }
@@ -79,7 +88,7 @@ class Checker<Colors>(
                         val result = HashMap<Int, Colors>()
                         val assignmentCopy = HashMap(assignment)
                         val bound = verify(formula.bound, assignment)
-                        for (state in bound) {
+                        for (state in 0 until stateCount) {
                             assignmentCopy[formula.name] = state
                             val inner = verify(formula.target, assignmentCopy)
                             inner.forEach { result[it] = (result[it] ?: ff) or (inner[it] and bound[state]) }
@@ -92,17 +101,16 @@ class Checker<Colors>(
                 is Formula.Hybrid<*> -> when (formula as Formula.Hybrid<*>) {
                     is Formula.Hybrid.Bind -> {
                         val assignmentCopy = HashMap(assignment)
-                        eval(True).asSequence().map {
+                        (0 until stateCount).asSequence().map {
                             assignmentCopy[formula.name] = it
                             val r = verify(formula.target, assignmentCopy)
                             it to r[it]
                         }.toMap().asStateMap(ff)
                     }
                     is Formula.Hybrid.At -> {
-                        val stateCount = eval(True).count()
                         val state = assignment[formula.name] ?: throw IllegalStateException("Unbound name ${formula.name}")
                         val inner = verify(formula.target, assignment)
-                        inner[state].asConstantStateMap(0 until stateCount)
+                        inner[state].asConstantStateMap(0 until stateCount, this)
                     }
                 }
 
@@ -215,7 +223,7 @@ class Checker<Colors>(
                         AU(timeFlow, formula.direction, path, reach, comm, solver, fragment)
                     }.computeFixPoint().asStateMap()
                 }
-            }
+            }//.apply { println("Finished $assignment $formula with $this") }
         }
 
     }

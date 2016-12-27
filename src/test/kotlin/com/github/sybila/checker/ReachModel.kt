@@ -34,7 +34,7 @@ class ReachModel(
         if (size.toLong() > size.toInt()) throw IllegalArgumentException("Model too big: $size")
     }
 
-    val stateCount = pow(dimensionSize, dimensions)
+    override val stateCount = pow(dimensionSize, dimensions)
 
     val states = Array(stateCount) { it }
 

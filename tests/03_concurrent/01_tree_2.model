@@ -1,0 +1,65 @@
+/*
+
+Model: A copy of the simple tree model, divided between two workers based on levels.
+
+The goal is to illustrate transitive propagation of properties.
+
+*/
+
+:states(0) r // root
+:states(1) r1, r2 // level 1
+:edges r -> r, r -> r1, r -> r2
+
+:states(0) r11, r12, r21, r22  // level 2
+:edges r1 -> r11, r1 -> r12, r2 -> r21, r2 -> r22
+
+:states(1) r111, r112, r121, r122, r211, r212, r221, r222  // level 3
+:edges r11 -> r111, r11 -> r112, r12 -> r121, r12 -> r122, r21 -> r211, r21 -> r212, r22 -> r221, r22 -> r222
+
+:edges r111 -> r111, r112 -> r112, r121 -> r121, r122 -> r122, r211 -> r211, r212 -> r212, r221 -> r221, r222 -> r222
+
+:atom "2*leaf == 0" = [r112, r122, r212, r222]
+:atom "2*leaf == 1" = [r111, r121, r211, r221]
+
+:atom "4*leaf == 0" = [r111, r211]
+:atom "4*leaf == 1" = [r112, r212]
+:atom "4*leaf == 2" = [r121, r221]
+:atom "4*leaf == 3" = [r122, r222]
+
+:atom "leaf == 11" = [r111, r112]
+:atom "leaf == 12" = [r121, r122]
+:atom "leaf == 21" = [r211, r212]
+:atom "leaf == 22" = [r221, r222]
+
+:atom "leaf == 1" = [r111, r112, r121, r122]
+:atom "leaf == 2" = [r211, r212, r221, r222]
+
+:atom "leaf == 0" = [r111, r112, r121, r122, r211, r212, r221, r222]
+
+:atom "leaf == 111" = [r111]
+:atom "leaf == 122" = [r122]
+:atom "state == 11" = [r11]
+
+:assert "EX leaf == 1 && ! leaf == 1" == [r11, r12]
+:assert "AX leaf == 2 && ! leaf == 2" == [r21, r22]
+:assert "AX 2 * leaf == 0 && ! 2 * leaf == 0" == []
+:assert "EX 2 * leaf == 0 && ! 2 * leaf == 0" == [r11, r12, r21, r22]
+
+:assert "EF leaf == 11" == [r, r1, r11, r111, r112]
+:assert "(EF 2*leaf == 0 && (! EF 2*leaf == 1)) && !(leaf == 0)" == []
+:assert "!(EF leaf == 111 -> EF state == 11)" == [r111]
+
+:assert "AF leaf == 11 && ! leaf == 11" == [r11]
+:assert "AF leaf == 1 && ! leaf == 1" == [r1, r11, r12]
+
+:assert "EF 4 * leaf == 1 EU 2 * leaf == 1" == [r, r1, r2, r11, r21, r111, r121, r211, r221]
+:assert "(!EF leaf == 22) EU leaf == 21" == [r21, r211, r212]
+
+:assert "AF leaf == 11 AU leaf == 1" == [r11, r111, r112, r121, r122]
+
+//very convoluted way of saying (AF leaf == 2) && !leaf == 2
+:assert "exists s in !(leaf == 0): !(leaf == 0) && pEF s && at s: AF leaf == 2" == [r2, r21, r22]
+
+:assert "EF leaf == 111 && EF leaf == 122 && bind x: pAF (EF leaf == 2 && !x)" == [r1]
+
+//EG/AG is essentially useless, because all leaves are sinks, so if I can reach them, I can stay in them.
