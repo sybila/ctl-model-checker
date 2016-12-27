@@ -48,7 +48,7 @@ class ReachModel(
 
         override fun invoke(): Formula.Atom {
             return when (this) {
-                //TODO: Change to references
+                //TODO: Change to references - check if possible to support this in parser safely
                 UPPER_CORNER -> "upper".positiveIn()
                 LOWER_CORNER -> "lower".positiveIn()
                 CENTER -> "center".positiveIn()
@@ -90,8 +90,7 @@ class ReachModel(
                     .filter { extractCoordinate(from, it) - 1 > -1 }            //don't escape from model
                     .map { from - pow(dimensionSize, it) }                   //create new id
         }.map { Transition(it, it.toString().increaseProp(), stateColors(it)) } +
-                listOf(Transition(from, DirectionFormula.Atom.Proposition("loop", Facet.POSITIVE), parameters - stateColors(from))))
-        //TODO loops + listOf(Transition(from, LOOP, parameters - stateColors(from)))
+                listOf(Transition(from, DirectionFormula.Atom.Loop, parameters - stateColors(from))))
         return r.iterator()
     }
 
