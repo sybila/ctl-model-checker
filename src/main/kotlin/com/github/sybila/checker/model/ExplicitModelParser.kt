@@ -19,12 +19,20 @@ fun String.asExperiment(): () -> Unit {
     val experiment = ModelContext()
     ParseTreeWalker().walk(experiment, parser.root())
     return {
-        val paramsMapping = experiment.params.toList()
+        val paramsMapping = if (experiment.params.isEmpty()) listOf(1) else experiment.params.toList()
+        fun String.mapParam(): Int = paramsMapping.indexOf(this).apply {
+            if (this == -1) throw IllegalStateException("${this@mapParam} is not a parameter name")
+        }
+
         val stateMapping = experiment.states.flatMap { it }
+        fun String.mapState(): Int = stateMapping.indexOf(this).apply {
+            if (this == -1) throw IllegalStateException("${this@mapState} is not a state name")
+        }
+
         val fullParams = (0..Math.max(0, paramsMapping.size - 1)).toSet()
         val globalSolver = EnumeratedSolver(fullParams)
         val partitionMapping = experiment.states.mapIndexed { i, set ->
-            i to set.map { stateMapping.indexOf(it) }
+            i to set.map(String::mapState)
         }.toMap()
         val partitions = experiment.states.mapIndexed { i, set ->
             ExplicitPartitionFunction(i, inverseMapping = partitionMapping)
@@ -33,22 +41,22 @@ fun String.asExperiment(): () -> Unit {
         val solvers = partitions.map { EnumeratedSolver(fullParams) }
 
         fun Set<String>.readColors(solver: Solver<Set<Int>>): Set<Int> = if (this.isEmpty()) solver.tt else {
-            this.map { paramsMapping.indexOf(it) }.toSet()
+            this.map(String::mapParam).toSet()
         }
 
         val fragments: List<Pair<Fragment<Set<Int>>, Solver<Set<Int>>>> = partitions.zip(solvers).map {
         val (partition, solver) = it
         val transitionFunction: Map<Int, List<Transition<Set<Int>>>>
-                    = experiment.edges.groupBy { stateMapping.indexOf(it.from) }
+                    = experiment.edges.groupBy { it.from.mapState() }
                     .mapValues {
                         it.value.map {
                             val (from, to, dir, bound) = it
-                            Transition(stateMapping.indexOf(it.to), dir, bound.readColors(solver))
+                            Transition(it.to.mapState(), dir, bound.readColors(solver))
                         }
                     }
         val atom: Map<Formula.Atom, Map<Int, Set<Int>>> = experiment.atom.map {
                 val (atom, map) = it
-                atom to map.mapKeys { stateMapping.indexOf(it.key) }.mapValues {
+                atom to map.mapKeys { it.key.mapState() }.mapValues {
                     it.value.readColors(solver)
                 }
             }.toMap()
@@ -64,21 +72,25 @@ fun String.asExperiment(): () -> Unit {
             }
 
             experiment.assert.forEach {
-                println("Check assert $it")
+                println("Check assert ${it.first}")
                 val (formula, input) = it
 
 
                 val expected: StateMap<Set<Int>> = input.mapKeys {
-                    stateMapping.indexOf(it.key)
+                    it.key.mapState()
                 }.mapValues {
                     it.value.readColors(globalSolver)
                 }.asStateMap(globalSolver.ff)
 
                 val result = checker.verify(formula)
 
-                println("Expected: $expected, got: $result")
                 if (!deepEquals(expected to globalSolver, result.zip(solvers))) {
-                    throw IllegalStateException("$formula error: expected $expected, but got $result")
+                    //Print with original names
+                    throw IllegalStateException("$formula error: expected $input, but got ${result.map { map ->
+                        map.map {
+                            stateMapping[it] to map[it].map { paramsMapping[it] }
+                        }.filter { it.second.isNotEmpty() }
+                    }}")
                 }
             }
 
