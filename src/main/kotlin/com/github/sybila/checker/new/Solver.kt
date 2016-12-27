@@ -48,7 +48,11 @@ interface Solver<Colors> {
      *
      * Complexity: exponential
      */
-    infix fun Colors.andNot(other: Colors): Boolean = this.and(other.not()).isNotEmpty()
+    infix fun Colors.andNot(other: Colors?): Boolean = if (other == null) {
+        this.isNotEmpty()
+    } else {
+        this.and(other.not()).isNotEmpty()
+    }
 
     /**
      * Try to reduce the size of the set representation.

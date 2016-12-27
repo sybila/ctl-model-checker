@@ -91,12 +91,8 @@ abstract class FixPoint<Colors>(
     fun update(state: Int, value: Colors): Boolean {
         val storage = if (state.owner() == id) localData else remoteData
         val current = storage[state]
-        return if (current == null) {
-            storage[state] = value
-            enqueue(state)
-            true
-        } else if (value andNot current) {
-            storage[state] = value or current
+        return if (value andNot current) {
+            storage[state] = value or (current ?: ff)
             enqueue(state)
             true
         } else false
