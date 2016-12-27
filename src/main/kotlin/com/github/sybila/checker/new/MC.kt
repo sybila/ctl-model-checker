@@ -1,9 +1,6 @@
 package com.github.sybila.checker.new
 
-import com.github.sybila.huctl.Formula
-import com.github.sybila.huctl.PathQuantifier
-import com.github.sybila.huctl.True
-import com.github.sybila.huctl.not
+import com.github.sybila.huctl.*
 import java.io.Closeable
 import java.util.*
 import java.util.concurrent.Callable
@@ -60,7 +57,7 @@ class Checker<Colors>(
                 //First order
                 is Formula.FirstOrder<*> -> when (formula as Formula.FirstOrder<*>) {
                     //TODO: Parallelism is screwing up the bounds - can we add some pre-processing/synchronization
-                    //round to ensure that they all agree on the verified states?
+                    //round to ensure that we don't have to translate them to these ugly things
 
                     //Note: The bounded definitions seem little odd at first, but if you consider that
                     //!forall!x = exists x, then there is really no better way to define this.
@@ -68,32 +65,39 @@ class Checker<Colors>(
                         //The bound:        forall x in A : B
                         //actually means:   forall x: (at x: A) => B
                         //not:              forall x: (at x: A) && B
-                        val result = HashMap<Int, Colors>()
-                        val assignmentCopy = HashMap(assignment)
-                        for (s in eval(True)) result[s] = tt
-                        val bound = verify(formula.bound, assignment)
-                        for (state in 0 until stateCount) {
-                            assignmentCopy[formula.name] = state
-                            val inner = verify(formula.target, assignmentCopy)
-                            result.keys.forEach {
-                                result[it] = result[it]!! and (inner[it] or bound[state].not())
+                        if (formula.bound != True) {
+                            verify(forall(formula.name, True, at(formula.name, formula.bound) implies formula.target), assignment)
+                        } else {
+                            val result = HashMap<Int, Colors>()
+                            val assignmentCopy = HashMap(assignment)
+                            for (s in eval(True)) result[s] = tt
+                            for (state in 0 until stateCount) {
+                                assignmentCopy[formula.name] = state
+                                val inner = verify(formula.target, assignmentCopy)
+                                result.keys.forEach {
+                                    result[it] = result[it]!! and inner[it]
+                                }
                             }
+                            result.asStateMap(ff)
                         }
-                        result.asStateMap(ff)
                     }
                     is Formula.FirstOrder.Exists -> {
                         //The bound:        exists x in A : B
                         //actually means:   exists x: (at x: A) && B
                         //not:              exists x: (at x: A) => B
-                        val result = HashMap<Int, Colors>()
-                        val assignmentCopy = HashMap(assignment)
-                        val bound = verify(formula.bound, assignment)
-                        for (state in 0 until stateCount) {
-                            assignmentCopy[formula.name] = state
-                            val inner = verify(formula.target, assignmentCopy)
-                            inner.forEach { result[it] = (result[it] ?: ff) or (inner[it] and bound[state]) }
+                        if (formula.bound != True) {
+                            verify(exists(formula.name, True, at(formula.name, formula.bound) and formula.target), assignment)
+                        } else {
+                            val result = HashMap<Int, Colors>()
+                            val assignmentCopy = HashMap(assignment)
+                            //val bound = verify(formula.bound, assignment)
+                            for (state in 0 until stateCount) {
+                                assignmentCopy[formula.name] = state
+                                val inner = verify(formula.target, assignmentCopy)
+                                inner.forEach { result[it] = (result[it] ?: ff) or inner[it] }
+                            }
+                            result.asStateMap(ff)
                         }
-                        result.asStateMap(ff)
                     }
                 }
 
@@ -110,7 +114,7 @@ class Checker<Colors>(
                     is Formula.Hybrid.At -> {
                         val state = assignment[formula.name] ?: throw IllegalStateException("Unbound name ${formula.name}")
                         val inner = verify(formula.target, assignment)
-                        inner[state].asConstantStateMap(0 until stateCount, this)
+                        At(state, inner, comm, solver, fragment).computeFixPoint().asStateMap()
                     }
                 }
 

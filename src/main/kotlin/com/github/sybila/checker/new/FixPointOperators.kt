@@ -46,6 +46,31 @@ import java.util.*
 
 //Note: update functions handle true/false colors so we don't have to check it before calling
 
+class At<Colors>(
+        private val name: Int,
+        inner: StateMap<Colors>,
+        comm: Comm<Colors>, solver: Solver<Colors>, fragment: Fragment<Colors>
+) : FixPoint<Colors>(comm, solver, fragment) {
+
+    init {
+        if (name.owner() == id) {
+            update(name, inner[name])
+            for (worker in (0 until comm.size)) {
+                sync(name, worker)
+            }
+        }
+    }
+
+    override fun onUpdate(state: Int, value: Colors) {
+        // do nothing
+    }
+
+    override fun asStateMap(): StateMap<Colors> {
+        return get(name).asConstantStateMap(0 until stateCount, this)
+    }
+
+}
+
 class EX<Colors>(
         timeFlow: Boolean,
         direction: DirectionFormula,
