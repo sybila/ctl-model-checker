@@ -89,7 +89,6 @@ private class Worker<out Params : Any>(
 
             fun resolve(formula: Formula): Operator<Params> {
                 val key = formula
-                println("Resolve $key")
                 return tree.computeIfAbsent(key) {
                     @Suppress("USELESS_CAST", "RemoveExplicitTypeArguments")
                     when (key) {

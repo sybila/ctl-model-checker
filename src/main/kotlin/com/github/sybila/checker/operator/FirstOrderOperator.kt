@@ -23,7 +23,6 @@ class ForAllOperator<out Params : Any>(
     for (state in 0 until stateCount) {
         if (state in b) {
             val i = inner[state]!!.compute()
-            println("I: $state -> ${i.prettyPrint()}")
             result.states().forEach {
                 result[it] = result[it] and (i[it] or b[state].not())
             }
