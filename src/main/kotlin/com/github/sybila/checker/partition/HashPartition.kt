@@ -14,6 +14,6 @@ class HashPartition<Params : Any>(
 
 }
 
-fun <Params : Any> List<Model<Params>>.asHashPartitions(count: Int): List<HashPartition<Params>> {
+fun <Params : Any> List<Model<Params>>.asHashPartitions(): List<HashPartition<Params>> {
     return this.mapIndexed { i, model -> HashPartition(i, this.size, model) }
 }

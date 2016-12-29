@@ -38,7 +38,8 @@ class ContinuousStateMap<Params : Any>(
         return  key >= 0 && key < data.size && data[state.toKey()] != null
     }
 
-    override val sizeHint: Int = size
+    override val sizeHint: Int
+        get() = size
 
     override fun set(state: Int, value: Params) {
         val key = state.toKey()

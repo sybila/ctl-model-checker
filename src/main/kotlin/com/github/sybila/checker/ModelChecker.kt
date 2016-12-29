@@ -115,7 +115,9 @@ private class Worker<out Params : Any>(
                             //Until operators are not slower, because the path null check is fast and easily predicted
                             is Formula.Simple.Future -> if (key.quantifier.isExistential()) {
                                 ExistsUntilOperator(key.quantifier.isNormalTimeFlow(), key.direction, null, resolve(key.inner), channel)
-                            } else throw IllegalStateException()
+                            } else {
+                                AllUntilOperator(key.quantifier.isNormalTimeFlow(), key.direction, null, resolve(key.inner), channel)
+                            }
                             //EwX = !AX!
                             //AwX = !EX!
                             is Formula.Simple.WeakNext -> resolve(not(Formula.Simple.Next(
@@ -126,7 +128,9 @@ private class Worker<out Params : Any>(
                         }
                         is Formula.Until -> if (key.quantifier.isExistential()) {
                             ExistsUntilOperator(key.quantifier.isNormalTimeFlow(), key.direction, resolve(key.path), resolve(key.reach), channel)
-                        } else throw IllegalStateException()
+                        } else {
+                            AllUntilOperator(key.quantifier.isNormalTimeFlow(), key.direction, resolve(key.path), resolve(key.reach), channel)
+                        }
                         else -> throw IllegalStateException()
                     }
                 }

@@ -20,7 +20,8 @@ class HashStateMap<Params : Any>(
 
     override fun contains(state: Int): Boolean = state in map
 
-    override val sizeHint: Int = map.size
+    override val sizeHint: Int
+        get() = map.size
 
     override fun set(state: Int, value: Params) {
         map[state] = value
