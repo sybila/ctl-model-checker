@@ -22,7 +22,7 @@ class IntSetSolver(
 
     override fun Set<Int>.minimize() {}
 
-    override fun Set<Int>.byteSize(): Int = 4 * this.size
+    override fun Set<Int>.byteSize(): Int = 4 + 4 * this.size
 
     override fun ByteBuffer.putColors(colors: Set<Int>): ByteBuffer = this.apply {
         this.putInt(colors.size)

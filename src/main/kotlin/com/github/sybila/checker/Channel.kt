@@ -19,6 +19,6 @@ interface Channel<Params : Any> : Partition<Params> {
      *
      * @Contract array.size == partitionCount
      */
-    fun mapReduce(outgoing: Array<List<Pair<Int, Params>>?>, solver: Solver<Params>): List<Pair<Int, Params>>?
+    fun mapReduce(outgoing: Array<List<Pair<Int, Params>>?>): List<Pair<Int, Params>>?
 
 }

@@ -2,7 +2,6 @@ package com.github.sybila.checker.channel
 
 import com.github.sybila.checker.Channel
 import com.github.sybila.checker.Partition
-import com.github.sybila.checker.new.Solver
 import com.github.sybila.checker.new.obtainBuffer
 import com.github.sybila.checker.new.recycleBuffer
 import java.nio.ByteBuffer
@@ -33,19 +32,19 @@ class SharedMemChannel<Params : Any> private constructor(
         }
     }
 
-    override fun mapReduce(outgoing: Array<List<Pair<Int, Params>>?>, solver: Solver<Params>): List<Pair<Int, Params>>? {
+    override fun mapReduce(outgoing: Array<List<Pair<Int, Params>>?>): List<Pair<Int, Params>>? {
         // prepare buffers
         val buffers = outgoing.map { list ->
             list?.let { list ->
                 val bufferSize = list.fold(4) { a, pair ->
-                    a + 4 + solver.run { pair.second.byteSize() }
+                    a + 4 + pair.second.byteSize()
                 }
-                val buffer = obtainBuffer(bufferSize)
+                val buffer = obtainBuffer(2*bufferSize)
                 buffer.clear()
                 buffer.putInt(list.size)
                 list.forEach {
                     buffer.putInt(it.first)
-                    solver.run { buffer.putColors(it.second) }
+                    buffer.putColors(it.second)
                 }
                 buffer.flip()
                 buffer
@@ -58,14 +57,14 @@ class SharedMemChannel<Params : Any> private constructor(
         }
         barrier.await()
         // all transmissions are in place. Check if somebody sent something and then collect your data
-        val done = channels.all { it.any { it == null } }
+        val done = channels.all { it.all { it == null } }
         val result: List<Pair<Int, Params>>?
         if (!done) {
             result = ArrayList<Pair<Int, Params>>()
             channels[partitionId].forEach {
                 it?.let { buffer ->
                     repeat(buffer.int) {
-                        result.add(buffer.int to solver.run { buffer.getColors() })
+                        result.add(buffer.int to buffer.getColors())
                     }
                 }
             }

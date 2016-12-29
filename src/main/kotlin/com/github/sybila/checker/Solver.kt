@@ -100,6 +100,17 @@ interface Solver<Params : Any> {
     fun Params.transferTo(solver: Solver<Params>): Params
 
     /**
+     * Return true if value in state map has changed.
+     */
+    fun MutableStateMap<Params>.setOrUnion(state: Int, value: Params): Boolean {
+        val current = this[state]
+        return if (value andNot current) {
+            this[state] = value or current
+            true
+        } else false
+    }
+
+    /**
      * Create a human readable version of this params object.
      */
     fun Params.prettyPrint(): String
@@ -118,7 +129,6 @@ interface Solver<Params : Any> {
 
     fun StateMap<Params>.assertDeepEquals(other: StateMap<Params>) {
         if (!this.deepEquals(other)) {
-            //TODO: Pretty printing
             throw IllegalStateException("Expected ${this.prettyPrint()}, but got ${other.prettyPrint()}")
         }
     }
@@ -132,6 +142,12 @@ interface Solver<Params : Any> {
                 a or solver.run { states[key].transferTo(this@Solver) }
             }
             expected equals actual
+        }
+    }
+
+    fun StateMap<Params>.assertDeepEquals(partitions: List<Pair<Solver<Params>, StateMap<Params>>>) {
+        if (!this.deepEquals(partitions)) {
+            throw IllegalStateException("Expected ${this.prettyPrint()}, but got ${partitions.map { it.first.run { it.second.prettyPrint() } }}")
         }
     }
 

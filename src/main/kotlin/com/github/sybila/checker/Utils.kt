@@ -1,7 +1,6 @@
 package com.github.sybila.checker
 
-import com.github.sybila.huctl.Formula
-import com.github.sybila.huctl.mapLeafs
+import com.github.sybila.huctl.*
 import java.util.*
 
 fun Formula.canonicalReferences(): Formula {
@@ -22,3 +21,30 @@ fun Formula.canonicalReferences(): Formula {
     }
 }
 
+fun DirectionFormula.Atom.Proposition.negate(): DirectionFormula.Atom.Proposition {
+    return if (this.facet == Facet.POSITIVE) this.name.decreaseProp() else this.name.increaseProp()
+}
+
+fun DirectionFormula.eval(at: DirectionFormula.Atom): Boolean = when (this) {
+    is DirectionFormula.Atom.True -> true
+    is DirectionFormula.Atom.Proposition -> this == at
+    is DirectionFormula.Bool.And -> this.left.eval(at) && this.right.eval(at)
+    is DirectionFormula.Bool.Or -> this.left.eval(at) || this.right.eval(at)
+    is DirectionFormula.Bool.Implies -> !this.left.eval(at) || this.right.eval(at)
+    is DirectionFormula.Bool.Equals -> this.left.eval(at) == this.right.eval(at)
+    is DirectionFormula.Not -> !this.inner.eval(at)
+    else -> false
+}
+
+fun String.increaseProp(): DirectionFormula.Atom.Proposition = DirectionFormula.Atom.Proposition(this, Facet.POSITIVE)
+fun String.decreaseProp(): DirectionFormula.Atom.Proposition = DirectionFormula.Atom.Proposition(this, Facet.NEGATIVE)
+
+fun PathQuantifier.invertCardinality(): PathQuantifier = when (this) {
+    PathQuantifier.A -> PathQuantifier.E
+    PathQuantifier.E -> PathQuantifier.A
+    PathQuantifier.pA -> PathQuantifier.pE
+    PathQuantifier.pE -> PathQuantifier.pA
+}
+
+fun PathQuantifier.isExistential(): Boolean = this == PathQuantifier.E || this == PathQuantifier.pE
+fun PathQuantifier.isNormalTimeFlow(): Boolean = this == PathQuantifier.E || this == PathQuantifier.A

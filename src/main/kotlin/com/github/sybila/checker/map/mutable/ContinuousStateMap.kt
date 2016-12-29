@@ -29,26 +29,25 @@ class ContinuousStateMap<Params : Any>(
             }.iterator()
 
     override fun get(state: Int): Params {
-        @Suppress("UNCHECKED_CAST") //only params objects are inserted
-        val value = data[state.toKey()] as Params?
-        return value ?: default
+        @Suppress("UNCHECKED_CAST") //only params objects are inserted and contains checks for null
+        return if (state in this) data[state.toKey()] as Params else default
     }
 
-    override fun contains(state: Int): Boolean = data[state.toKey()] != null
+    override fun contains(state: Int): Boolean {
+        val key = state.toKey()
+        return  key >= 0 && key < data.size && data[state.toKey()] != null
+    }
 
     override val sizeHint: Int = size
 
     override fun set(state: Int, value: Params) {
         val key = state.toKey()
+        if (key < 0 || key >= data.size) throw IndexOutOfBoundsException("Map holds values [$from, $to), but index $this was given.")
         if (data[key] == null) size += 1
-        data[state.toKey()] = value
+        data[key] = value
     }
 
-    private fun Int.toKey(): Int {
-        val key = this - from
-        if (key < 0 || key >= to) throw IndexOutOfBoundsException("Map holds values [$from, $to), but index $this was given.")
-        return key
-    }
+    private fun Int.toKey(): Int = this - from
 
     private fun Int.toState(): Int = this + from
 

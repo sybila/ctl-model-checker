@@ -106,6 +106,12 @@ private class Worker<out Params : Any>(
                             is Formula.Bool.Implies -> resolve(not(key.left) or key.right)
                             is Formula.Bool.Equals -> resolve((key.left and key.right) or (not(key.left) and not(key.right)))
                         }
+                        is Formula.Simple<*> -> when (key as Formula.Simple<*>) {
+                            is Formula.Simple.Next -> if (key.quantifier.isExistential()) {
+                                ExistsNextOperator(key.quantifier.isNormalTimeFlow(), key.direction, resolve(key.inner), channel)
+                            } else throw IllegalStateException()
+                            else -> throw IllegalStateException()
+                        }
                         else -> throw IllegalStateException()
                     }
                 }

@@ -20,9 +20,8 @@ private val fullColors = (1..4).toSet()
  * control flow)
  */
 internal class RegularFragment(
-        override val stateCount: Int,
-        solver: Solver<Set<Int>>
-) : Model<Set<Int>>, Solver<Set<Int>> by solver {
+        override val stateCount: Int
+) : Model<Set<Int>>, Solver<Set<Int>> by IntSetSolver(fullColors) {
 
     override fun Int.successors(timeFlow: Boolean): Iterator<Transition<Set<Int>>> {
         throw UnsupportedOperationException("not implemented")
@@ -59,8 +58,7 @@ abstract class BooleanVerificationTest {
     internal fun sequentialTest(formula: Formula, expected: RegularFragment.() -> StateMap<Set<Int>>) {
         val stateCount = 2000
 
-        val solver = IntSetSolver(fullColors)
-        val model = RegularFragment(stateCount, solver)
+        val model = RegularFragment(stateCount)
 
         model.run {
             SequentialChecker(model).use { checker ->
@@ -74,8 +72,7 @@ abstract class BooleanVerificationTest {
         val stateCount = intervals.last().last + 1
         val partitionCount = intervals.size
 
-        val solvers = (1..partitionCount).map { IntSetSolver(fullColors) }
-        val models = solvers.map { RegularFragment(stateCount, it) }
+        val models = (1..stateCount).map { RegularFragment(stateCount) }
         val partitions = models.zip(intervals).asIntervalPartitions()
 
         Checker(partitions.connectWithSharedMemory()).use { checker ->

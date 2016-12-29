@@ -1,7 +1,10 @@
 package com.github.sybila.checker.partition
 
 import com.github.sybila.checker.Model
+import com.github.sybila.checker.MutableStateMap
 import com.github.sybila.checker.Partition
+import com.github.sybila.checker.map.mutable.ContinuousStateMap
+import com.github.sybila.checker.map.mutable.HashStateMap
 
 
 class UniformPartition<Params : Any>(
@@ -16,6 +19,11 @@ class UniformPartition<Params : Any>(
 
     override fun Int.owner(): Int = this / statesPerPartition
 
+    override fun newMutableMap(partition: Int): MutableStateMap<Params> {
+        return if (partition == partitionId) {
+            ContinuousStateMap(partition * statesPerPartition, (partition + 1) * statesPerPartition, ff)
+        } else HashStateMap(ff)
+    }
 }
 
 fun <Params : Any> List<Model<Params>>.asUniformPartitions(): List<UniformPartition<Params>> {

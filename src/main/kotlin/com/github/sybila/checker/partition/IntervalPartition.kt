@@ -1,7 +1,10 @@
 package com.github.sybila.checker.partition
 
 import com.github.sybila.checker.Model
+import com.github.sybila.checker.MutableStateMap
 import com.github.sybila.checker.Partition
+import com.github.sybila.checker.map.mutable.ContinuousStateMap
+import com.github.sybila.checker.map.mutable.HashStateMap
 
 class IntervalPartition<Params: Any>(
         override val partitionId: Int,
@@ -14,6 +17,13 @@ class IntervalPartition<Params: Any>(
     override fun Int.owner(): Int = intervals.indexOfFirst { this in it }
 
     fun myInterval(): IntRange = intervals[partitionId]
+
+    override fun newMutableMap(partition: Int): MutableStateMap<Params> {
+        return if (partition == partitionId) {
+            val range = intervals[partition]
+            ContinuousStateMap(range.first, range.last + 1, ff)
+        } else HashStateMap(ff)
+    }
 }
 
 fun <Params : Any> List<Pair<Model<Params>, IntRange>>.asIntervalPartitions(): List<IntervalPartition<Params>> {

@@ -1,6 +1,6 @@
 package com.github.sybila.checker
 
-import com.github.sybila.checker.new.*
+import com.github.sybila.checker.solver.IntSetSolver
 import com.github.sybila.huctl.*
 
 
@@ -18,15 +18,29 @@ import com.github.sybila.huctl.*
  *
  * See: <a href="https://photos.google.com/share/AF1QipMGw9XEJiI9rMSw-u-JuOowwhKEuKuLWkWw-hAL8ZE84-QkBqkkX4d8fj2GEmkFpw?key=WnB0Vm94RDkwSGk0eU16enl4ZXAtUFNvLXM0SUN3">image</a>
  */
-/*
+
 class ReachModel(
         private val dimensions: Int,
-        private val dimensionSize: Int,
-        private val partitionFunction: PartitionFunction = object : PartitionFunction {
-            override val id: Int = 0
-            override fun Int.owner(): Int = 0
+        private val dimensionSize: Int
+) : Model<Set<Int>>, Solver<Set<Int>> by IntSetSolver((0..((dimensionSize - 1) * dimensions + 1)).toSet()) {
+
+
+    /**
+     * Use these propositions in your model queries, nothing else is supported!
+     */
+    enum class Prop : () -> Formula.Atom.Float {
+        UPPER_CORNER, LOWER_CORNER, CENTER, BORDER, UPPER_HALF;
+
+        override fun invoke(): Formula.Atom.Float {
+            return when (this) {
+                UPPER_CORNER -> "upper".asVariable() gt 0.0.asConstant()
+                LOWER_CORNER -> "lower".asVariable() gt 0.0.asConstant()
+                CENTER -> "center".asVariable() gt 0.0.asConstant()
+                BORDER -> "border".asVariable() gt 0.0.asConstant()
+                UPPER_HALF -> "upper_half".asVariable() gt 0.0.asConstant()
+            }
         }
-) : Fragment<Set<Int>>, PartitionFunction by partitionFunction {
+    }
 
     init {
         assert(dimensionSize > 0)
@@ -36,28 +50,6 @@ class ReachModel(
     }
 
     override val stateCount = pow(dimensionSize, dimensions)
-
-    val states = Array(stateCount) { it }
-
-    val parameters = (0..((dimensionSize - 1) * dimensions + 1)).toSet()
-
-    /**
-     * Use these propositions in your model queries, nothing else is supported!
-     */
-    enum class Prop : () -> Formula.Atom {
-        UPPER_CORNER, LOWER_CORNER, CENTER, BORDER, UPPER_HALF;
-
-        override fun invoke(): Formula.Atom {
-            return when (this) {
-                //TODO: Change to references - check if possible to support this in parser safely
-                UPPER_CORNER -> "upper".positiveIn()
-                LOWER_CORNER -> "lower".positiveIn()
-                CENTER -> "center".positiveIn()
-                BORDER -> "border".positiveIn()
-                UPPER_HALF -> "upper_half".positiveIn()
-            }
-        }
-    }
 
     /**
      * Helper function to extract a coordinate from node id
@@ -81,34 +73,43 @@ class ReachModel(
         }.toSet()
     }
 
-    override fun step(from: Int, future: Boolean): Iterator<Transition<Set<Int>>> {
-        val r = (if (future) {
-            (0 until dimensions)
-                    .filter { extractCoordinate(from, it) + 1 < dimensionSize } //don't escape from model
-                    .map { from + pow(dimensionSize, it) }
+    private fun step(from: Int, successors: Boolean, timeFlow: Boolean): Iterator<Transition<Set<Int>>> {
+        val dim = (0 until dimensions).asSequence()
+        val step = if (successors == timeFlow) {
+            dim .filter { extractCoordinate(from, it) + 1 < dimensionSize }
+                .map { it to from + pow(dimensionSize, it) }
         } else {
-            (0 until dimensions)
-                    .filter { extractCoordinate(from, it) - 1 > -1 }            //don't escape from model
-                    .map { from - pow(dimensionSize, it) }                   //create new id
-        }.map { Transition(it, it.toString().increaseProp(), stateColors(it)) } +
-                listOf(Transition(from, DirectionFormula.Atom.Loop, parameters - stateColors(from))))
-        return r.iterator()
+            dim .filter { extractCoordinate(from, it) - 1 > -1 }
+                .map { it to from - pow(dimensionSize, it) }
+        }
+        val transitions = step.map {
+            val state = it.second
+            val dimName = it.first.toString()
+            Transition(state, if (timeFlow) dimName.increaseProp() else dimName.decreaseProp(), stateColors(state))
+        }
+        val loop = Transition(from, DirectionFormula.Atom.Loop, stateColors(from).not())
+        return (transitions + sequenceOf(loop)).iterator()
     }
 
-    override fun eval(atom: com.github.sybila.huctl.Formula.Atom): StateMap<Set<Int>> {
-        return (when (atom) {
-            True -> states.asIterable()
-            False -> listOf<Int>()
-            Prop.CENTER() -> listOf(states[toStateIndex((1..dimensions).map { dimensionSize / 2 })])
-            Prop.BORDER() -> states.filter { state ->
+    override fun Int.successors(timeFlow: Boolean): Iterator<Transition<Set<Int>>> = step(this, true, timeFlow)
+
+    override fun Int.predecessors(timeFlow: Boolean): Iterator<Transition<Set<Int>>> = step(this, false, timeFlow)
+
+    override fun Formula.Atom.Float.eval(): StateMap<Set<Int>> {
+        return when (this) {
+            Prop.CENTER() -> toStateIndex((1..dimensions).map { dimensionSize / 2 }).asStateMap(tt)
+            Prop.UPPER_CORNER() -> toStateIndex((1..dimensions).map { dimensionSize - 1 }).asStateMap(tt)
+            Prop.LOWER_CORNER() -> toStateIndex((1..dimensions).map { 0 }).asStateMap(tt)
+            Prop.BORDER() -> (0 until stateCount).asSequence().filter { state ->
                 (0 until dimensions).any { val c = extractCoordinate(state, it); c == 0 || c == dimensionSize - 1 }
-            }
-            Prop.UPPER_CORNER() -> listOf(states[toStateIndex((1..dimensions).map { dimensionSize - 1 })])
-            Prop.LOWER_CORNER() -> listOf(states[toStateIndex((1..dimensions).map { 0 })])
-            Prop.UPPER_HALF() -> states.filter { state ->
+            }.associateBy({it}, { tt }).asStateMap()
+            Prop.UPPER_HALF() -> (0 until stateCount).asSequence().filter { state ->
                 (0 until dimensions).all { extractCoordinate(state, it) >= dimensionSize/2 }
-            }
-            else -> throw IllegalArgumentException("Unknown proposition $atom")
-        }).filter { it.owner() == id }.associateBy({it}, { parameters }).asStateMap(setOf())
+            }.associateBy({it}, { tt }).asStateMap()
+            else -> throw IllegalStateException("Unexpected atom $this")
+        }
     }
-}*/
+
+    override fun Formula.Atom.Transition.eval(): StateMap<Set<Int>> { throw UnsupportedOperationException("not implemented") }
+
+}
