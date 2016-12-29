@@ -3,7 +3,6 @@
 Model: A copy of the tree model with parameter restrictions.
 
 Parameters: There is a parameter for each path (leaf) in the tree.
-Note: The tree now contains deadlocks, but it shouldn't matter, since we are only testing AF/EF.
 
 */
 
@@ -21,6 +20,11 @@ Note: The tree now contains deadlocks, but it shouldn't matter, since we are onl
 :edges r21 -(p211)> r211, r21 -(p212)> r212, r22 -(p221)> r221, r22 -(p222)> r222
 
 :edges r111 -> r111, r112 -> r112, r121 -> r121, r122 -> r122, r211 -> r211, r212 -> r212, r221 -> r221, r222 -> r222
+
+//add self loops to non-leaves to ensure infinite paths
+:edges r1 -(p211,p212,p221,p222)> r1, r2 -(p111,p112,p121,p122)> r2
+:edges r11 -(p121,p122,p211,p212,p221,p222)> r11, r12 -(p111,p112,p211,p212,p221,p222)> r12
+:edges r21 -(p111,p112,p121,p122,p221,p222)> r21, r22 -(p111,p112,p121,p122,p211,p212)> r22
 
 :atom "2*leaf == 0" = [r112, r122, r212, r222]
 :atom "2*leaf == 1" = [r111, r121, r211, r221]
