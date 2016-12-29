@@ -19,7 +19,7 @@ class UniformPartition<Params : Any>(
 
     override fun Int.owner(): Int = this / statesPerPartition
 
-    override fun newMutableMap(partition: Int): MutableStateMap<Params> {
+    override fun newLocalMutableMap(partition: Int): MutableStateMap<Params> {
         return if (partition == partitionId) {
             ContinuousStateMap(partition * statesPerPartition, (partition + 1) * statesPerPartition, ff)
         } else HashStateMap(ff)

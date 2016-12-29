@@ -41,11 +41,14 @@ interface Partition<Params : Any> : Model<Params> {
     operator fun contains(state: Int): Boolean = state.owner() == partitionId
 
     /**
-     * Create a new mutable map that will be used to store states from given partition.
+     * Create a new mutable map that will be used to store states only from given partition.
+     *
+     * Read operations on such map are still permitted for every state (just return false),
+     * but write operations can fail if the state is not part of the partition.
      *
      * (This way the best map implementation for a specific partition can be chosen)
      */
-    fun newMutableMap(partition: Int): MutableStateMap<Params> = HashStateMap(ff)
+    fun newLocalMutableMap(partition: Int): MutableStateMap<Params> = HashStateMap(ff)
 
     fun StateMap<Params>.restrictToPartition(): StateMap<Params> = PartitionStateMap(this, this@Partition)
 

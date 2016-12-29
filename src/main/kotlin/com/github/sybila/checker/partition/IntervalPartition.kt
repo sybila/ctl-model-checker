@@ -18,7 +18,7 @@ class IntervalPartition<Params: Any>(
 
     fun myInterval(): IntRange = intervals[partitionId]
 
-    override fun newMutableMap(partition: Int): MutableStateMap<Params> {
+    override fun newLocalMutableMap(partition: Int): MutableStateMap<Params> {
         return if (partition == partitionId) {
             val range = intervals[partition]
             ContinuousStateMap(range.first, range.last + 1, ff)
