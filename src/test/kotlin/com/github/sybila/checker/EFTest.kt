@@ -1,6 +1,6 @@
 package com.github.sybila.checker
 
-import com.github.sybila.checker.ReachModel.Prop.*
+//import com.github.sybila.checker.ReachModel.Prop.*
 import com.github.sybila.checker.new.*
 import com.github.sybila.huctl.EF
 import com.github.sybila.huctl.EU
@@ -10,6 +10,7 @@ import org.junit.Test
 import java.util.*
 import kotlin.test.assertEquals
 
+/*
 class SequentialExistsFutureTest {
 
     @Test
@@ -150,7 +151,7 @@ abstract class ConcurrentExistsFutureTest {
         val models = partitions.map { ReachModel(dimensions, dimensionSize, it) }
         val solvers = models.map { EnumeratedSolver(it.parameters) }
 
-        val checker = Checker(SharedMemComm(models.size), models.zip(solvers))
+        val checker = Checker(SharedMemChannel(models.size), models.zip(solvers))
 
         assertDeepEquals(
                 globalChecker.verify(EF(LOWER_CORNER()))[0] to globalSolver,
@@ -206,4 +207,4 @@ abstract class ConcurrentExistsFutureTest {
     @Test
     fun largeAsymmetric2() = generalModel(5, 7)
 
-}
+}*/

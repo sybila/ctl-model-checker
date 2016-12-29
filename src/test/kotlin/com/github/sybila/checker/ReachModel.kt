@@ -18,6 +18,7 @@ import com.github.sybila.huctl.*
  *
  * See: <a href="https://photos.google.com/share/AF1QipMGw9XEJiI9rMSw-u-JuOowwhKEuKuLWkWw-hAL8ZE84-QkBqkkX4d8fj2GEmkFpw?key=WnB0Vm94RDkwSGk0eU16enl4ZXAtUFNvLXM0SUN3">image</a>
  */
+/*
 class ReachModel(
         private val dimensions: Int,
         private val dimensionSize: Int,
@@ -110,4 +111,4 @@ class ReachModel(
             else -> throw IllegalArgumentException("Unknown proposition $atom")
         }).filter { it.owner() == id }.associateBy({it}, { parameters }).asStateMap(setOf())
     }
-}
+}*/

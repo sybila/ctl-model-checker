@@ -1,11 +1,12 @@
 package com.github.sybila.checker
 
-import com.github.sybila.checker.ReachModel.Prop.*
+//import com.github.sybila.checker.ReachModel.Prop.*
 import com.github.sybila.checker.new.*
 import com.github.sybila.huctl.EX
 import org.junit.Test
 import java.util.*
 
+/*
 class SequentialExistsNextTest {
 
     @Test(timeout = 500)
@@ -167,7 +168,7 @@ abstract class ConcurrentExistsNextTest {
         }
         val solvers = models.map { EnumeratedSolver(it.parameters) }
 
-        val checker = Checker(SharedMemComm(models.size), models.zip(solvers))
+        val checker = Checker(SharedMemChannel(models.size), models.zip(solvers))
 
         assertDeepEquals(
                 globalChecker.verify(EX(LOWER_CORNER()))[0] to globalSolver,
@@ -213,4 +214,4 @@ abstract class ConcurrentExistsNextTest {
     @Test(timeout = 5000)
     fun largeAsymmetric2() = generalModel(5, 7)
 
-}
+}*/
