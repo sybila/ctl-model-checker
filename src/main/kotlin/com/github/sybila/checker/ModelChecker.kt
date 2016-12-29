@@ -114,9 +114,14 @@ private class Worker<out Params : Any>(
                             }
                             //Until operators are not slower, because the path null check is fast and easily predicted
                             is Formula.Simple.Future -> if (key.quantifier.isExistential()) {
-                                ExistsUntilOperator(key.quantifier.isNormalTimeFlow(), key.direction, null, resolve(key.inner), channel)
+                                ExistsUntilOperator(key.quantifier.isNormalTimeFlow(), key.direction, false, null, resolve(key.inner), channel)
                             } else {
-                                AllUntilOperator(key.quantifier.isNormalTimeFlow(), key.direction, null, resolve(key.inner), channel)
+                                AllUntilOperator(key.quantifier.isNormalTimeFlow(), key.direction, false, null, resolve(key.inner), channel)
+                            }
+                            is Formula.Simple.WeakFuture -> if (key.quantifier.isExistential()) {
+                                ExistsUntilOperator(key.quantifier.isNormalTimeFlow(), key.direction, true, null, resolve(key.inner), channel)
+                            } else {
+                                AllUntilOperator(key.quantifier.isNormalTimeFlow(), key.direction, true, null, resolve(key.inner), channel)
                             }
                             //EwX = !AX!
                             //AwX = !EX!
@@ -124,12 +129,25 @@ private class Worker<out Params : Any>(
                                     key.quantifier.invertCardinality(),
                                     not(key.inner), key.direction
                             )))
+                            //EG = !AF! / !AwF!
+                            //AG = !EG! / !EwF!
+                            is Formula.Simple.Globally -> if (key.direction == DirectionFormula.Atom.True) {
+                                resolve(not(Formula.Simple.Future(
+                                        key.quantifier.invertCardinality(),
+                                        not(key.inner), key.direction
+                                )))
+                            } else {
+                                resolve(not(Formula.Simple.WeakFuture(
+                                        key.quantifier.invertCardinality(),
+                                        not(key.inner), key.direction
+                                )))
+                            }
                             else -> throw IllegalStateException()
                         }
                         is Formula.Until -> if (key.quantifier.isExistential()) {
-                            ExistsUntilOperator(key.quantifier.isNormalTimeFlow(), key.direction, resolve(key.path), resolve(key.reach), channel)
+                            ExistsUntilOperator(key.quantifier.isNormalTimeFlow(), key.direction, false, resolve(key.path), resolve(key.reach), channel)
                         } else {
-                            AllUntilOperator(key.quantifier.isNormalTimeFlow(), key.direction, resolve(key.path), resolve(key.reach), channel)
+                            AllUntilOperator(key.quantifier.isNormalTimeFlow(), key.direction, false, resolve(key.path), resolve(key.reach), channel)
                         }
                         else -> throw IllegalStateException()
                     }

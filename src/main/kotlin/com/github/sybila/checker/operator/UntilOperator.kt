@@ -9,7 +9,7 @@ import java.util.*
 
 //EU works based on value notification - what is sent is valid and should be saved.
 class ExistsUntilOperator<out Params : Any>(
-        timeFlow: Boolean, direction: DirectionFormula,
+        timeFlow: Boolean, direction: DirectionFormula, weak: Boolean = false,
         pathOp: Operator<Params>?, reach: Operator<Params>, partition: Channel<Params>
 ) : LazyOperator<Params>(partition, {
 
@@ -22,9 +22,22 @@ class ExistsUntilOperator<out Params : Any>(
     val send = HashSet<Int>()
 
     //load local data
-    for ((state, value) in reach.compute().entries()) {
-        result.setOrUnion(state, value)
-        recompute.add(state)
+    if (!weak) {
+        for ((state, value) in reach.compute().entries()) {
+            result.setOrUnion(state, value)
+            recompute.add(state)
+        }
+    } else {
+        val r = reach.compute()
+        (0 until stateCount).filter { it in this }.forEach { state ->
+            val existsWrongDirection = state.successors(timeFlow).asSequence().fold(ff) { a, t ->
+                if (!direction.eval(t.direction)) a or t.bound else a
+            }
+            val value = r[state] or existsWrongDirection
+            if (value.canSat() && result.setOrUnion(state, value)) {
+                recompute.add(state)
+            }
+        }
     }
 
     var received: List<Pair<Int, Params>>? = null
@@ -75,7 +88,7 @@ class ExistsUntilOperator<out Params : Any>(
 
 //AU works based on dependency notification - when something increases, it is propagated to dependencies
 class AllUntilOperator<out Params : Any>(
-        timeFlow: Boolean, direction: DirectionFormula,
+        timeFlow: Boolean, direction: DirectionFormula, weak: Boolean = false,
         pathOp: Operator<Params>?, reach: Operator<Params>, partition: Channel<Params>
 ) : LazyOperator<Params>(partition, {
 
@@ -103,11 +116,26 @@ class AllUntilOperator<out Params : Any>(
         }
     }
 
-    for ((state, value) in reach.compute().entries()) {
-        result.setOrUnion(state, value)
-        satisfied[partitionId].setOrUnion(state, value)
-        state.notifyCandidates(value)
+    if (!weak) {
+        for ((state, value) in reach.compute().entries()) {
+            result.setOrUnion(state, value)
+            satisfied[partitionId][state] = result[state]
+            state.notifyCandidates(value)
+        }
+    } else {
+        val r = reach.compute()
+        (0 until stateCount).filter { it in this }.forEach { state ->
+            val existsValidDirection = state.successors(timeFlow).asSequence().fold(ff) { a, t ->
+                if (direction.eval(t.direction)) a or t.bound else a
+            }
+            val value = r[state] or existsValidDirection.not()  //proposition or deadlock
+            if (value.canSat() && result.setOrUnion(state, value)) {
+                satisfied[partitionId][state] = result[state]
+                state.notifyCandidates(value)
+            }
+        }
     }
+
 
     var received: List<Pair<Int, Params>>? = null
 
@@ -145,7 +173,6 @@ class AllUntilOperator<out Params : Any>(
         } while (candidates.isNotEmpty())
         //all local computation is done - exchange info with other workers!
 
-        //println("$partitionId: $send ${satisfied.map { it.sizeHint.toString() + ": " + it.prettyPrint() }}")
         received = mapReduce(satisfied.prepareFilteredTransmission(partitionId, send))
         send.clear()
     } while (received != null)
