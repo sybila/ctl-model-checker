@@ -2,8 +2,8 @@ package com.github.sybila.checker.channel
 
 import com.github.sybila.checker.Channel
 import com.github.sybila.checker.Partition
-import com.github.sybila.checker.new.obtainBuffer
-import com.github.sybila.checker.new.recycleBuffer
+import com.github.sybila.checker.channel.obtainBuffer
+import com.github.sybila.checker.channel.recycleBuffer
 import java.nio.ByteBuffer
 import java.util.*
 import java.util.concurrent.CyclicBarrier

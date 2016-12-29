@@ -1,7 +1,5 @@
 package com.github.sybila.checker
 
-import com.github.sybila.checker.new.Solver
-
 
 /**
  * All communication actions are global synchronization events.

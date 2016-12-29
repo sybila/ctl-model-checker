@@ -1,4 +1,4 @@
-package com.github.sybila.checker.new
+package com.github.sybila.checker.channel
 
 import java.nio.ByteBuffer
 import java.util.*
