@@ -1,83 +1,73 @@
 package com.github.sybila.checker
 
-//import com.github.sybila.checker.ReachModel.Prop.*
-import com.github.sybila.checker.new.*
+import com.github.sybila.checker.ReachModel.Prop.*
+import com.github.sybila.checker.channel.connectWithSharedMemory
+import com.github.sybila.checker.map.mutable.ContinuousStateMap
+import com.github.sybila.checker.partition.asUniformPartitions
 import com.github.sybila.huctl.EF
 import com.github.sybila.huctl.EU
 import com.github.sybila.huctl.False
-import com.github.sybila.huctl.True
 import org.junit.Test
-import java.util.*
-import kotlin.test.assertEquals
 
-/*
+
 class SequentialExistsFutureTest {
 
     @Test
     fun oneStateModel() {
 
-        val model = ReachModel(1, 1)
-        val solver = EnumeratedSolver(model.parameters)
+        ReachModel(1,1).run {
+            SequentialChecker(this).use { checker ->
+                val expected = 0.asStateMap(tt)
 
-        val checker = Checker(model, solver)
-
-        val expected = mapOf(0 to setOf(0, 1)).asStateMap(solver.ff)
-
-        assertEquals(expected, checker.verify(EF(UPPER_CORNER()))[0])
-        assertEquals(expected, checker.verify(EF(LOWER_CORNER()))[0])
-        assertEquals(expected, checker.verify(EF(CENTER()))[0])
-        assertEquals(expected, checker.verify(EF(BORDER()))[0])
+                expected.assertDeepEquals(checker.verify(EF(UPPER_CORNER())))
+                expected.assertDeepEquals(checker.verify(EF(LOWER_CORNER())))
+                expected.assertDeepEquals(checker.verify(EF(CENTER())))
+                expected.assertDeepEquals(checker.verify(EF(BORDER())))
+            }
+        }
 
     }
 
     fun chainModel(chainSize: Int) {
 
-        val model = ReachModel(1, chainSize)
-        val solver = EnumeratedSolver(model.parameters)
+        ReachModel(1, chainSize).run {
+            SequentialChecker(this).use { checker ->
 
-        val checker = Checker(model, solver)
+                LOWER_CORNER().eval().assertDeepEquals(checker.verify(EF(LOWER_CORNER())))
 
-        assertDeepEquals(model.eval(ReachModel.Prop.LOWER_CORNER()), checker.verify(EF(LOWER_CORNER()))[0], solver)
+                val reach = ContinuousStateMap(0, stateCount, ff)
+                (0 until stateCount).forEach { reach[it] = stateColors(it) }
 
-        val efUpperCorner = HashMap<Int, Set<Int>>()
-        model.eval(UPPER_CORNER()).forEach { efUpperCorner[it] = solver.tt }
-        model.eval(True).forEach { if (it !in efUpperCorner) efUpperCorner[it] = model.stateColors(it) }
+                (UPPER_CORNER().eval() lazyOr reach).assertDeepEquals(checker.verify(EF(UPPER_CORNER())))
 
-        assertDeepEquals(efUpperCorner.asStateMap(solver.ff), checker.verify(EF(UPPER_CORNER()))[0], solver)
-
-        val efBorder = HashMap<Int, Set<Int>>()
-        model.eval(BORDER()).forEach { efBorder[it] = solver.tt }
-        model.eval(True).forEach { if (it !in efBorder) efBorder[it] = model.stateColors(it) }
-
-        assertDeepEquals(efBorder.asStateMap(solver.ff), checker.verify(EF(BORDER()))[0], solver)
+                (BORDER().eval() lazyOr reach).assertDeepEquals(checker.verify(EF(BORDER())))
+            }
+        }
 
     }
 
     fun generalModel(dimensions: Int, dimensionSize: Int) {
 
-        val model = ReachModel(dimensions, dimensionSize)
-        val solver = EnumeratedSolver(model.parameters)
+        ReachModel(dimensions, dimensionSize).run {
+            SequentialChecker(this).use { checker ->
 
-        val checker = Checker(model, solver)
+                LOWER_CORNER().eval().assertDeepEquals(checker.verify(EF(LOWER_CORNER())))
 
-        assertDeepEquals(model.eval(LOWER_CORNER()), checker.verify(EF(LOWER_CORNER()))[0], solver)
+                val reach = ContinuousStateMap(0, stateCount, ff)
+                (0 until stateCount).forEach { reach[it] = stateColors(it) }
 
-        val efUpperCorner = HashMap<Int, Set<Int>>()
-        model.eval(True).forEach { efUpperCorner[it] = model.stateColors(it) }
-        model.eval(UPPER_CORNER()).forEach { efUpperCorner[it] = solver.tt }
-        assertDeepEquals(efUpperCorner.asStateMap(solver.ff), checker.verify(EF(UPPER_CORNER()))[0], solver)
+                (UPPER_CORNER().eval() lazyOr reach).assertDeepEquals(checker.verify(EF(UPPER_CORNER())))
 
-        val efBorder = HashMap<Int, Set<Int>>()
-        model.eval(True).forEach { efBorder[it] = model.stateColors(it) }
-        model.eval(BORDER()).forEach { efBorder[it] = solver.tt }
-        assertDeepEquals(efBorder.asStateMap(solver.ff), checker.verify(EF(BORDER()))[0], solver)
+                (BORDER().eval() lazyOr reach).assertDeepEquals(checker.verify(EF(BORDER())))
 
-        assertDeepEquals(model.eval(BORDER()), checker.verify(False EU BORDER())[0], solver)
+                BORDER().eval().assertDeepEquals(checker.verify(False EU BORDER()))
 
-        val euBorder = HashMap<Int, Set<Int>>()
-        model.eval(BORDER()).forEach { euBorder[it] = model.stateColors(it) }
-        model.eval(UPPER_CORNER()).forEach { euBorder[it] = solver.tt }
-        assertDeepEquals(euBorder.asStateMap(solver.ff), checker.verify(BORDER() EU UPPER_CORNER())[0], solver)
+                (UPPER_CORNER().eval() lazyOr (reach lazyAnd BORDER().eval())).assertDeepEquals(
+                        checker.verify(BORDER() EU UPPER_CORNER())
+                )
+            }
+        }
+
     }
 
     @Test
@@ -136,47 +126,27 @@ abstract class ConcurrentExistsFutureTest {
 
     fun generalModel(dimensions: Int, dimensionSize: Int) {
 
-        val globalModel = ReachModel(dimensions, dimensionSize)
-        val globalSolver = EnumeratedSolver(globalModel.parameters)
-        val globalChecker = Checker(globalModel, globalSolver)
+        ReachModel(dimensions, dimensionSize).run {
+            SequentialChecker(this).use { sequential ->
 
-        //This might not work for the last state if it's not rounded correctly
-        val const = Math.ceil(globalModel.stateCount.toDouble() / workers.toDouble()).toInt()
+                val partitions = (0 until workers).map { ReachModel(dimensions, dimensionSize) }.asUniformPartitions()
 
-        val partitions = (0 until workers).map { myId ->
-            if (const == 0) UniformPartitionFunction(myId) else
-                FunctionalPartitionFunction(myId) { it / const }
+                Checker(partitions.connectWithSharedMemory()).use { parallel ->
+
+                    val formulas = listOf(
+                            EF(LOWER_CORNER()),
+                            EF(UPPER_CORNER()),
+                            EF(BORDER()),
+                            False EU BORDER(),
+                            BORDER() EU UPPER_CORNER()
+                    )
+
+                    formulas.forEach {
+                        sequential.verify(it).assertDeepEquals(partitions.zip(parallel.verify(it)))
+                    }
+                }
+            }
         }
-
-        val models = partitions.map { ReachModel(dimensions, dimensionSize, it) }
-        val solvers = models.map { EnumeratedSolver(it.parameters) }
-
-        val checker = Checker(SharedMemChannel(models.size), models.zip(solvers))
-
-        assertDeepEquals(
-                globalChecker.verify(EF(LOWER_CORNER()))[0] to globalSolver,
-                checker.verify(EF(LOWER_CORNER())).zip(solvers)
-        )
-
-        assertDeepEquals(
-                globalChecker.verify(EF(UPPER_CORNER()))[0] to globalSolver,
-                checker.verify(EF(UPPER_CORNER())).zip(solvers)
-        )
-
-        assertDeepEquals(
-                globalChecker.verify(EF(BORDER()))[0] to globalSolver,
-                checker.verify(EF(BORDER())).zip(solvers)
-        )
-
-        assertDeepEquals(
-                globalChecker.verify(False EU BORDER())[0] to globalSolver,
-                checker.verify(False EU BORDER()).zip(solvers)
-        )
-
-        assertDeepEquals(
-                globalChecker.verify(BORDER() EU UPPER_CORNER())[0] to globalSolver,
-                checker.verify(BORDER() EU UPPER_CORNER()).zip(solvers)
-        )
 
     }
 
@@ -207,4 +177,4 @@ abstract class ConcurrentExistsFutureTest {
     @Test
     fun largeAsymmetric2() = generalModel(5, 7)
 
-}*/
+}

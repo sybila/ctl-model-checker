@@ -133,20 +133,20 @@ abstract class ConcurrentExistsNextTest {
 
         ReachModel(dimensions, dimensionSize).run {
             SequentialChecker(this).use { sequential ->
+
                 val partitions = (0 until workers).map { ReachModel(dimensions, dimensionSize) }.asUniformPartitions()
+
                 Checker(partitions.connectWithSharedMemory()).use { parallel ->
 
-                    sequential.verify(EX(LOWER_CORNER())).assertDeepEquals(
-                            partitions.zip(parallel.verify(EX(LOWER_CORNER())))
+                    val formulas = listOf(
+                            EX(LOWER_CORNER()),
+                            EX(UPPER_CORNER()),
+                            EX(BORDER())
                     )
 
-                    sequential.verify(EX(UPPER_CORNER())).assertDeepEquals(
-                            partitions.zip(parallel.verify(EX(UPPER_CORNER())))
-                    )
-
-                    sequential.verify(EX(BORDER())).assertDeepEquals(
-                            partitions.zip(parallel.verify(EX(BORDER())))
-                    )
+                    formulas.forEach {
+                        sequential.verify(it).assertDeepEquals(partitions.zip(parallel.verify(it)))
+                    }
 
                 }
             }

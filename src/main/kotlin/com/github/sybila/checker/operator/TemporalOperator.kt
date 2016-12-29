@@ -6,9 +6,18 @@ import com.github.sybila.checker.StateMap
 import com.github.sybila.checker.eval
 import com.github.sybila.checker.map.mutable.HashStateMap
 import com.github.sybila.huctl.DirectionFormula
+import java.util.*
 
 private fun <Params : Any> List<StateMap<Params>>.prepareTransmission(partitionId: Int): Array<List<Pair<Int, Params>>?>
         = this  .mapIndexed { i, map -> if (i == partitionId) null else map.entries().asSequence().toList() }
+                .map { if (it?.isEmpty() ?: true) null else it }.toTypedArray()
+
+private fun <Params : Any> List<StateMap<Params>>.prepareFilteredTransmission(
+        partitionId: Int, include: Set<Int>
+): Array<List<Pair<Int, Params>>?>
+        = this  .mapIndexed { i, map ->
+                    if (i == partitionId) null else map.entries().asSequence().filter { it.first in include }.toList()
+                }
                 .map { if (it?.isEmpty() ?: true) null else it }.toTypedArray()
 
 class ExistsNextOperator<out Params: Any>(
@@ -37,7 +46,7 @@ class ExistsNextOperator<out Params: Any>(
     storage[partitionId]
 })
 
-class AllNextOperators<out Params : Any>(
+class AllNextOperator<out Params : Any>(
         timeFlow: Boolean, direction: DirectionFormula,
         inner: Operator<Params>, partition: Channel<Params>
 ) : LazyOperator<Params>(partition, {
@@ -84,6 +93,71 @@ class AllNextOperators<out Params : Any>(
         }
         if (witness.canSat()) result.setOrUnion(state, witness)
     }
+
+    result
+
+})
+
+class ExistsUntilOperator<out Params : Any>(
+        timeFlow: Boolean, direction: DirectionFormula,
+        pathOp: Operator<Params>?, reach: Operator<Params>, partition: Channel<Params>
+) : LazyOperator<Params>(partition, {
+
+    val path = pathOp?.compute()
+
+    val storage = (0 until partitionCount).map { newLocalMutableMap(it) }
+    val result = storage[partitionId]
+
+    val recompute = HashSet<Int>()
+    val send = HashSet<Int>()
+
+    //load local data
+    for ((state, value) in reach.compute().entries()) {
+        result.setOrUnion(state, value)
+        recompute.add(state)
+    }
+
+    var received: List<Pair<Int, Params>>? = null
+
+    do {
+        received?.forEach {
+            val (state, value) = it
+            val withPath = if (path != null) value and path[state] else value
+            if (withPath.canSat() && result.setOrUnion(state, withPath)) {
+                recompute.add(it.first)
+            }
+        }
+
+        do {
+            val iteration = recompute.toList()
+            recompute.clear()
+            for (state in iteration) {
+                val value = result[state]
+                for ((predecessor, dir, bound) in state.predecessors(timeFlow)) {
+                    if (direction.eval(dir)) {
+                        val owner = predecessor.owner()
+                        if (owner == partitionId) {   //also consider path
+                            val witness = if (path != null) {
+                                value and bound and path[predecessor]
+                            } else value and bound
+                            if (witness.canSat() && result.setOrUnion(predecessor, witness)) {
+                                recompute.add(predecessor)
+                            }
+                        } else {    //path will be handled by receiver
+                            val witness = value and bound
+                            if (witness.canSat() && storage[owner].setOrUnion(predecessor, witness)) {
+                                send.add(predecessor)
+                            }
+                        }
+                    }
+                }
+            }
+        } while (recompute.isNotEmpty())
+        //all local computation is done - exchange info with other workers!
+
+        received = mapReduce(storage.prepareFilteredTransmission(partitionId, send))
+        send.clear()
+    } while (received != null)
 
     result
 
