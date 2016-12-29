@@ -133,17 +133,27 @@ abstract class ConcurrentExistsFutureTest {
 
                 Checker(partitions.connectWithSharedMemory()).use { parallel ->
 
-                    val formulas = listOf(
-                            EF(LOWER_CORNER()),
-                            EF(UPPER_CORNER()),
-                            EF(BORDER()),
-                            False EU BORDER(),
-                            BORDER() EU UPPER_CORNER()
+                    LOWER_CORNER().eval().assertDeepEquals(partitions.zip(parallel.verify(EF(LOWER_CORNER()))))
+
+                    val reach = ContinuousStateMap(0, stateCount, ff)
+                    (0 until stateCount).forEach { reach[it] = stateColors(it) }
+
+                    (UPPER_CORNER().eval() lazyOr reach).assertDeepEquals(
+                            partitions.zip(parallel.verify(EF(UPPER_CORNER())))
                     )
 
-                    formulas.forEach {
-                        sequential.verify(it).assertDeepEquals(partitions.zip(parallel.verify(it)))
-                    }
+                    (BORDER().eval() lazyOr reach).assertDeepEquals(
+                            partitions.zip(parallel.verify(EF(BORDER())))
+                    )
+
+                    BORDER().eval().assertDeepEquals(
+                            partitions.zip(parallel.verify(False EU BORDER()))
+                    )
+
+                    (UPPER_CORNER().eval() lazyOr (reach lazyAnd BORDER().eval())).assertDeepEquals(
+                            partitions.zip(parallel.verify(BORDER() EU UPPER_CORNER()))
+                    )
+
                 }
             }
         }

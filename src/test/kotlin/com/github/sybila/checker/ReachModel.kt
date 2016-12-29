@@ -2,6 +2,7 @@ package com.github.sybila.checker
 
 import com.github.sybila.checker.solver.IntSetSolver
 import com.github.sybila.huctl.*
+import java.util.*
 
 
 /**
@@ -64,13 +65,17 @@ class ReachModel(
     }.sum()
 
 
+    private val colorCache = HashMap<Int, Set<Int>>()
+
     /**
      * Returns the set of colors that can reach upper corner from given state. Very useful ;)
      */
     fun stateColors(state: Int): Set<Int> {
-        return setOf(0) + (0 until dimensions).flatMap { dim ->
-            (1..extractCoordinate(state, dim)).map { it + (dimensionSize - 1) * dim }
-        }.toSet()
+        return colorCache.computeIfAbsent(state) {
+            setOf(0) + (0 until dimensions).flatMap { dim ->
+                (1..extractCoordinate(state, dim)).map { it + (dimensionSize - 1) * dim }
+            }.toSet()
+        }
     }
 
     private fun step(from: Int, successors: Boolean, timeFlow: Boolean): Iterator<Transition<Set<Int>>> {
