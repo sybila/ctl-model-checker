@@ -8,10 +8,10 @@ import java.io.File
 class ExplicitTestExecutor {
 
 
-   /* @Test
+    @Test
     fun runTests() {
         runTests(File("tests"))
-    }*/
+    }
 
     private fun runTests(dir: File) {
         dir.listFiles().forEach {
@@ -21,6 +21,7 @@ class ExplicitTestExecutor {
                 try {
                     it.readLines().joinToString(separator = "\n").asExperiment().invoke()
                 } catch (e: Exception) {
+                    e.printStackTrace()
                     throw AssertionError("Experiment $it failed: $e")
                 }
             }

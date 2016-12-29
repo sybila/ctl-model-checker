@@ -1,9 +1,14 @@
 package com.github.sybila.checker.model
 
+import com.github.sybila.checker.Checker
+import com.github.sybila.checker.Solver
+import com.github.sybila.checker.StateMap
+import com.github.sybila.checker.Transition
 import com.github.sybila.checker.antlr.ModelBaseListener
 import com.github.sybila.checker.antlr.ModelLexer
 import com.github.sybila.checker.antlr.ModelParser
-import com.github.sybila.checker.new.*
+import com.github.sybila.checker.channel.connectWithSharedMemory
+import com.github.sybila.checker.solver.IntSetSolver
 import com.github.sybila.huctl.DirectionFormula
 import com.github.sybila.huctl.Formula
 import com.github.sybila.huctl.HUCTLParser
@@ -29,74 +34,80 @@ fun String.asExperiment(): () -> Unit {
             if (this == -1) throw IllegalStateException("${this@mapState} is not a state name")
         }
 
-        val fullParams = (0..Math.max(0, paramsMapping.size - 1)).toSet()
-        val globalSolver = EnumeratedSolver(fullParams)
-        val partitionMapping = experiment.states.mapIndexed { i, set ->
-            i to set.map(String::mapState)
-        }.toMap()
-        val partitions = experiment.states.mapIndexed { i, set ->
-            ExplicitPartitionFunction(i, inverseMapping = partitionMapping)
-        }
-
-        val solvers = partitions.map { EnumeratedSolver(fullParams) }
-
         fun Set<String>.readColors(solver: Solver<Set<Int>>): Set<Int> = if (this.isEmpty()) solver.tt else {
             this.map(String::mapParam).toSet()
         }
 
-        val fragments: List<Pair<Fragment<Set<Int>>, Solver<Set<Int>>>> = partitions.zip(solvers).map {
-            val (partition, solver) = it
+        val fullParams = (0..Math.max(0, paramsMapping.size - 1)).toSet()
+
+        val globalSolver = IntSetSolver(fullParams)
+
+        val partitioning = experiment.states.map { it.map(String::mapState).toSet() }
+
+        val partitions = (0 until partitioning.size).map {
+            val partition = partitioning[it]
+            val solver = IntSetSolver(fullParams)
+
             val transitionFunction: Map<Int, List<Transition<Set<Int>>>>
-                        = experiment.edges.groupBy { it.from.mapState() }
-                        .mapValues {
-                            it.value.map {
-                                val (from, to, dir, bound) = it
-                                Transition(it.to.mapState(), dir, bound.readColors(solver))
-                            }
+                    = experiment.edges.groupBy { it.from.mapState() }
+                    .mapValues {
+                        it.value.map {
+                            val (from, to, dir, bound) = it
+                            Transition(it.to.mapState(), dir, bound.readColors(solver))
                         }
-            val atom: Map<Formula.Atom, Map<Int, Set<Int>>> = experiment.atom.map {
-                    val (atom, map) = it
+                    }
+
+            val atom: Map<Formula.Atom, StateMap<Set<Int>>> = experiment.atom.map {
+                val (atom, map) = it
+                solver.run {
                     atom to map.mapKeys { it.key.mapState() }.mapValues {
                         it.value.readColors(solver)
-                    }.filterKeys { partition.run { it.owner() == id } }
-                }.toMap()
-            ExplicitFragment(partition, stateMapping.size, stateMapping.indices.filter {
-                partition.run { it.owner() == partition.id }
-            }.toSet(), transitionFunction, atom, solver) to solver
+                    }.filterKeys { it in partition }.asStateMap()
+                }
+            }.toMap()
+
+            ExplicitPartition(
+                    partitionId = it,
+                    partitionCount = partitioning.size,
+                    stateCount = stateMapping.size,
+                    states = partitioning,
+                    successorMap = transitionFunction,
+                    validity = atom,
+                    solver = solver
+            )
         }
 
-        Checker(SharedMemComm(fragments.size), fragments).use { checker ->
+        Checker(partitions.connectWithSharedMemory()).use { checker ->
 
             experiment.verify.forEach {
                 val result = checker.verify(it)
-                println("$it -> ${result.map { map ->
-                    map.map {
-                        stateMapping[it] to map[it].map { paramsMapping[it] }
-                    }.filter { it.second.isNotEmpty() }
-                }}")
+                println("$it -> ${result.zip(partitions).map { it.second.run { it.first.prettyPrint() } }}")
             }
 
             experiment.assert.forEach {
                 println("Check assert ${it.first}")
                 val (formula, input) = it
 
+                globalSolver.run {
+                    val expected: StateMap<Set<Int>> = input.mapKeys {
+                        it.key.mapState()
+                    }.mapValues {
+                        it.value.readColors(globalSolver)
+                    }.asStateMap()
 
-                val expected: StateMap<Set<Int>> = input.mapKeys {
-                    it.key.mapState()
-                }.mapValues {
-                    it.value.readColors(globalSolver)
-                }.asStateMap(globalSolver.ff)
+                    val result = checker.verify(formula)
 
-                val result = checker.verify(formula)
-
-                if (!deepEquals(expected to globalSolver, result.zip(solvers))) {
-                    //Print with original names
-                    throw IllegalStateException("$formula error: expected $input, but got ${result.map { map ->
-                        map.map {
-                            stateMapping[it] to map[it].map { paramsMapping[it] }
-                        }.filter { it.second.isNotEmpty() }
-                    }}")
+                    if (!(expected.deepEquals(partitions.zip(result)))) {
+                        //Print with original names
+                        throw IllegalStateException("$formula error: expected $input, but got ${result.map { map ->
+                            map.entries().asSequence().map {
+                                val (state, params) = it
+                                stateMapping[state] to params.map { paramsMapping[it] }
+                            }.filter { it.second.isNotEmpty() }.toList()
+                        }}")
+                    }
                 }
+
             }
 
         }

@@ -88,9 +88,10 @@ private class Worker<out Params : Any>(
         val dependencyTree: Map<String, Pair<Formula, Operator<Params>>> = HashMap<Formula, Operator<Params>>().let { tree ->
 
             fun resolve(formula: Formula): Operator<Params> {
-                val key = formula.canonicalReferences()
-                return tree[key] ?: run {
-                    @Suppress("USELESS_CAST")
+                val key = formula
+                println("Resolve $key")
+                return tree.computeIfAbsent(key) {
+                    @Suppress("USELESS_CAST", "RemoveExplicitTypeArguments")
                     when (key) {
                         is Formula.Atom -> when (key) {
                             is Formula.Atom.False -> FalseOperator(channel)
@@ -112,7 +113,7 @@ private class Worker<out Params : Any>(
                             } else {
                                 AllNextOperator(key.quantifier.isNormalTimeFlow(), key.direction, resolve(key.inner), channel)
                             }
-                            //Until operators are not slower, because the path null check is fast and easily predicted
+                            //Until operators are not slower, because the path null check is fast and predictable
                             is Formula.Simple.Future -> if (key.quantifier.isExistential()) {
                                 ExistsUntilOperator(key.quantifier.isNormalTimeFlow(), key.direction, false, null, resolve(key.inner), channel)
                             } else {
@@ -148,6 +149,24 @@ private class Worker<out Params : Any>(
                             ExistsUntilOperator(key.quantifier.isNormalTimeFlow(), key.direction, false, resolve(key.path), resolve(key.reach), channel)
                         } else {
                             AllUntilOperator(key.quantifier.isNormalTimeFlow(), key.direction, false, resolve(key.path), resolve(key.reach), channel)
+                        }
+                        is Formula.FirstOrder<*> -> when (key as Formula.FirstOrder<*>) {
+                            //TODO: This is a bug apparently - Params needs to be specified because of list nullity
+                            is Formula.FirstOrder.ForAll -> ForAllOperator<Params>(resolve(True),
+                                    (0 until channel.stateCount).map { resolve(key.target.bindReference(key.name, it)) }.toMutableList(),
+                                    resolve(key.bound), channel
+                            )
+                            is Formula.FirstOrder.Exists -> ExistsOperator<Params>(
+                                    (0 until channel.stateCount).map { resolve(key.target.bindReference(key.name, it)) }.toMutableList(),
+                                    resolve(key.bound), channel
+                            )
+                        }
+                        is Formula.Hybrid<*> -> when (key as Formula.Hybrid<*>) {
+                            is Formula.Hybrid.Bind -> BindOperator<Params>(
+                                    (0 until channel.stateCount).map { resolve(key.target.bindReference(key.name, it)) }.toMutableList(),
+                                    channel
+                            )
+                            is Formula.Hybrid.At -> AtOperator(key.name.toInt(), resolve(key.target), channel)
                         }
                         else -> throw IllegalStateException()
                     }

@@ -21,6 +21,18 @@ fun Formula.canonicalReferences(): Formula {
     }
 }
 
+fun Formula.bindReference(name: String, value: Int): Formula {
+    return this.fold({
+        if (this is Formula.Atom.Reference && this.name == name) {
+            Formula.Atom.Reference(value.toString())
+        } else this
+    }, { inner ->
+        if (this is Formula.Hybrid.At && this.name == name) {
+            Formula.Hybrid.At(value.toString(), inner)
+        } else this.copy(inner)
+    }, Formula.Binary<*>::copy)
+}
+
 fun DirectionFormula.Atom.Proposition.negate(): DirectionFormula.Atom.Proposition {
     return if (this.facet == Facet.POSITIVE) this.name.decreaseProp() else this.name.increaseProp()
 }
