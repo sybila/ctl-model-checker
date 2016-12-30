@@ -88,6 +88,8 @@ private class Worker<out Params : Any>(
         val dependencyTree: Map<String, Pair<Formula, Operator<Params>>> = HashMap<Formula, Operator<Params>>().let { tree ->
 
             fun resolve(formula: Formula): Operator<Params> {
+                //TODO: caching is still suboptimal, because the references are not canonical, so
+                //exists s: forall x: x && s and exists s: forall z: z && s will create two separate trees
                 val key = formula
                 return tree.computeIfAbsent(key) {
                     @Suppress("USELESS_CAST", "RemoveExplicitTypeArguments")
