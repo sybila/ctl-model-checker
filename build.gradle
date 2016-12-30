@@ -13,6 +13,7 @@ buildscript {
 
 plugins {
     id 'com.madvay.tools.build.gitbuildinfo' version '0.1.5-alpha'
+    id "me.champeau.gradle.jmh" version "0.3.1"
 }
 
 apply plugin: 'java'
@@ -71,6 +72,7 @@ task fullJar(type: Jar) {
 sourceSets {
     main.java.srcDirs += 'src/main/kotlin'
     test.java.srcDirs += 'src/test/kotlin'
+    jmh.java.srcDirs += 'src/jmh/kotlin'
 }
 
 task javadocJar(type: Jar) {
