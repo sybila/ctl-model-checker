@@ -1,7 +1,6 @@
 package com.github.sybila.checker
 
 import com.github.sybila.huctl.*
-import java.util.*
 
 fun Formula.bindReference(name: String, value: Int): Formula {
     return this.fold({
