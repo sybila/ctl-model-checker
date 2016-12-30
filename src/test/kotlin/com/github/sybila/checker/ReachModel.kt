@@ -1,6 +1,6 @@
 package com.github.sybila.checker
 
-import com.github.sybila.checker.solver.IntSetSolver
+import com.github.sybila.checker.solver.BitSetSolver
 import com.github.sybila.huctl.*
 import java.util.*
 
@@ -23,7 +23,7 @@ import java.util.*
 class ReachModel(
         private val dimensions: Int,
         private val dimensionSize: Int
-) : Model<Set<Int>>, Solver<Set<Int>> by IntSetSolver((0..((dimensionSize - 1) * dimensions + 1)).toSet()) {
+) : Model<BitSet>, Solver<BitSet> by BitSetSolver((dimensionSize - 1) * dimensions + 2) {
 
 
     /**
@@ -65,20 +65,27 @@ class ReachModel(
     }.sum()
 
 
-    private val colorCache = HashMap<Int, Set<Int>>()
+    private val colorCache = HashMap<Int, BitSet>()
 
     /**
      * Returns the set of colors that can reach upper corner from given state. Very useful ;)
      */
-    fun stateColors(state: Int): Set<Int> {
+    fun stateColors(state: Int): BitSet {
         return colorCache.computeIfAbsent(state) {
-            setOf(0) + (0 until dimensions).flatMap { dim ->
-                (1..extractCoordinate(state, dim)).map { it + (dimensionSize - 1) * dim }
-            }.toSet()
+            val set = BitSet()
+
+            set.set(0)
+            for (dim in 0 until dimensions) {
+                for (p in 1..extractCoordinate(state, dim)) {
+                    set.set(p + (dimensionSize - 1) * dim)
+                }
+            }
+
+            set
         }
     }
 
-    private fun step(from: Int, successors: Boolean, timeFlow: Boolean): Iterator<Transition<Set<Int>>> {
+    private fun step(from: Int, successors: Boolean, timeFlow: Boolean): Iterator<Transition<BitSet>> {
         val dim = (0 until dimensions).asSequence()
         val step = if (successors == timeFlow) {
             dim .filter { extractCoordinate(from, it) + 1 < dimensionSize }
@@ -96,11 +103,11 @@ class ReachModel(
         return (transitions + sequenceOf(loop)).iterator()
     }
 
-    override fun Int.successors(timeFlow: Boolean): Iterator<Transition<Set<Int>>> = step(this, true, timeFlow)
+    override fun Int.successors(timeFlow: Boolean): Iterator<Transition<BitSet>> = step(this, true, timeFlow)
 
-    override fun Int.predecessors(timeFlow: Boolean): Iterator<Transition<Set<Int>>> = step(this, false, timeFlow)
+    override fun Int.predecessors(timeFlow: Boolean): Iterator<Transition<BitSet>> = step(this, false, timeFlow)
 
-    override fun Formula.Atom.Float.eval(): StateMap<Set<Int>> {
+    override fun Formula.Atom.Float.eval(): StateMap<BitSet> {
         return when (this) {
             Prop.CENTER() -> toStateIndex((1..dimensions).map { dimensionSize / 2 }).asStateMap(tt)
             Prop.UPPER_CORNER() -> toStateIndex((1..dimensions).map { dimensionSize - 1 }).asStateMap(tt)
@@ -115,6 +122,6 @@ class ReachModel(
         }
     }
 
-    override fun Formula.Atom.Transition.eval(): StateMap<Set<Int>> { throw UnsupportedOperationException("not implemented") }
+    override fun Formula.Atom.Transition.eval(): StateMap<BitSet> { throw UnsupportedOperationException("not implemented") }
 
 }

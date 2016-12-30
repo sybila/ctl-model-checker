@@ -6,8 +6,9 @@ import com.github.sybila.checker.map.mutable.HashStateMap
 import com.github.sybila.checker.partition.asUniformPartitions
 import com.github.sybila.huctl.EX
 import org.junit.Test
+import java.util.*
 
-private val zero = setOf(0)
+private val zero = BitSet().apply { set(0) }
 
 class SequentialExistsNextTest {
 
@@ -15,7 +16,7 @@ class SequentialExistsNextTest {
     fun oneStateModel() {
         ReachModel(1, 1).run {
             SequentialChecker(this).use { checker ->
-                val expected = 0.asStateMap(setOf(1))
+                val expected = 0.asStateMap(BitSet().apply { set(1) })
 
                 expected.assertDeepEquals(checker.verify(EX(UPPER_CORNER())))
                 expected.assertDeepEquals(checker.verify(EX(LOWER_CORNER())))
@@ -33,8 +34,8 @@ class SequentialExistsNextTest {
                 0.asStateMap(zero.not()).assertDeepEquals(checker.verify(EX(LOWER_CORNER())))
 
                 mapOf(
-                        chainSize - 1 to setOf(chainSize),
-                        chainSize - 2 to (0..(chainSize-2)).toSet()
+                        chainSize - 1 to BitSet().apply { set(chainSize) },
+                        chainSize - 2 to BitSet().apply { for (p in 0..(chainSize-2)) set(p) }
 
                 ).asStateMap().assertDeepEquals(checker.verify(EX(UPPER_CORNER())))
 
