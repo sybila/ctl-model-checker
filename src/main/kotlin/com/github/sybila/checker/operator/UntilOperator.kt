@@ -9,7 +9,7 @@ import java.util.*
 
 //EU works based on value notification - what is sent is valid and should be saved.
 class ExistsUntilOperator<out Params : Any>(
-        timeFlow: Boolean, direction: DirectionFormula, weak: Boolean = false,
+        timeFlow: Boolean, direction: DirectionFormula, weak: Boolean,
         pathOp: Operator<Params>?, reach: Operator<Params>, partition: Channel<Params>
 ) : LazyOperator<Params>(partition, {
 
@@ -88,7 +88,7 @@ class ExistsUntilOperator<out Params : Any>(
 
 //AU works based on dependency notification - when something increases, it is propagated to dependencies
 class AllUntilOperator<out Params : Any>(
-        timeFlow: Boolean, direction: DirectionFormula, weak: Boolean = false,
+        timeFlow: Boolean, direction: DirectionFormula, weak: Boolean,
         pathOp: Operator<Params>?, reach: Operator<Params>, partition: Channel<Params>
 ) : LazyOperator<Params>(partition, {
 

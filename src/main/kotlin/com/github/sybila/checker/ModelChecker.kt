@@ -35,7 +35,7 @@ class SequentialChecker<out Params : Any>(model: Model<Params>) : Closeable {
 
     private val checker = Checker(model)
 
-    fun verify(formula: Formula): StateMap<Params> = checker.verify(formula).first()
+    fun verify(formula: Formula): StateMap<Params> = verify(mapOf("formula" to formula))["formula"]!!
 
     fun verify(formulas: Map<String, Formula>): Map<String, StateMap<Params>>
             = checker.verify(formulas).mapValues { it.value.first() }
@@ -167,7 +167,6 @@ private class Worker<out Params : Any>(
                             )
                             is Formula.Hybrid.At -> AtOperator(key.name.toInt(), resolve(key.target), channel)
                         }
-                        else -> throw IllegalStateException()
                     }
                 }
             }
