@@ -1,0 +1,73 @@
+/*
+
+Model: A copy of the tree model with parameter restrictions.
+
+Parameters: There is a parameter for each path (leaf) in the tree.
+
+*/
+
+:params p111, p112, p121, p122, p211, p212, p221, p222
+
+:states r // root
+:states r1, r2 // level 1
+:edges r -> r, r -(p111, p112, p121, p122)> r1, r -(p211, p212, p221, p222)> r2
+
+:states r11, r12, r21, r22  // level 2
+:edges r1 -(p111, p112)> r11, r1 -(p121, p122)> r12, r2 -(p211,p212)> r21, r2 -(p221, p222)> r22
+
+:states r111, r112, r121, r122, r211, r212, r221, r222  // level 3
+:edges r11 -(p111)> r111, r11 -(p112)> r112, r12 -(p121)> r121, r12 -(p122)> r122
+:edges r21 -(p211)> r211, r21 -(p212)> r212, r22 -(p221)> r221, r22 -(p222)> r222
+
+:edges r111 -> r111, r112 -> r112, r121 -> r121, r122 -> r122, r211 -> r211, r212 -> r212, r221 -> r221, r222 -> r222
+
+//add self loops to non-leaves to ensure infinite paths
+:edges r1 -(p211,p212,p221,p222)> r1, r2 -(p111,p112,p121,p122)> r2
+:edges r11 -(p121,p122,p211,p212,p221,p222)> r11, r12 -(p111,p112,p211,p212,p221,p222)> r12
+:edges r21 -(p111,p112,p121,p122,p221,p222)> r21, r22 -(p111,p112,p121,p122,p211,p212)> r22
+
+:atom "2*leaf == 0" = [r112, r122, r212, r222]
+:atom "2*leaf == 1" = [r111, r121, r211, r221]
+
+:atom "4*leaf == 0" = [r111, r211]
+:atom "4*leaf == 1" = [r112, r212]
+:atom "4*leaf == 2" = [r121, r221]
+:atom "4*leaf == 3" = [r122, r222]
+
+:atom "leaf == 11" = [r111, r112]
+:atom "leaf == 12" = [r121, r122]
+:atom "leaf == 21" = [r211, r212]
+:atom "leaf == 22" = [r221, r222]
+
+:atom "leaf == 1" = [r111, r112, r121, r122]
+:atom "leaf == 2" = [r211, r212, r221, r222]
+
+:atom "leaf == 0" = [r111, r112, r121, r122, r211, r212, r221, r222]
+
+:atom "leaf == 111" = [r111]
+:atom "leaf == 122" = [r122]
+:atom "state == 11" = [r11]
+
+:assert "(EX leaf == 1) && ! leaf == 1" == [r11(p111, p112), r12(p121, p122)]
+:assert "(AX leaf == 2) && ! leaf == 2" == [r21(p211, p212), r22(p221, p222)]
+:assert "AX 2 * leaf == 0 && ! 2 * leaf == 0" == [r11(p112), r12(p122), r21(p212), r22(p222)]
+:assert "EX 2 * leaf == 0 && ! 2 * leaf == 0" == [r11(p112), r12(p122), r21(p212), r22(p222)]
+
+:assert "EF leaf == 11" == [r(p111, p112), r1(p111, p112), r11(p111, p112), r111, r112]
+:assert "(EF 2*leaf == 0 && (! EF 2*leaf == 1)) && !(leaf == 0)" == [r(p112, p122, p212, p222), r1(p112, p122), r2(p212, p222), r11(p112), r12(p122), r21(p212), r22(p222)]
+:assert "!(EF leaf == 111 -> EF state == 11)" == [r111]
+
+//AF does not hold in r, because it has a self-loop
+:assert "AF leaf == 11 && ! leaf == 11" == [r1(p111, p112), r11(p111, p112)]
+:assert "AF leaf == 1 && ! leaf == 1" == [r1(p111,p112,p121, p122), r11(p111,p112), r12(p121, p122)]
+
+:assert "EF 4 * leaf == 1 EU 2 * leaf == 1" == [r111, r121, r211, r221]
+:assert "(!EF leaf == 22) EU leaf == 21" == [r(p212, p211), r2(p212, p211), r21(p212, p211), r211, r212]
+
+:assert "AF leaf == 11 AU leaf == 1" == [r1(p112, p111), r11(p112, p111), r111, r112, r121, r122]
+
+//very convoluted way of saying (AF leaf == 2) && !leaf == 2
+:assert "exists s in !(leaf == 0): !(leaf == 0) && pEF s && at s: AF leaf == 2" == [r2(p211, p212, p221, p222), r21(p211, p212), r22(p221, p222)]
+
+:assert "EF leaf == 111 && EF leaf == 122" == []
+:assert "EF leaf == 111 && EF leaf == 122 && bind x: pAF (EF leaf == 2 && !x)" == []

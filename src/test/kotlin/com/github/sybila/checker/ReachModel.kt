@@ -1,6 +1,8 @@
 package com.github.sybila.checker
 
-import com.github.sybila.ctl.*
+import com.github.sybila.checker.solver.BitSetSolver
+import com.github.sybila.huctl.*
+import java.util.*
 
 
 /**
@@ -8,25 +10,37 @@ import com.github.sybila.ctl.*
  * from one lower corner (0,0..) to upper corner (s-1,s-1,...), while each transition "adds" one color.
  * So border of upper corner can "go through" with almost all colors, while
  * lower corner transitions have only one color (zero)
- * So total number of colors is (size - 1) * dimensions + 1
+ * Total number of colors is (size - 1) * dimensions + 1
  * Color zero goes through the whole model, last color does not have any transitions.
+ *
+ * Note: All transition are increasing.
  *
  * WARNING: This implementation is hilariously inefficient. Really just use for testing.
  *
  * See: <a href="https://photos.google.com/share/AF1QipMGw9XEJiI9rMSw-u-JuOowwhKEuKuLWkWw-hAL8ZE84-QkBqkkX4d8fj2GEmkFpw?key=WnB0Vm94RDkwSGk0eU16enl4ZXAtUFNvLXM0SUN3">image</a>
  */
+
 class ReachModel(
         private val dimensions: Int,
         private val dimensionSize: Int
-) : KripkeFragment<IDNode, IDColors> {
+) : Model<BitSet>, Solver<BitSet> by BitSetSolver((dimensionSize - 1) * dimensions + 2) {
+
 
     /**
      * Use these propositions in your model queries, nothing else is supported!
      */
-    enum class Prop : Atom {
+    enum class Prop : () -> Formula.Atom.Float {
         UPPER_CORNER, LOWER_CORNER, CENTER, BORDER, UPPER_HALF;
-        override val operator: Op = Op.ATOM
-        override val subFormulas: List<Formula> = emptyList()
+
+        override fun invoke(): Formula.Atom.Float {
+            return when (this) {
+                UPPER_CORNER -> "upper".asVariable() gt 0.0.asConstant()
+                LOWER_CORNER -> "lower".asVariable() gt 0.0.asConstant()
+                CENTER -> "center".asVariable() gt 0.0.asConstant()
+                BORDER -> "border".asVariable() gt 0.0.asConstant()
+                UPPER_HALF -> "upper_half".asVariable() gt 0.0.asConstant()
+            }
+        }
     }
 
     init {
@@ -36,16 +50,12 @@ class ReachModel(
         if (size.toLong() > size.toInt()) throw IllegalArgumentException("Model too big: $size")
     }
 
-    val stateCount = pow(dimensionSize, dimensions)
-
-    val states = Array(stateCount) { index -> IDNode(index) }
-
-    val parameters = IDColors((0..((dimensionSize - 1) * dimensions + 1)).toSet())
+    override val stateCount = pow(dimensionSize, dimensions)
 
     /**
      * Helper function to extract a coordinate from node id
      */
-    fun extractCoordinate(node: IDNode, i: Int): Int = (node.id / pow(dimensionSize, i)) % dimensionSize
+    fun extractCoordinate(node: Int, i: Int): Int = (node / pow(dimensionSize, i)) % dimensionSize
 
     /**
      * Encode node coordinates into an index
@@ -54,72 +64,64 @@ class ReachModel(
         e * pow(dimensionSize, i)
     }.sum()
 
+
+    private val colorCache = HashMap<Int, BitSet>()
+
     /**
      * Returns the set of colors that can reach upper corner from given state. Very useful ;)
      */
-    fun stateColors(state: IDNode): IDColors {
-        return IDColors(0) + IDColors((0 until dimensions).flatMap { dim ->
-            (1..extractCoordinate(state, dim)).map { it + (dimensionSize - 1) * dim }
-        }.toSet())
-    }
+    fun stateColors(state: Int): BitSet {
+        return colorCache.computeIfAbsent(state) {
+            val set = BitSet()
 
-    override val successors: IDNode.() -> Nodes<IDNode, IDColors> = {
-        ((0 until dimensions)
-            .filter { extractCoordinate(this, it) + 1 < dimensionSize }
-            .map { this.id + pow(dimensionSize, it) }
-            .associate { id -> Pair(states[id], stateColors(this)) }
-             + Pair(this, parameters - stateColors(this))).toIDNodes()
-    }
+            set.set(0)
+            for (dim in 0 until dimensions) {
+                for (p in 1..extractCoordinate(state, dim)) {
+                    set.set(p + (dimensionSize - 1) * dim)
+                }
+            }
 
-    override val predecessors: IDNode.() -> Nodes<IDNode, IDColors> = {
-        ((0 until dimensions)
-                .filter { extractCoordinate(this, it) - 1 >= 0 }
-                .map { this.id - pow(dimensionSize, it) }
-                .associate { id -> Pair(states[id], stateColors(states[id])) }
-                 + Pair(this, parameters - stateColors(this))).toIDNodes()
-    }
-
-    override fun allNodes(): Nodes<IDNode, IDColors> {
-        return states.associate { Pair(it, parameters) }.toIDNodes()
-    }
-
-    override fun validNodes(a: Atom): Nodes<IDNode, IDColors> {
-        val r = when (a) {
-            True -> allNodes()
-            False -> emptyIDNodes
-            Prop.CENTER -> nodesOf(Pair(states[toStateIndex((1..dimensions).map { dimensionSize / 2 })], parameters))
-            Prop.BORDER -> states.filter { state ->
-                (0 until dimensions).any { val c = extractCoordinate(state, it); c == 0 || c == dimensionSize - 1 }
-            }.associate { Pair(it, parameters) }.toIDNodes()
-            Prop.UPPER_CORNER -> nodesOf(Pair(states[toStateIndex((1..dimensions).map { dimensionSize - 1 })], parameters))
-            Prop.LOWER_CORNER -> nodesOf(Pair(states[toStateIndex((1..dimensions).map { 0 })], parameters))
-            Prop.UPPER_HALF -> states.filter { state -> (0 until dimensions).all { extractCoordinate(state, it) >= dimensionSize/2 } }
-                    .associate { Pair(it, parameters) }.toIDNodes()
-            else -> throw IllegalArgumentException("Unsupported atom: $a")
+            set
         }
-        return r
     }
 
-}
-
-/**
- * Wrapper around ReachModel that hides nodes that are not defined by partition function.
- * Inefficient, but it works fine and is basically a one liner! :)
- */
-class ReachModelPartition(
-        private val model: ReachModel,
-        private val partition: PartitionFunction<IDNode>
-) :
-        KripkeFragment<IDNode, IDColors> by model,
-        PartitionFunction<IDNode> by partition
-{
-
-    override fun allNodes(): Nodes<IDNode, IDColors> {
-        return model.allNodes().entries.filter { partition.myId == it.key.ownerId() }.associate { it.toPair() }.toIDNodes()
+    private fun step(from: Int, successors: Boolean, timeFlow: Boolean): Iterator<Transition<BitSet>> {
+        val dim = (0 until dimensions).asSequence()
+        val step = if (successors == timeFlow) {
+            dim .filter { extractCoordinate(from, it) + 1 < dimensionSize }
+                .map { it to from + pow(dimensionSize, it) }
+        } else {
+            dim .filter { extractCoordinate(from, it) - 1 > -1 }
+                .map { it to from - pow(dimensionSize, it) }
+        }
+        val transitions = step.map {
+            val state = it.second
+            val dimName = it.first.toString()
+            Transition(state, if (timeFlow) dimName.increaseProp() else dimName.decreaseProp(), stateColors(state))
+        }
+        val loop = Transition(from, DirectionFormula.Atom.Loop, stateColors(from).not())
+        return (transitions + sequenceOf(loop)).iterator()
     }
 
-    override fun validNodes(a: Atom): Nodes<IDNode, IDColors> {
-        return model.validNodes(a).entries.filter { partition.myId == it.key.ownerId() }.associate { it.toPair() }.toIDNodes()
+    override fun Int.successors(timeFlow: Boolean): Iterator<Transition<BitSet>> = step(this, true, timeFlow)
+
+    override fun Int.predecessors(timeFlow: Boolean): Iterator<Transition<BitSet>> = step(this, false, timeFlow)
+
+    override fun Formula.Atom.Float.eval(): StateMap<BitSet> {
+        return when (this) {
+            Prop.CENTER() -> toStateIndex((1..dimensions).map { dimensionSize / 2 }).asStateMap(tt)
+            Prop.UPPER_CORNER() -> toStateIndex((1..dimensions).map { dimensionSize - 1 }).asStateMap(tt)
+            Prop.LOWER_CORNER() -> toStateIndex((1..dimensions).map { 0 }).asStateMap(tt)
+            Prop.BORDER() -> (0 until stateCount).asSequence().filter { state ->
+                (0 until dimensions).any { val c = extractCoordinate(state, it); c == 0 || c == dimensionSize - 1 }
+            }.associateBy({it}, { tt }).asStateMap()
+            Prop.UPPER_HALF() -> (0 until stateCount).asSequence().filter { state ->
+                (0 until dimensions).all { extractCoordinate(state, it) >= dimensionSize/2 }
+            }.associateBy({it}, { tt }).asStateMap()
+            else -> throw IllegalStateException("Unexpected atom $this")
+        }
     }
+
+    override fun Formula.Atom.Transition.eval(): StateMap<BitSet> { throw UnsupportedOperationException("not implemented") }
 
 }
