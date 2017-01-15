@@ -185,8 +185,8 @@ class Checker(
         } else {
             (0 until stateCount).forEach { state ->
                 val witness = state.successors(timeFlow)
-                        .map { t -> t.bound.assuming { direction.eval(t.direction) } }  //not direction deadlock
-                        .plus(reach[state])                                             //reachable witness
+                        .map { t -> t.bound.assuming { direction.eval(t.direction) }?.not() }   //invalid direction or
+                        .plus(reach[state])                                                     //reachable witness
                         .asDisjunction()
                 witness?.isSat()?.let {
                     result[state] = it
