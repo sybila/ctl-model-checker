@@ -23,7 +23,7 @@ class ArrayStateMap(
     override fun toString(): String = Arrays.toString(array)
 }
 
-fun Array<Params?>.asStateMap() = ArrayStateMap(this)
+fun Array<Params?>.asStateMap(): StateMap = ArrayStateMap(this)
 
 class MapStateMap(
         private val map: Map<Int, Params>

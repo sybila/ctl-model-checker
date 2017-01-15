@@ -1,5 +1,8 @@
 package com.github.sybila.checker
 
+import com.github.daemontus.asSome
+import com.github.daemontus.map
+import com.github.daemontus.unwrapOr
 import com.github.sybila.checker.map.asStateMap
 import com.github.sybila.checker.map.emptyStateMap
 import com.github.sybila.huctl.*
@@ -15,7 +18,7 @@ class Checker(
 ) : Closeable {
 
     init {
-        if (parallelism < 1) throw IllegalStateException("Can execute on $parallelism threads")
+        if (parallelism < 1) throw IllegalStateException("Can't execute on $parallelism threads")
     }
 
     private val executor = Executors.newFixedThreadPool(parallelism)
@@ -91,10 +94,8 @@ class Checker(
                             transitionSystem.mkAllUntil(key.quantifier.isNormalTimeFlow(), key.direction, false, resolve(key.path), resolve(key.reach))
                         }
                         is Formula.FirstOrder<*> -> when (key as Formula.FirstOrder<*>) {
-                            is Formula.FirstOrder.ForAll -> transitionSystem.mkForAll(
-                                    (0 until transitionSystem.stateCount).map { resolve(key.target.bindReference(key.name, it)) }.toMutableList(),
-                                    resolve(key.bound)
-                            )
+                            //forall x in B: A <=> !exists x in B: !A
+                            is Formula.FirstOrder.ForAll -> resolve(not(Formula.FirstOrder.Exists(key.name, key.bound, not(key.target))))
                             is Formula.FirstOrder.Exists -> transitionSystem.mkExists(
                                     (0 until transitionSystem.stateCount).map { resolve(key.target.bindReference(key.name, it)) }.toMutableList(),
                                     resolve(key.bound)
@@ -123,43 +124,33 @@ class Checker(
         }
     }
 
+    //create a lazy value that is initialized with given transition system
     fun <T> TransitionSystem.lazy(initializer: TransitionSystem.() -> T): Lazy<T> = kotlin.lazy {
         this.run(initializer)
     }
 
     fun TransitionSystem.mkNot(inner: Lazy<StateMap>): Lazy<StateMap> = this.lazy {
-        val valid = inner.value
-        val result = kotlin.arrayOfNulls<Params>(stateCount)
+        val result = Array<Params?>(stateCount) { TT }
 
-        val ack = ArrayList<Future<*>>()
-        for (state in 0 until stateCount) {
-            val v = valid[state]
-            if (v == null) {
-                result[state] = TT
-            } else {
-                ack.add(executor.submit {
-                    val not = Not(v)
-                    result[state] = not.isSat()
-                })
+        inner.value.entries.map {
+            val (state, value) = it
+            executor.submit {
+                result[state] = value.not()?.isSat()
             }
-        }
-        ack.forEach { it.get() }
+        }.map { it.get() }
 
         result.asStateMap()
     }
 
     fun TransitionSystem.mkAnd(left: Lazy<StateMap>, right: Lazy<StateMap>): Lazy<StateMap> = this.lazy {
-        val l = left.value
-        val r = right.value
-        val result = kotlin.arrayOfNulls<Params>(stateCount)
+        val rightMap = right.value
+        val result = arrayOfNulls<Params>(stateCount)
 
         val ack = ArrayList<Future<*>>()
-        for ((s, lp) in l.entries) {
-            val rp = r[s]
-            if (rp != null) {
+        for ((state, leftValue) in left.value.entries) {
+            rightMap[state]?.let { rightValue ->
                 ack.add(executor.submit {
-                    val and = And(listOf(lp, rp))
-                    result[s] = and.isSat()
+                    result[state] = (leftValue and rightValue)?.isSat()
                 })
             }
         }
@@ -171,93 +162,64 @@ class Checker(
     fun TransitionSystem.mkOr(left: Lazy<StateMap>, right: Lazy<StateMap>): Lazy<StateMap> = this.lazy {
         val l = left.value
         val r = right.value
-        val result = kotlin.arrayOfNulls<Params>(stateCount)
-
-        for ((s, lp) in l.entries) {
-            val rp = r[s]
-            if (rp != null) {
-                result[s] = Or(listOf(lp, rp))
-            } else {
-                result[s] = lp
-            }
-        }
-        for ((s, rp) in r.entries) {
-            val current = result[s]
-            if (current == null) {
-                result[s] = rp
-            }
-        }
-
-        result.asStateMap()
+        Array(stateCount) { l[it] or r[it] }.asStateMap()
     }
 
     fun TransitionSystem.mkExistsUntil(
             timeFlow: Boolean, direction: DirectionFormula, weak: Boolean,
-            pathOp: Lazy<StateMap>?, reach: Lazy<StateMap>
+            pathOp: Lazy<StateMap>?, reachOp: Lazy<StateMap>
     ): Lazy<StateMap> = this.lazy {
 
         val path = pathOp?.value
+        val reach = reachOp.value
 
-        val result = kotlin.arrayOfNulls<Params>(stateCount)
+        val result = arrayOfNulls<Params>(stateCount)
 
-        var recompute: List<Int>
+        val recompute = ArrayList<Int>()
 
         if (!weak) {
-            recompute = reach.value.states.toList()
-            for ((state, value) in reach.value.entries) {
+            for ((state, value) in reach.entries) {
                 result[state] = value
+                recompute.add(state)
             }
         } else {
-            val compute = ArrayList<Int>()
-            val r = reach.value
             (0 until stateCount).forEach { state ->
-                val existsWrongDirection = state.successors(timeFlow).asSequence().fold(FF as Params) { a, t ->
-                    if (!direction.eval(t.direction)) a or t.bound else a
-                }
-                val value = (r[state] ?: FF) or existsWrongDirection
-                value.isSat()?.apply {
-                    result[state] = value
-                    compute.add(state)
+                val witness = state.successors(timeFlow)
+                        .map { t -> t.bound.assuming { direction.eval(t.direction) } }  //direction deadlock
+                        .plus(reach[state])                                             //reachable witness
+                        .asDisjunction()
+                witness?.isSat()?.let {
+                    result[state] = it
+                    recompute.add(state)
                 }
             }
-            recompute = compute
         }
 
         do {
             //Map! - only read from results
-            val ack: List<Pair<Int, Params>> = recompute
+            val map: List<Pair<Params, Int>> = recompute
             .map { state ->
                 executor.submit(Callable {
-                    val value = result[state]!!
-                    state.predecessors(timeFlow).asSequence().map { t ->
-                        if (direction.eval(t.direction)) {
-                            (value and t.bound).isSat()?.run { t.target to this }
-                        } else null
-                    }.filterNotNull().filter { (path == null || it.first in path) }.toList()
+                    val value = result[state]
+                    state.predecessors(timeFlow).map { transition ->
+                        transition  .assuming { direction.eval(it.direction) }
+                                    ?.let { sequenceOf(path?.get(it.target), value, it.bound).asConjunction() }
+                                    ?.to(transition.target)
+                    }.filterNotNull().toList()
                 })
             }.flatMap { it.get() }
 
             //Reduce! - only write to results once per state
-            val m = ack.groupBy({ it.first }, { it.second })
-            recompute = m
-                .map { executor.submit(Callable {
-                    val (state, new) = it
-                    val disjunction = if (new.size == 1) new.first() else Or(new)
-                    val withPath = if (path != null) disjunction and path[state]!! else disjunction
-                    val current = result[state]
-                    if (current == null) {
-                        result[state] = withPath
-                        state
-                    } else {
-                        val union = current.extendWith(withPath)
-                        if (union != null) {
-                            result[state] = union
-                            state
-                        } else {
-                            null
-                        }
-                    }
-                }) }.map { it.get() }.filterNotNull()
+            recompute.clear()
+            map .groupBy({ it.second }, { it.first })
+                    .map { executor.submit(Callable {
+                        val (state, new) = it
+                        val pushed = new.asDisjunction()
+                        result[state]?.extendWith(pushed)?.map {
+                            result[state] = it; state
+                        } ?: run { result[state] = pushed; state.asSome() }
+                    }) }
+                    .map { it.get().unwrapOr(null) }.filterNotNullTo(recompute)
         } while (recompute.isNotEmpty())
 
         result.asStateMap()
@@ -265,14 +227,15 @@ class Checker(
 
     fun TransitionSystem.mkAllUntil(
             timeFlow: Boolean, direction: DirectionFormula, weak: Boolean,
-            pathOp: Lazy<StateMap>?, reach: Lazy<StateMap>
+            pathOp: Lazy<StateMap>?, reachOp: Lazy<StateMap>
     ): Lazy<StateMap> = this.lazy {
 
         val path = pathOp?.value
+        val reach = reachOp.value
 
-        val result = kotlin.arrayOfNulls<Params>(stateCount)
+        val result = arrayOfNulls<Params>(stateCount)
 
-        var candidates: Set<Int>
+        val candidates = HashSet<Int>()
 
         if (!weak) {
             for ((state, value) in reach.value.entries) {
@@ -347,23 +310,23 @@ class Checker(
             timeFlow: Boolean, direction: DirectionFormula, inner: Lazy<StateMap>
     ) : Lazy<StateMap> = this.lazy {
 
-        val reach = inner.value
-
         //Map! - only read from results
-        val ack: List<Pair<Int, Params>> = reach.entries
+        val map: Sequence<Pair<Params, Int>> = inner.value.entries
                 .map { entry ->
                     executor.submit(Callable {
                         val (state, value) = entry
-                        state.predecessors(timeFlow).asSequence().map { t ->
-                            if (!direction.eval(t.direction)) null
-                            else (value and t.bound).isSat()?.run { t.target to this }
+                        state.predecessors(timeFlow).map { transition ->
+                            transition
+                                    .assuming { direction.eval(it.direction) }
+                                    ?.let { (value and it.bound)?.isSat() }
+                                    ?.to(transition.target)
                         }.filterNotNull().toList()
                     })
-                }.toList().flatMap { it.get() }
+                }.toList().map { it.get() }.asSequence().flatMap { it.asSequence() }
 
         //Reduce
-        ack.groupBy({ it.first }, { it.second }).mapValues {
-            if(it.value.size == 1) it.value.first() else Or(it.value)
+        map.groupBy({ it.second }, { it.first }).mapValues {
+            it.value.asDisjunction()!!
         }.asStateMap()
     }
 
@@ -373,33 +336,40 @@ class Checker(
 
         val reach = inner.value
 
-        val candidates: Set<Int> = reach.states.asSequence()
-                .flatMap { it.predecessors(timeFlow).asSequence().map { it.target } }
+        val candidates: Set<Int> = reach.states
+                .flatMap { it.predecessors(timeFlow).map { it.target } }
                 .toSet()
 
         candidates.map { state ->
             executor.submit(Callable {
-                val witnessList = state.successors(timeFlow).asSequence()
-                        .map {
-                            if (!direction.eval(it.direction)) it.bound.not()
-                            else (reach[it.target] ?: FF) or it.bound.not()
-                        }.toList()
-                val witness = And(witnessList)
-                witness.isSat()?.let { state to it }
+                val witness = state.successors(timeFlow)
+                        .map { transition ->
+                            val (target, dir, bound) = transition
+                            dir     .assuming { direction.eval(dir) }
+                                    ?.let { reach[target] or bound.not() }
+                            ?: bound.not()
+                        }.asConjunction()
+                witness?.isSat()?.let { state to it }
             })
         }.map { it.get() }.filterNotNull().toMap().asStateMap()
     }
-
+/*
     fun TransitionSystem.mkForAll(
             inner: MutableList<Lazy<StateMap>?>, bound: Lazy<StateMap>
     ) : Lazy<StateMap> = this.lazy {
+
         //forall x in B: A <=> forall x: ((at x: B) => A) <=> forall x: (!(at x: B) || A)
 
-        val b = bound.value
-
+        val boundMap = bound.value
         val result = Array<Params?>(stateCount) { TT }
+
         for (state in 0 until stateCount) {
-            val stateBound = b[state]
+            boundMap[state]?.let { stateBound ->
+                inner[state]?.byTheWay { inner[state] = null }?.value?.entries?.map {
+
+                }
+            }
+            val stateBound = boundMap[state]
             if (stateBound != null) {
                 val i = inner[state]!!.value
                 for (j in 0 until stateCount) {
@@ -418,7 +388,7 @@ class Checker(
         }
 
         result.asStateMap()
-    }
+    }*/
 
     fun TransitionSystem.mkExists(
             inner: MutableList<Lazy<StateMap>?>, bound: Lazy<StateMap>
@@ -426,21 +396,27 @@ class Checker(
 
         //exists x in B: A <=> exists x: ((at x: B) && A)
 
-        val b = bound.value
+        /*
+            for all <=> exists correctness
+            forall x in B: A <=>
+            forall x: ((at x: B) => A) <=>
+            !exists x: !((at x: B) => A) <=>
+            !exists x: ((at x: B) && !A) <=>
+            !exists x in B: !A
+         */
 
+        val boundMap = bound.value
         val result = arrayOfNulls<Params>(stateCount)
-        for (state in 0 until stateCount) {
-            b[state]?.let { stateBound ->
-                val i = inner[state]!!.value
-                i.entries.forEach {
-                    result[it.first] = (result[it.first] ?: FF) or (it.second and stateBound)
-                }
-            }
-            inner[state] = null
-        }
 
-        result.indices.forEach {
-            result[it] = result[it]?.isSat()
+        for (state in 0 until stateCount) {
+            boundMap[state]?.let { stateBound ->
+                inner[state]?.byTheWay { inner[state] = null }?.value?.entries?.map {
+                    executor.submit(Callable {
+                        val (at, value) = it
+                        result[at] = result[at] or (value and stateBound)?.isSat()
+                    })
+                }?.toList()?.forEach { it.get() }
+            }
         }
 
         result.asStateMap()
@@ -450,19 +426,15 @@ class Checker(
     fun TransitionSystem.mkAt(
             state: Int, inner: Lazy<StateMap>
     ) : Lazy<StateMap> = this.lazy {
-        val value = inner.value[state]
-        value?.asStateMap(stateCount) ?: emptyStateMap()
+        inner.value[state]?.asStateMap(stateCount) ?: emptyStateMap()
     }
 
     fun TransitionSystem.mkBind(
             inner: MutableList<Lazy<StateMap>?>
     ) : Lazy<StateMap> = this.lazy {
-        val result = kotlin.arrayOfNulls<Params>(stateCount)
-        for (state in 0 until stateCount) {
-            result[state] = inner[state]!!.value[state]
-            inner[state] = null
-        }
-        result.asStateMap()
+        Array(stateCount) {
+            inner[it]?.byTheWay { inner[it] = null }?.value?.get(it)
+        }.asStateMap()
     }
 
 }

@@ -4,7 +4,7 @@ import com.github.sybila.huctl.Formula
 
 
 /**
- * A transition system tied connected to a solver.
+ * A transition system with successor/predecessor functions and proposition evaluation.
  */
 interface TransitionSystem : Solver {
 
@@ -24,8 +24,8 @@ interface TransitionSystem : Solver {
      *
      * @Contract state \in (0 until stateCount)
      */
-    fun Int.successors(timeFlow: Boolean): Iterator<Transition<Params>>
-    fun Int.predecessors(timeFlow: Boolean): Iterator<Transition<Params>>
+    fun Int.successors(timeFlow: Boolean): Sequence<Transition>
+    fun Int.predecessors(timeFlow: Boolean): Sequence<Transition>
 
     /**
      * Proposition evaluation.

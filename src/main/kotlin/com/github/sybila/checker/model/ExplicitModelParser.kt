@@ -5,7 +5,7 @@ import com.github.sybila.checker.antlr.ModelBaseListener
 import com.github.sybila.checker.antlr.ModelLexer
 import com.github.sybila.checker.antlr.ModelParser
 import com.github.sybila.checker.map.asStateMap
-import com.github.sybila.checker.solver.toParams
+import com.github.sybila.checker.solver.asParams
 import com.github.sybila.huctl.DirectionFormula
 import com.github.sybila.huctl.Formula
 import com.github.sybila.huctl.HUCTLParser
@@ -33,11 +33,11 @@ fun String.asSharedExperiment(): () -> Unit {
 
         val fullParams = (0..Math.max(0, paramsMapping.size - 1)).toSet()
 
-        fun Set<String>.readColors(): Params = if (this.isEmpty()) fullParams.toParams() else {
-            this.map(String::mapParam).toSet().toParams()
+        fun Set<String>.readColors(): Params = if (this.isEmpty()) fullParams.asParams() else {
+            this.map(String::mapParam).toSet().asParams()
         }
 
-        val transitionFunction: Map<Int, List<Transition<Params>>>
+        val transitionFunction: Map<Int, List<Transition>>
                 = experiment.edges.groupBy { it.from.mapState() }
                 .mapValues {
                     it.value.map {
@@ -79,7 +79,7 @@ fun String.asSharedExperiment(): () -> Unit {
 
                     val result = checker.verify(formula)
 
-                    if (!(expected.deepEquals(result))) {
+                    if (!(expected.semanticEquals(result))) {
                         //Print with original names
                         throw IllegalStateException("$formula error: expected ${expected.prettyPrint()}, but got ${result.prettyPrint()}")
                     }

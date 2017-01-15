@@ -69,4 +69,4 @@ class FunMap(
 
 }
 
-fun Int.lazyMap(compute: (Int) -> Params?): StateMap = FunMap(this, compute)
+fun lazyMap(stateCount: Int, compute: (Int) -> Params?): StateMap = FunMap(stateCount, compute)

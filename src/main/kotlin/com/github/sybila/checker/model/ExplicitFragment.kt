@@ -8,7 +8,7 @@ import com.github.sybila.huctl.Formula
 
 class ExplicitPartition(
         override val stateCount: Int,
-        private val successorMap: Map<Int, List<Transition<Params>>>,
+        private val successorMap: Map<Int, List<Transition>>,
         private val validity: Map<Formula.Atom, StateMap>,
         params: Set<Int>
 ) : TransitionSystem, Solver by IntSetSolver(params) {
@@ -18,20 +18,20 @@ class ExplicitPartition(
         it.value.asSequence().map { t -> t.target to Transition(it.key, t.direction, t.bound) }
     }.groupBy({ it.first }, { it.second })
 
-    override fun Int.successors(timeFlow: Boolean): Iterator<Transition<Params>> {
+    override fun Int.successors(timeFlow: Boolean): Sequence<Transition> {
         return ((if (timeFlow) successorMap[this] else predecessorMap[this]?.map {
             if (it.direction is DirectionFormula.Atom.Proposition) {
                 it.copy(direction = it.direction.negate())
             } else it
-        }) ?: listOf()).iterator()
+        }) ?: listOf()).asSequence()
     }
 
-    override fun Int.predecessors(timeFlow: Boolean): Iterator<Transition<Params>> {
+    override fun Int.predecessors(timeFlow: Boolean): Sequence<Transition> {
         return ((if (timeFlow) predecessorMap[this] else successorMap[this]?.map {
             if (it.direction is DirectionFormula.Atom.Proposition) {
                 it.copy(direction = it.direction.negate())
             } else it
-        }) ?: listOf()).iterator()
+        }) ?: listOf()).asSequence()
     }
 
     override fun Formula.Atom.Float.eval(): StateMap {

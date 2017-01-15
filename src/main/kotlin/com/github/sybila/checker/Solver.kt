@@ -1,26 +1,31 @@
 package com.github.sybila.checker
 
+import com.github.daemontus.Option
+
 /**
  * Solver manages parameter set operations.
  *
  * Solver can have internal state, caches, etc. etc.
  * but this has to be implemented in a thread safe manner!
- * (ThreadLocal structures for example)
  */
 interface Solver {
 
     /**
      * Unite [other] parameters with this params set.
-     * If nothing changed due to the addition, return null,
-     * otherwise return new parameter set.
+     *
+     * If resulting parameters contain something more (result andNot this), return them.
+     * If other subset this, return None.
+     *
+     * (the returned parameters can be also optimized in some way)
      */
-    fun Params.extendWith(other: Params): Params?
+    fun Params?.extendWith(other: Params?): Option<Params>
 
     /**
-     * Normal emptiness check.
+     * Classic emptiness check.
+     *
+     * Return null if this is not sat, otherwise return new optimized params object.
      */
     fun Params.isSat(): Params?
-
 
     /**
      * Semantic comparison operators:
@@ -28,34 +33,33 @@ interface Solver {
      * A andNot B = exists x \in A: x \not\in B
      * A equals B = x \in A <-> \in B
      *
-     * (sometimes can be implemented faster)
+     * (these are used mainly for testing, overriding them won't speed up the model checker)
      *
-     * @Complexity: exponential
      */
-    infix fun Params.andNot(other: Params): Boolean = (this and other.not()).isSat() != null
-    infix fun Params.semanticEquals(other: Params): Boolean = !((this or other) andNot (this and other))
+    infix fun Params?.andNot(other: Params?): Boolean = (this and other.not())?.isSat() != null
+    infix fun Params?.semanticEquals(other: Params?): Boolean = !((this or other) andNot (this and other))
 
-    infix fun Params.and(other: Params): Params = And(listOf(this, other))
-    infix fun Params.or(other: Params): Params = Or(listOf(this, other))
-    fun Params.not(): Params = Not(this)
-
-    fun Params.prettyPrint(): String = this.toString()
-    fun StateMap.prettyPrint(): String {
-        return this.entries.asSequence().map { it.first to it.second.prettyPrint() }.joinToString()
-    }
+    /**
+     * Use these functions to override default toString implementation of logical operators.
+     *
+     * (default toString should be equivalent to SMT lib 2)
+     */
+    fun Params?.prettyPrint(): String = this?.let(Params::toString) ?: "(false)"
+    fun StateMap.prettyPrint(): String = this.entries
+            .map { "(${it.first} ${it.second.prettyPrint()})" }
+            .joinToString(prefix = "(map ", postfix = ")")
 
     // Functions for testing
 
-    fun StateMap.deepEquals(other: StateMap): Boolean {
+    fun StateMap.semanticEquals(other: StateMap): Boolean {
         val states = (this.states + other.states).toSet()
         return states.all {
-            //println("Compare ${this[it]} and ${other[it]}")
-            (this[it] ?: FF) semanticEquals (other[it] ?: FF)
+            this[it] semanticEquals other[it]
         }
     }
 
     fun StateMap.assertDeepEquals(other: StateMap) {
-        if (!this.deepEquals(other)) {
+        if (!this.semanticEquals(other)) {
             throw IllegalStateException("Expected ${this.prettyPrint()}, but got ${other.prettyPrint()}")
         }
     }
@@ -63,4 +67,9 @@ interface Solver {
 
 }
 
-class UnsupportedParameterValue(message: Params) : RuntimeException(message.toString())
+/**
+ * Throw this exception if your solver encounters a parameter value which it does not recognize.
+ *
+ * In general, you should support [And], [Or], [Not], [TT], null (False) and whatever you use as propositions.
+ */
+class UnsupportedParameterType(message: Params) : RuntimeException(message.toString())
