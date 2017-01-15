@@ -2,7 +2,10 @@ package com.github.sybila.checker
 
 import com.github.sybila.huctl.*
 
-fun Formula.bindReference(name: String, value: Int): Formula {
+/**
+ * Create formula where reference with given name is substituted with a specific state.
+ */
+internal fun Formula.bindReference(name: String, value: Int): Formula {
     return this.fold({
         if (this is Formula.Atom.Reference && this.name == name) {
             Formula.Atom.Reference(value.toString())
