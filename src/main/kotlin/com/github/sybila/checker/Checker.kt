@@ -86,7 +86,6 @@ class Checker(
                                         com.github.sybila.huctl.not(key.inner), key.direction
                                 )))
                             }
-                            else -> throw IllegalStateException()
                         }
                         is Formula.Until -> if (key.quantifier.isExistential()) {
                             transitionSystem.mkExistsUntil(key.quantifier.isNormalTimeFlow(), key.direction, false, resolve(key.path), resolve(key.reach))
@@ -107,7 +106,6 @@ class Checker(
                             )
                             is Formula.Hybrid.At -> transitionSystem.mkAt(key.name.toInt(), resolve(key.target))
                         }
-                        else -> error("not implemented")
                     }
                 }
             }
