@@ -333,42 +333,6 @@ class Checker(
             })
         }.map { it.get() }.filterNotNull().toMap().asStateMap()
     }
-/*
-    fun TransitionSystem.mkForAll(
-            inner: MutableList<Lazy<StateMap>?>, bound: Lazy<StateMap>
-    ) : Lazy<StateMap> = this.lazy {
-
-        //forall x in B: A <=> forall x: ((at x: B) => A) <=> forall x: (!(at x: B) || A)
-
-        val boundMap = bound.value
-        val result = Array<Params?>(stateCount) { TT }
-
-        for (state in 0 until stateCount) {
-            boundMap[state]?.let { stateBound ->
-                inner[state]?.byTheWay { inner[state] = null }?.value?.entries?.map {
-
-                }
-            }
-            val stateBound = boundMap[state]
-            if (stateBound != null) {
-                val i = inner[state]!!.value
-                for (j in 0 until stateCount) {
-                    val k = i[j]
-                    val current = result[j]
-                    if (current != null) {
-                        if (k != null) {
-                            result[j] = (current and (k or stateBound.not())).isSat()
-                        } else {
-                            result[j] = (current and stateBound.not()).isSat()
-                        }
-                    }
-                }
-            }
-            inner[state] = null //GC!
-        }
-
-        result.asStateMap()
-    }*/
 
     fun TransitionSystem.mkExists(
             inner: MutableList<Lazy<StateMap>?>, bound: Lazy<StateMap>
