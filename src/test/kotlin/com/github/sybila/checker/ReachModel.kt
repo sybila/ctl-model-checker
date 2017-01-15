@@ -86,7 +86,7 @@ class ReachModel(
         }
     }
 
-    private fun step(from: Int, successors: Boolean, timeFlow: Boolean): Iterator<Transition<Params>> {
+    private fun step(from: Int, successors: Boolean, timeFlow: Boolean): Sequence<Transition> {
         val dim = (0 until dimensions).asSequence()
         val step = if (successors == timeFlow) {
             dim .filter { extractCoordinate(from, it) + 1 < dimensionSize }
@@ -101,12 +101,12 @@ class ReachModel(
             Transition(state, if (timeFlow) dimName.increaseProp() else dimName.decreaseProp(), stateColors(state))
         }
         val loop = Transition(from, DirectionFormula.Atom.Loop, Not(stateColors(from)))
-        return (transitions + sequenceOf(loop)).iterator()
+        return (transitions + sequenceOf(loop)).asSequence()
     }
 
-    override fun Int.successors(timeFlow: Boolean): Iterator<Transition<Params>> = step(this, true, timeFlow)
+    override fun Int.successors(timeFlow: Boolean): Sequence<Transition> = step(this, true, timeFlow)
 
-    override fun Int.predecessors(timeFlow: Boolean): Iterator<Transition<Params>> = step(this, false, timeFlow)
+    override fun Int.predecessors(timeFlow: Boolean): Sequence<Transition> = step(this, false, timeFlow)
 
     override fun Formula.Atom.Float.eval(): StateMap {
         return when (this) {

@@ -3,8 +3,7 @@ package com.github.sybila.checker
 import com.github.sybila.checker.map.asStateMap
 import com.github.sybila.checker.map.emptyStateMap
 import com.github.sybila.checker.solver.IntSetSolver
-import com.github.sybila.checker.solver.intSetOf
-import com.github.sybila.checker.solver.toParams
+import com.github.sybila.checker.solver.asParams
 import com.github.sybila.huctl.*
 import org.junit.Test
 
@@ -24,11 +23,11 @@ internal class RegularFragment(
         override val stateCount: Int
 ) : TransitionSystem, Solver by IntSetSolver(fullColors) {
 
-    override fun Int.successors(timeFlow: Boolean): Iterator<Transition<Params>> {
+    override fun Int.successors(timeFlow: Boolean): Sequence<Transition> {
         throw UnsupportedOperationException("not implemented")
     }
 
-    override fun Int.predecessors(timeFlow: Boolean): Iterator<Transition<Params>> {
+    override fun Int.predecessors(timeFlow: Boolean): Sequence<Transition> {
         throw UnsupportedOperationException("not implemented")
     }
 
@@ -36,13 +35,13 @@ internal class RegularFragment(
         val bounds = 0 until stateCount
         return when (this) {
             p1 -> bounds.filter { it % 2 == 0 }.associateBy({it}, {
-                intSetOf(3, 4, if (it % 4 == 0) 1 else 2)
+                setOf(3, 4, if (it % 4 == 0) 1 else 2).asParams()
             }).asStateMap()
             p2 -> bounds.filter { it % 3 == 0 }.associateBy({it}, {
-                intSetOf(2, 3, if (it % 9 == 0) 1 else 4)
+                setOf(2, 3, if (it % 9 == 0) 1 else 4).asParams()
             }).asStateMap()
             p3 -> bounds.filter { it % 5 == 0 }.associateBy({it}, {
-                intSetOf(1, 4, if (it % 25 == 0) 3 else 2)
+                setOf(1, 4, if (it % 25 == 0) 3 else 2).asParams()
             }).asStateMap()
             else -> emptyStateMap()
         }
@@ -79,7 +78,7 @@ class AndVerificationTest : BooleanVerificationTest() {
                     if (it % 4 == 0 && it % 9 == 0) c += setOf(1)
                     if (it % 4 != 0) c += setOf(2)
                     if (it % 9 != 0) c += setOf(4)
-                    c.toParams()
+                    c.asParams()
                 }).asStateMap()
     }
 
@@ -91,7 +90,7 @@ class AndVerificationTest : BooleanVerificationTest() {
                     if (it % 4 != 0 && it % 25 != 0) c += setOf(2)
                     if (it % 25 == 0) c += setOf(3)
                     if (it % 9 != 0) c += setOf(4)
-                    c.toParams()
+                    c.asParams()
                 }).asStateMap()
     }
 
@@ -118,7 +117,7 @@ class OrVerificationTest : BooleanVerificationTest() {
         if (it % 3 == 0 || it % 4 != 0) c += 2
         if (it % 9 == 0 || it % 4 == 0) c += 1
         if (it % 2 == 0 || it % 9 != 0) c += 4
-        c.toParams()
+        c.asParams()
     }).asStateMap()
 
     private fun RegularFragment.nestedExpected()
@@ -128,7 +127,7 @@ class OrVerificationTest : BooleanVerificationTest() {
         if (it % 3 == 0 || (it % 4 != 0 && it % 2 == 0) || (it % 25 != 0 && it % 5 == 0)) c += 2
         if (it % 2 == 0 || it % 3 == 0 || it % 25 == 0) c += 3
         if (it % 2 == 0 || (it % 9 != 0 && it % 3 == 0) || it % 5 == 0) c += 4
-        c.toParams()
+        c.asParams()
     }).asStateMap()
 
     @Test
@@ -153,11 +152,11 @@ class NegationTest : BooleanVerificationTest() {
         if (it % 2 != 0 || it % 4 != 0) c += 1
         if (it % 2 != 0 || it % 4 == 0) c += 2
         if (it % 2 != 0) c += setOf(3, 4)
-        c.toParams()
+        c.asParams()
     }).asStateMap()
 
     @Test
-    fun simpleTest() = test(not(p1), 2000, 1) { simpleExpected() }
+    fun simpleTest() = test(not(p1), 10, 1) { simpleExpected() }
 
     @Test
     fun nestedTest() = test(not(not(p1)), 2000, 1) { p1.eval() }
@@ -182,7 +181,7 @@ class MixedBooleanTest : BooleanVerificationTest() {
             if ((it % 4 != 0 || it % 3 == 0) && (it % 5 != 0 || it % 25 == 0)) c += 2
             if (it % 5 != 0 || it % 25 != 0) c += 3
             if ((it % 2 == 0 || it % 9 != 0) && it % 5 != 0) c += 4
-            c.toParams()
+            c.asParams()
         }).asStateMap()
     }
 
@@ -194,7 +193,7 @@ class MixedBooleanTest : BooleanVerificationTest() {
             if ((it % 4 != 0 || it % 3 == 0) && (it % 5 != 0 || it % 25 == 0)) c += 2
             if (it % 5 != 0 || it % 25 != 0) c += 3
             if ((it % 2 == 0 || it % 9 != 0) && it % 5 != 0) c += 4
-            c.toParams()
+            c.asParams()
         }).asStateMap()
     }
 

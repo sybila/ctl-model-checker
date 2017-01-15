@@ -78,6 +78,7 @@ fun Sequence<Params?>.asConjunction(): Params? {
     for (p in this) {
         when (p) {
             null -> return null
+            TT -> Unit
             is And -> result.addAll(p.args)
             else -> result.add(p)
         }
@@ -93,6 +94,7 @@ fun Sequence<Params?>.asDisjunction(): Params? {
     val result = ArrayList<Params>()
     for (p in this) {
         when (p) {
+            TT -> return TT
             null -> Unit
             is Or -> result.addAll(p.args)
             else -> result.add(p)

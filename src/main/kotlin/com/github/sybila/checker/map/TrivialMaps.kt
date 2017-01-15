@@ -26,7 +26,7 @@ class FullStateMap(
 
 }
 
-fun Params.asStateMap(stateCount: Int) = FullStateMap(stateCount, this)
+fun Params?.asStateMap(stateCount: Int) = this?.let { FullStateMap(stateCount, it) } ?: emptyStateMap()
 
 class SingletonStateMap(
         private val state: Int,
@@ -40,5 +40,5 @@ class SingletonStateMap(
 
 }
 
-fun Int.asStateMap(value: Params) = SingletonStateMap(this, value)
+fun Int.asStateMap(value: Params?) = value?.let {  SingletonStateMap(this, it) } ?: emptyStateMap()
 

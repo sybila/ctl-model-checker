@@ -58,14 +58,14 @@ class Checker(
                             }
                             //Until operators are not slower, because the path null check is fast and predictable
                             is Formula.Simple.Future -> if (key.quantifier.isExistential()) {
-                                transitionSystem.mkExistsUntil(key.quantifier.isNormalTimeFlow(), key.direction, false, null, resolve(key.inner))
+                                transitionSystem.mkExistsUntil(key.quantifier.isNormalTimeFlow(), key.direction, false, resolve(True), resolve(key.inner))
                             } else {
-                                transitionSystem.mkAllUntil(key.quantifier.isNormalTimeFlow(), key.direction, false, null, resolve(key.inner))
+                                transitionSystem.mkAllUntil(key.quantifier.isNormalTimeFlow(), key.direction, false, resolve(True), resolve(key.inner))
                             }
                             is Formula.Simple.WeakFuture -> if (key.quantifier.isExistential()) {
-                                transitionSystem.mkExistsUntil(key.quantifier.isNormalTimeFlow(), key.direction, true, null, resolve(key.inner))
+                                transitionSystem.mkExistsUntil(key.quantifier.isNormalTimeFlow(), key.direction, true, resolve(True), resolve(key.inner))
                             } else {
-                                transitionSystem.mkAllUntil(key.quantifier.isNormalTimeFlow(), key.direction, true, null, resolve(key.inner))
+                                transitionSystem.mkAllUntil(key.quantifier.isNormalTimeFlow(), key.direction, true, resolve(True), resolve(key.inner))
                             }
                             //EwX = !AX!
                             //AwX = !EX!
@@ -137,7 +137,7 @@ class Checker(
             executor.submit {
                 result[state] = value.not()?.isSat()
             }
-        }.map { it.get() }
+        }.forEach { it.get() }
 
         result.asStateMap()
     }
@@ -167,10 +167,10 @@ class Checker(
 
     fun TransitionSystem.mkExistsUntil(
             timeFlow: Boolean, direction: DirectionFormula, weak: Boolean,
-            pathOp: Lazy<StateMap>?, reachOp: Lazy<StateMap>
+            pathOp: Lazy<StateMap>, reachOp: Lazy<StateMap>
     ): Lazy<StateMap> = this.lazy {
 
-        val path = pathOp?.value
+        val path = pathOp.value
         val reach = reachOp.value
 
         val result = arrayOfNulls<Params>(stateCount)
@@ -185,7 +185,7 @@ class Checker(
         } else {
             (0 until stateCount).forEach { state ->
                 val witness = state.successors(timeFlow)
-                        .map { t -> t.bound.assuming { direction.eval(t.direction) } }  //direction deadlock
+                        .map { t -> t.bound.assuming { direction.eval(t.direction) } }  //not direction deadlock
                         .plus(reach[state])                                             //reachable witness
                         .asDisjunction()
                 witness?.isSat()?.let {
@@ -201,10 +201,10 @@ class Checker(
             .map { state ->
                 executor.submit(Callable {
                     val value = result[state]
-                    state.predecessors(timeFlow).map { transition ->
-                        transition  .assuming { direction.eval(it.direction) }
-                                    ?.let { sequenceOf(path?.get(it.target), value, it.bound).asConjunction() }
-                                    ?.to(transition.target)
+                    state.predecessors(timeFlow).map { t ->
+                        t   .assuming { direction.eval(it.direction) }
+                            ?.let { sequenceOf(path.get(it.target), value, it.bound).asConjunction()?.isSat() }
+                            ?.to(t.target)
                     }.filterNotNull().toList()
                 })
             }.flatMap { it.get() }
@@ -227,10 +227,10 @@ class Checker(
 
     fun TransitionSystem.mkAllUntil(
             timeFlow: Boolean, direction: DirectionFormula, weak: Boolean,
-            pathOp: Lazy<StateMap>?, reachOp: Lazy<StateMap>
+            pathOp: Lazy<StateMap>, reachOp: Lazy<StateMap>
     ): Lazy<StateMap> = this.lazy {
 
-        val path = pathOp?.value
+        val path = pathOp.value
         val reach = reachOp.value
 
         val result = arrayOfNulls<Params>(stateCount)
@@ -238,68 +238,48 @@ class Checker(
         val candidates = HashSet<Int>()
 
         if (!weak) {
-            for ((state, value) in reach.value.entries) {
-                result[state] = value
-            }
-
-            candidates = reach.value.states.asSequence()
-                    .flatMap { it.predecessors(timeFlow).asSequence().map { it.target } }
-                    .filter { path == null || it in path }
-                    .toSet()
+            reach.entries.flatMap {
+                result[it.first] = it.second
+                it.first.predecessors(timeFlow).map { it.target }
+            }.filterTo(candidates) { it in path }
         } else {
-            val r = reach.value
-            val compute = ArrayList<Int>()
-            (0 until stateCount).forEach { state ->
-                val existsValidDirection = state.successors(timeFlow).asSequence().fold(FF as Params) { a, t ->
-                    if (direction.eval(t.direction)) a or t.bound else a
+            (0 until stateCount).asSequence().map { state ->
+                //proposition or !(OR s) <=> proposition or (AND !s)
+                val deadlock = state.successors(timeFlow)
+                        .map { t -> t.bound.assuming { direction.eval(t.direction) }?.not() }
+                        .asConjunction()
+                (reach[state] or deadlock)?.isSat()?.let {
+                    result[state] = it
+                    state
                 }
-                val value = (r[state] ?: FF) or existsValidDirection.not()  //proposition or deadlock
-                value.isSat()?.let { value ->
-                    result[state] = value
-                    compute.add(state)
-                }
-            }
-            candidates = compute.asSequence()
-                    .flatMap { it.predecessors(timeFlow).asSequence().map { it.target } }
-                    .filter { path == null || it in path }
-                    .toSet()
+            }.filterNotNull().flatMap {
+                it.predecessors(timeFlow).map { it.target }
+            }.filterTo(candidates) { it in path }
         }
 
         do {
             //Map! - only read from results
-            val ack: List<Pair<Int, Params>> = candidates
+            val map: List<Pair<Params, Int>> = candidates
                     .map { state ->
                         executor.submit(Callable {
-                            val witnessList = state.successors(timeFlow).asSequence()
-                                    .map {
-                                        if (!direction.eval(it.direction)) it.bound.not()
-                                        else (result[it.target] ?: FF) or it.bound.not()
-                                    }.toList()
-                            val witness = if (path == null) And(witnessList) else And(witnessList + path[state]!!)
-                            witness.isSat()?.let { state to it }
+                            val witness = state.successors(timeFlow).map {
+                                val (target, dir, bound) = it
+                                result[target]?.assuming { direction.eval(dir) } or bound.not()
+                            }.plus(path.get(state)).asConjunction()
+                            witness?.isSat()?.to(state)
                         })
                     }.map { it.get() }.filterNotNull()
 
             //Reduce! - only write to results once per state
-            candidates = ack.map { executor.submit(Callable {
-                val (state, new) = it
-                val current = result[state]
-                val changed = if (current == null) {
-                    result[state] = new
-                    true
-                } else {
-                    val union = current.extendWith(new)
-                    if (union != null) {
-                        result[state] = union
-                        true
-                    } else false
+            candidates.clear()
+            map.map { executor.submit(Callable {
+                val (witness, state) = it
+                (result[state]?.extendWith(witness)?.map {
+                    result[state] = it; state
+                } ?: run { result[state] = witness; state.asSome() }).map {
+                    it.predecessors(timeFlow).map { it.target }.filter { it in path }.toList()
                 }
-                if (!changed) listOf() else {
-                    state.predecessors(timeFlow).asSequence().map { it.target }
-                            .filter { path == null || it in path }
-                            .toList()
-                }
-            }) }.flatMap { it.get() }.toSet()
+            }) }.map { it.get().unwrapOr(null) }.filterNotNull().flatMapTo(candidates) { it }
 
         } while (candidates.isNotEmpty())
 
