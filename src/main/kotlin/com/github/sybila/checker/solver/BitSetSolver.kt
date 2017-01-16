@@ -13,7 +13,7 @@ data class BitSetParams(
 fun BitSet.asParams() = BitSetParams(this)
 
 class BitSetSolver(
-        val size: Int
+        private val size: Int
 ) : Solver {
 
     val universe = BitSet().apply { set(0, size) }
@@ -54,5 +54,13 @@ class BitSetSolver(
         }
         else -> throw UnsupportedParameterType(this)
     }
+
+    override fun Params?.prettyPrint(): String = this.prettyPrint { when (it) {
+        is TT -> universe.prettyPrint()
+        is BitSetParams -> it.bitSet.prettyPrint()
+        else -> throw UnsupportedParameterType(it)
+    } }
+
+    private fun BitSet.prettyPrint() = this.stream().toArray().joinToString(prefix = "(", separator = " ", postfix = ")")
 
 }

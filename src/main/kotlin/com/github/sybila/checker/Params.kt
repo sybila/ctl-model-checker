@@ -26,6 +26,7 @@ interface Params
  */
 data class And(val args: List<Params>) : Params {
     override fun toString(): String = "(and ${args.joinToString(separator = " ")})"
+    constructor(vararg args: Params) : this(args.toList())
 }
 
 /**
@@ -33,6 +34,7 @@ data class And(val args: List<Params>) : Params {
  */
 data class Or(val args: List<Params>) : Params {
     override fun toString(): String = "(or ${args.joinToString(separator = " ")})"
+    constructor(vararg args: Params) : this(args.toList())
 }
 
 /**

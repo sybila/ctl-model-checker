@@ -53,20 +53,3 @@ class AndMap(
 }
 
 infix fun StateMap.lazyAnd(other: StateMap): StateMap = AndMap(this, other)
-
-class FunMap(
-        stateCount: Int,
-        private val compute: (Int) -> Params?
-) : StateMap {
-
-    override val states: Sequence<Int> = (0 until stateCount).asSequence()
-    override val entries: Sequence<Pair<Int, Params>> = states
-            .map { state -> compute(state)?.run { state to this } }.filterNotNull()
-
-    override fun get(state: Int): Params? = compute(state)
-
-    override fun contains(state: Int): Boolean = compute(state) != null
-
-}
-
-fun lazyMap(stateCount: Int, compute: (Int) -> Params?): StateMap = FunMap(stateCount, compute)

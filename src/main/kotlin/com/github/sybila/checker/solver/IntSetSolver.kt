@@ -12,7 +12,7 @@ data class IntSetParams(
 fun Set<Int>.asParams(): Params = IntSetParams(this)
 
 class IntSetSolver(
-        val universe: Set<Int>
+        private val universe: Set<Int>
 ) : Solver {
 
 
@@ -40,5 +40,13 @@ class IntSetSolver(
         is Not -> universe - inner.toSet()
         else -> throw UnsupportedParameterType(this)
     }
+
+    override fun Params?.prettyPrint(): String = this.prettyPrint { when (it) {
+        is TT -> universe.prettyPrint()
+        is IntSetParams -> it.set.prettyPrint()
+        else -> throw UnsupportedParameterType(it)
+    } }
+
+    private fun Set<Int>.prettyPrint() = this.joinToString(prefix = "(", separator = " ", postfix = ")")
 
 }

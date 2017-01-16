@@ -1,6 +1,5 @@
 package com.github.sybila.checker
 
-import com.github.daemontus.asSome
 import com.github.daemontus.map
 import com.github.daemontus.unwrapOr
 import com.github.sybila.checker.map.asStateMap
@@ -201,7 +200,7 @@ class Checker(
                     val value = result[state]
                     state.predecessors(timeFlow).map { t ->
                         t   .assuming { direction.eval(it.direction) }
-                            ?.let { sequenceOf(path.get(it.target), value, it.bound).asConjunction()?.isSat() }
+                            ?.let { sequenceOf(path[it.target], value, it.bound).asConjunction()?.isSat() }
                             ?.to(t.target)
                     }.filterNotNull().toList()
                 })
@@ -213,9 +212,9 @@ class Checker(
                     .map { executor.submit(Callable {
                         val (state, new) = it
                         val pushed = new.asDisjunction()
-                        result[state]?.extendWith(pushed)?.map {
+                        result[state].extendWith(pushed).map {
                             result[state] = it; state
-                        } ?: run { result[state] = pushed; state.asSome() }
+                        }
                     }) }
                     .map { it.get().unwrapOr(null) }.filterNotNullTo(recompute)
         } while (recompute.isNotEmpty())
@@ -263,7 +262,7 @@ class Checker(
                             val witness = state.successors(timeFlow).map {
                                 val (target, dir, bound) = it
                                 result[target]?.assuming { direction.eval(dir) } or bound.not()
-                            }.plus(path.get(state)).asConjunction()
+                            }.plus(path[state]).asConjunction()
                             witness?.isSat()?.to(state)
                         })
                     }.map { it.get() }.filterNotNull()
@@ -272,10 +271,9 @@ class Checker(
             candidates.clear()
             map.map { executor.submit(Callable {
                 val (witness, state) = it
-                (result[state]?.extendWith(witness)?.map {
-                    result[state] = it; state
-                } ?: run { result[state] = witness; state.asSome() }).map {
-                    it.predecessors(timeFlow).map { it.target }.filter { it in path }.toList()
+                result[state].extendWith(witness).map {
+                    result[state] = it
+                    state.predecessors(timeFlow).map { it.target }.filter { it in path }.toList()
                 }
             }) }.map { it.get().unwrapOr(null) }.filterNotNull().flatMapTo(candidates) { it }
 

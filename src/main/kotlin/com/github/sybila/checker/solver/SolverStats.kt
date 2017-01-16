@@ -41,7 +41,7 @@ object SolverStats {
         val total = totalSolverCalls.get()
         val duration = System.currentTimeMillis() - startTime
         output?.println("Total elapse time: $duration ms")
-        output?.println("Average throughput: ${total/(duration/1000)}/s")
+        output?.println("Average throughput: ${total/Math.max(1, duration/1000)}/s")
     }
 
 }

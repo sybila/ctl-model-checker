@@ -47,7 +47,7 @@ interface Solver {
     fun Params?.prettyPrint(): String = this?.let(Params::toString) ?: "(false)"
     fun StateMap.prettyPrint(): String = this.entries
             .map { "(${it.first} ${it.second.prettyPrint()})" }
-            .joinToString(prefix = "(map ", postfix = ")")
+            .joinToString(prefix = "(map ", postfix = ")", separator = " ")
 
     // Functions for testing
 
@@ -73,3 +73,13 @@ interface Solver {
  * In general, you should support [And], [Or], [Not], [TT], null (False) and whatever you use as propositions.
  */
 class UnsupportedParameterType(message: Params) : RuntimeException(message.toString())
+
+fun Params?.prettyPrint(propositions: (Params) -> String): String {
+    return when (this) {
+        null -> "(false)"
+        is And -> this.args.joinToString(separator = " ", prefix = "(and ", postfix = ")") { it.prettyPrint(propositions) }
+        is Or -> this.args.joinToString(separator = " ", prefix = "(or ", postfix = ")") { it.prettyPrint(propositions) }
+        is Not -> "(not ${this.inner.prettyPrint(propositions)})"
+        else -> propositions(this)
+    }
+}
