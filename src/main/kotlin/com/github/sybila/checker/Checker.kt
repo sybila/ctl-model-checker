@@ -182,7 +182,7 @@ class Checker(
 
         val result = arrayOfNulls<Params>(stateCount)
 
-        val recompute = ArrayList<Int>()
+        val recompute = HashSet<Int>()
 
         if (!weak) {
             for ((state, value) in reach.entries) {
