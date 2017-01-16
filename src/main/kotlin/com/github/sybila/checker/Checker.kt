@@ -1,8 +1,5 @@
 package com.github.sybila.checker
 
-import com.github.daemontus.Option
-import com.github.daemontus.asSome
-import com.github.daemontus.egholm.collections.repeat
 import com.github.daemontus.map
 import com.github.daemontus.unwrapOr
 import com.github.sybila.checker.map.asStateMap
@@ -185,114 +182,81 @@ class Checker(
 
         progress?.println("Start operator: EU")
 
+        val result = Array(stateCount) { reach[it] }
 
-        //kotlin.io.println("Reach ${reach.prettyPrint()}")
-        val result = Array<Params?>(stateCount) { reach[it] }
+        val queues = Array<ConcurrentLinkedQueue<Pair<Params, Int>>>(parallelism) {
+            ConcurrentLinkedQueue()
+        }
+        val counter = AtomicLong(0)
 
-        //TODO: weak
-        if (!weak) {
-            val queues = Array<ConcurrentLinkedQueue<Pair<Params, Int>>>(parallelism) {
-                ConcurrentLinkedQueue()
-            }
-            val counter = AtomicLong(0)
-            val barrier = CyclicBarrier(parallelism)
-            reach.states.groupBy { it % parallelism }.map {
-                val (workerId, initial) = it
-                Thread {
-                    fun Int.push() {
-                        val current = result[this]
-                        this.predecessors(timeFlow).map { t ->
-                            t.assuming { direction.eval(t.direction) }
-                                ?.let { sequenceOf(
-                                        path[it.target], result[it.target].not(), current, t.bound
-                                ).asConjunction()?.isSat() }?.to(t.target)
-                        }.filterNotNull().forEach {
-                            counter.incrementAndGet()
+        val barrier = CyclicBarrier(parallelism)
+        val map = HashMap<Int, MutableList<Int>>()
+        //ensure each worker has at least an empty list
+        reach.states.groupByTo(map, { it % parallelism })
+        (0 until parallelism).forEach { map.computeIfAbsent(it) { ArrayList() } }
+        map.map {
+            val (workerId, initial) = it
+            Thread {
+
+                val localQueue = ArrayDeque<Pair<Params, Int>>()
+                val queue = queues[workerId]
+
+                fun Int.push() {
+                    val current = result[this]
+                    this.predecessors(timeFlow).map { t ->
+                        t.assuming { direction.eval(t.direction) }
+                            ?.let { sequenceOf(
+                                    path[it.target], result[it.target].not(), current, t.bound
+                            ).asConjunction()?.isSat() }?.to(t.target)
+                    }.filterNotNull().forEach {
+                        counter.incrementAndGet()
+                        val partition = it.second.partition()
+                        if (partition == workerId) {
+                            localQueue.add(it)
+                        } else {
                             queues[it.second.partition()].add(it)
                         }
                     }
-
-                    initial.forEach(Int::push)
-                    barrier.await()
-
-                    val localQueue = HashMap<Int, ArrayList<Params>>()
-                    val queue = queues[workerId]
-
-                    do {
-                        //kotlin.io.println("Counter in: $counter")
-                        //move data from global to local queue
-                        var item: Pair<Params, Int>? = queue.poll()
-                        while (item != null) {
-                            val list = localQueue.computeIfAbsent(item.second) { ArrayList() }
-                            list.add(item.first)
-                            item = queue.poll()
-                        }
-
-                        //process one item from local queue
-                        val compute = localQueue.entries.firstOrNull()
-                        if (compute != null) {
-                            localQueue.remove(compute.key)
-                            val (state, new) = compute
-                            result[state].extendWith(new.asDisjunction()).map {
-                                result[state] = it
-                                state.push()
-                            }
-                            repeat(new.size) { counter.decrementAndGet() }
-                        }
-                        //kotlin.io.println("Counter out: $counter")
-                    } while (localQueue.isNotEmpty() || counter.get() > 0)
-
-                }.apply { this.start() }
-            }.map(Thread::join)
-        }
-/*
-        val recompute = HashSet<Int>()
-
-        if (!weak) {
-            for ((state, value) in reach.entries) {
-                result[state] = value
-                recompute.add(state)
-            }
-        } else {
-            (0 until stateCount).forEach { state ->
-                val witness = state.successors(timeFlow)
-                        .map { t -> t.bound.assuming { direction.eval(t.direction) }?.not() }   //invalid direction or
-                        .plus(reach[state])                                                     //reachable witness
-                        .asDisjunction()
-                witness?.isSat()?.let {
-                    result[state] = it
-                    recompute.add(state)
                 }
-            }
-        }
 
-        do {
-            //Map! - only read from results
-            val map: List<Pair<Params, Int>> = recompute
-            .map { state ->
-                executor.submit(Callable {
-                    val value = result[state]
-                    state.predecessors(timeFlow).map { t ->
-                        t   .assuming { direction.eval(it.direction) }
-                            ?.let { sequenceOf(path[it.target], result[it.target].not(), value, it.bound).asConjunction()?.isSat() }
-                            ?.to(t.target)
-                    }.filterNotNull().toList()
-                })
-            }.flatMap { it.get() }
+                if (!weak) {
+                    initial.forEach(Int::push)
+                } else {
+                    (0 until stateCount).forEach { state ->
+                        val witness = state.successors(timeFlow)
+                                .map { t -> t.bound.assuming { direction.eval(t.direction) }?.not() }   //invalid direction or
+                                .plus(reach[state])                                                     //reachable witness
+                                .asDisjunction()?.isSat()
+                        result[state] = witness
+                        if (witness != null) state.push()
+                    }
+                }
+                barrier.await()
 
-            //Reduce! - only write to results once per state
-            recompute.clear()
-            map .groupBy({ it.second }, { it.first })
-                    .map { executor.submit(Callable {
-                        val (state, new) = it
-                        val pushed = new.asDisjunction()
-                        result[state].extendWith(pushed).map {
-                            result[state] = it; state
+                do {
+                    //move data from global to local queue
+                    var item: Pair<Params, Int>? = queue.poll()
+                    while (item != null) {
+                        localQueue.add(item)
+                        item = queue.poll()
+                    }
+
+                    //process one item from local queue
+                    var compute = localQueue.poll()
+                    while (compute != null) {
+                        val (new, state) = compute
+                        result[state].extendWith(new).map {
+                            result[state] = it
+                            state.push()
                         }
-                    }) }
-                    .map { it.get().unwrapOr(null) }.filterNotNullTo(recompute)
-        } while (recompute.isNotEmpty())
-*/
+                        counter.decrementAndGet()
+                        compute = localQueue.poll()
+                    }
+                } while (counter.get() > 0)
+
+            }.apply { this.start() }
+        }.toList().map(Thread::join)
+
         result.asStateMap()
     }
 
