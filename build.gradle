@@ -51,7 +51,7 @@ dependencies {
     compile 'com.github.sybila:ctl-parser:2.2.0'
     compile "org.jetbrains.kotlin:kotlin-stdlib:$kotlin_version"
     testCompile "org.jetbrains.kotlin:kotlin-test:$kotlin_version"
-    antlr "org.antlr:antlr4:4.5.1-1"
+    antlr "org.antlr:antlr4:4.6"
 }
 
 sourceSets {
