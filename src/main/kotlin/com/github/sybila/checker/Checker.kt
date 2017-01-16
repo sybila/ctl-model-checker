@@ -1,5 +1,8 @@
 package com.github.sybila.checker
 
+import com.github.daemontus.Option
+import com.github.daemontus.asSome
+import com.github.daemontus.egholm.collections.repeat
 import com.github.daemontus.map
 import com.github.daemontus.unwrapOr
 import com.github.sybila.checker.map.asStateMap
@@ -8,13 +11,13 @@ import com.github.sybila.huctl.*
 import java.io.Closeable
 import java.io.PrintStream
 import java.util.*
-import java.util.concurrent.Callable
-import java.util.concurrent.Executors
-import java.util.concurrent.Future
+import java.util.concurrent.*
+import java.util.concurrent.atomic.AtomicLong
 
 class Checker(
         private val transitionSystem: TransitionSystem,
-        parallelism: Int = Runtime.getRuntime().availableProcessors(),
+        private val parallelism: Int = Runtime.getRuntime().availableProcessors(),
+        private val partition: Int.() -> Int = { this % parallelism },
         private val progress: PrintStream? = null
 ) : Closeable {
 
@@ -124,6 +127,8 @@ class Checker(
         }
     }
 
+    private fun Int.partition(): Int = partition.invoke(this)
+
     //create a lazy value that is initialized with given transition system
     fun <T> TransitionSystem.lazy(initializer: TransitionSystem.() -> T): Lazy<T> = kotlin.lazy {
         this.run(initializer)
@@ -180,8 +185,67 @@ class Checker(
 
         progress?.println("Start operator: EU")
 
-        val result = arrayOfNulls<Params>(stateCount)
 
+        //kotlin.io.println("Reach ${reach.prettyPrint()}")
+        val result = Array<Params?>(stateCount) { reach[it] }
+
+        //TODO: weak
+        if (!weak) {
+            val queues = Array<ConcurrentLinkedQueue<Pair<Params, Int>>>(parallelism) {
+                ConcurrentLinkedQueue()
+            }
+            val counter = AtomicLong(0)
+            val barrier = CyclicBarrier(parallelism)
+            reach.states.groupBy { it % parallelism }.map {
+                val (workerId, initial) = it
+                Thread {
+                    fun Int.push() {
+                        val current = result[this]
+                        this.predecessors(timeFlow).map { t ->
+                            t.assuming { direction.eval(t.direction) }
+                                ?.let { sequenceOf(
+                                        path[it.target], result[it.target].not(), current, t.bound
+                                ).asConjunction()?.isSat() }?.to(t.target)
+                        }.filterNotNull().forEach {
+                            counter.incrementAndGet()
+                            queues[it.second.partition()].add(it)
+                        }
+                    }
+
+                    initial.forEach(Int::push)
+                    barrier.await()
+
+                    val localQueue = HashMap<Int, ArrayList<Params>>()
+                    val queue = queues[workerId]
+
+                    do {
+                        //kotlin.io.println("Counter in: $counter")
+                        //move data from global to local queue
+                        var item: Pair<Params, Int>? = queue.poll()
+                        while (item != null) {
+                            val list = localQueue.computeIfAbsent(item.second) { ArrayList() }
+                            list.add(item.first)
+                            item = queue.poll()
+                        }
+
+                        //process one item from local queue
+                        val compute = localQueue.entries.firstOrNull()
+                        if (compute != null) {
+                            localQueue.remove(compute.key)
+                            val (state, new) = compute
+                            result[state].extendWith(new.asDisjunction()).map {
+                                result[state] = it
+                                state.push()
+                            }
+                            repeat(new.size) { counter.decrementAndGet() }
+                        }
+                        //kotlin.io.println("Counter out: $counter")
+                    } while (localQueue.isNotEmpty() || counter.get() > 0)
+
+                }.apply { this.start() }
+            }.map(Thread::join)
+        }
+/*
         val recompute = HashSet<Int>()
 
         if (!weak) {
@@ -228,7 +292,7 @@ class Checker(
                     }) }
                     .map { it.get().unwrapOr(null) }.filterNotNullTo(recompute)
         } while (recompute.isNotEmpty())
-
+*/
         result.asStateMap()
     }
 
