@@ -6,6 +6,7 @@ import com.github.sybila.checker.map.asStateMap
 import com.github.sybila.checker.map.emptyStateMap
 import com.github.sybila.huctl.*
 import java.io.Closeable
+import java.io.PrintStream
 import java.util.*
 import java.util.concurrent.Callable
 import java.util.concurrent.Executors
@@ -13,7 +14,8 @@ import java.util.concurrent.Future
 
 class Checker(
         private val transitionSystem: TransitionSystem,
-        parallelism: Int = Runtime.getRuntime().availableProcessors()
+        parallelism: Int = Runtime.getRuntime().availableProcessors(),
+        private val progress: PrintStream? = System.out
 ) : Closeable {
 
     init {
@@ -117,6 +119,7 @@ class Checker(
 
         return dependencyTree.mapValues {
             val (formula, operator) = it.value
+            progress?.println("Start formula: $formula")
             operator.value
         }
     }
@@ -126,10 +129,12 @@ class Checker(
         this.run(initializer)
     }
 
-    fun TransitionSystem.mkNot(inner: Lazy<StateMap>): Lazy<StateMap> = this.lazy {
+    fun TransitionSystem.mkNot(innerOp: Lazy<StateMap>): Lazy<StateMap> = this.lazy {
+        val inner = innerOp.value
+        progress?.println("Start operator: Not")
         val result = Array<Params?>(stateCount) { TT }
 
-        inner.value.entries.map {
+        inner.entries.map {
             val (state, value) = it
             executor.submit {
                 result[state] = value.not()?.isSat()
@@ -141,10 +146,12 @@ class Checker(
 
     fun TransitionSystem.mkAnd(left: Lazy<StateMap>, right: Lazy<StateMap>): Lazy<StateMap> = this.lazy {
         val rightMap = right.value
+        val leftMap = left.value
+        progress?.println("Start operator: And")
         val result = arrayOfNulls<Params>(stateCount)
 
         val ack = ArrayList<Future<*>>()
-        for ((state, leftValue) in left.value.entries) {
+        for ((state, leftValue) in leftMap.entries) {
             rightMap[state]?.let { rightValue ->
                 ack.add(executor.submit {
                     result[state] = (leftValue and rightValue)?.isSat()
@@ -159,6 +166,7 @@ class Checker(
     fun TransitionSystem.mkOr(left: Lazy<StateMap>, right: Lazy<StateMap>): Lazy<StateMap> = this.lazy {
         val l = left.value
         val r = right.value
+        progress?.println("Start operator: Or")
         Array(stateCount) { l[it] or r[it] }.asStateMap()
     }
 
@@ -169,6 +177,8 @@ class Checker(
 
         val path = pathOp.value
         val reach = reachOp.value
+
+        progress?.println("Start operator: EU")
 
         val result = arrayOfNulls<Params>(stateCount)
 
@@ -230,6 +240,8 @@ class Checker(
         val path = pathOp.value
         val reach = reachOp.value
 
+        progress?.println("Start operator: AU")
+
         val result = arrayOfNulls<Params>(stateCount)
 
         val candidates = HashSet<Int>()
@@ -283,11 +295,13 @@ class Checker(
     }
 
     fun TransitionSystem.mkExistsNext(
-            timeFlow: Boolean, direction: DirectionFormula, inner: Lazy<StateMap>
+            timeFlow: Boolean, direction: DirectionFormula, innerOp: Lazy<StateMap>
     ) : Lazy<StateMap> = this.lazy {
+        val inner = innerOp.value
+        progress?.println("Start operator: EX")
 
         //Map! - only read from results
-        val map: Sequence<Pair<Params, Int>> = inner.value.entries
+        val map: Sequence<Pair<Params, Int>> = inner.entries
                 .map { entry ->
                     executor.submit(Callable {
                         val (state, value) = entry
@@ -307,10 +321,10 @@ class Checker(
     }
 
     fun TransitionSystem.mkAllNext(
-            timeFlow: Boolean, direction: DirectionFormula, inner: Lazy<StateMap>
+            timeFlow: Boolean, direction: DirectionFormula, innerOp: Lazy<StateMap>
     ) : Lazy<StateMap> = this.lazy {
-
-        val reach = inner.value
+        val reach = innerOp.value
+        progress?.println("Start operator: AX")
 
         val candidates: Set<Int> = reach.states
                 .flatMap { it.predecessors(timeFlow).map { it.target } }
@@ -333,6 +347,7 @@ class Checker(
     fun TransitionSystem.mkExists(
             inner: MutableList<Lazy<StateMap>?>, bound: Lazy<StateMap>
     ) : Lazy<StateMap> = this.lazy {
+        progress?.println("Start operator: Exists")
 
         //exists x in B: A <=> exists x: ((at x: B) && A)
 
@@ -366,12 +381,14 @@ class Checker(
     fun TransitionSystem.mkAt(
             state: Int, inner: Lazy<StateMap>
     ) : Lazy<StateMap> = this.lazy {
+        progress?.println("Start operator: At")
         inner.value[state]?.asStateMap(stateCount) ?: emptyStateMap()
     }
 
     fun TransitionSystem.mkBind(
             inner: MutableList<Lazy<StateMap>?>
     ) : Lazy<StateMap> = this.lazy {
+        progress?.println("Start operator: Bind")
         Array(stateCount) {
             inner[it]?.byTheWay { inner[it] = null }?.value?.get(it)
         }.asStateMap()
