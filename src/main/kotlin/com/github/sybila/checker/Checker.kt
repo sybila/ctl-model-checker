@@ -210,7 +210,7 @@ class Checker(
                     val value = result[state]
                     state.predecessors(timeFlow).map { t ->
                         t   .assuming { direction.eval(it.direction) }
-                            ?.let { sequenceOf(path[it.target], value, it.bound).asConjunction()?.isSat() }
+                            ?.let { sequenceOf(path[it.target], result[it.target].not(), value, it.bound).asConjunction()?.isSat() }
                             ?.to(t.target)
                     }.filterNotNull().toList()
                 })
