@@ -15,7 +15,7 @@ import java.util.concurrent.Future
 class Checker(
         private val transitionSystem: TransitionSystem,
         parallelism: Int = Runtime.getRuntime().availableProcessors(),
-        private val progress: PrintStream? = null
+        private val progress: PrintStream? = System.out
 ) : Closeable {
 
     init {
@@ -202,15 +202,19 @@ class Checker(
             }
         }
 
+
         do {
             //Map! - only read from results
+            println("Recompute ${recompute.size}")
             val map: List<Pair<Params, Int>> = recompute
             .map { state ->
                 executor.submit(Callable {
                     val value = result[state]
                     state.predecessors(timeFlow).map { t ->
                         t   .assuming { direction.eval(it.direction) }
-                            ?.let { sequenceOf(path[it.target], result[it.target].not(), value, it.bound).asConjunction()?.isSat() }
+                            ?.let {
+                                sequenceOf(path[it.target], result[it.target].not(), value, it.bound).asConjunction()?.isSat()
+                            }
                             ?.to(t.target)
                     }.filterNotNull().toList()
                 })
@@ -222,6 +226,8 @@ class Checker(
                     .map { executor.submit(Callable {
                         val (state, new) = it
                         val pushed = new.asDisjunction()
+                        //result[state] = new.asSequence().plus(result[state]).asDisjunction()?.isSat()
+                        //state.asSome()
                         result[state].extendWith(pushed).map {
                             result[state] = it; state
                         }
