@@ -22,6 +22,8 @@ Mainly a basic test for non temporal operators.
 :assert "forall s: x:in+" == [t]
 :assert "forall s: at s: x:in+" == []
 :assert "forall s in x:in+: x:in+" == [t]
+:assert "forall s: (at s: x:in+) -> x:in+" == [t]
+:assert "! exists s: (at s: x:in+) && !x:in+" == [t]    //dual formula
 :assert "! exists s in x:in+: !x:in+" == [t]    //dual formula
 :assert "forall s in x:in+: at s: x:in+" == [f,t]
 

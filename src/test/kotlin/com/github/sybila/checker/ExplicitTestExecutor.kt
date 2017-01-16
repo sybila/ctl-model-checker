@@ -1,6 +1,6 @@
 package com.github.sybila.checker
 
-import com.github.sybila.checker.model.asExperiment
+import com.github.sybila.checker.model.asSharedExperiment
 import org.junit.Test
 import java.io.File
 
@@ -19,7 +19,7 @@ class ExplicitTestExecutor {
             else if (it.name.endsWith(".model")) {
                 println("Executing $it")
                 try {
-                    it.readLines().joinToString(separator = "\n").asExperiment().invoke()
+                    it.readLines().joinToString(separator = "\n").asSharedExperiment().invoke()
                 } catch (e: Exception) {
                     e.printStackTrace()
                     throw AssertionError("Experiment $it failed: $e")

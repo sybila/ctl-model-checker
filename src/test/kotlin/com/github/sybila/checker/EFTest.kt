@@ -1,14 +1,12 @@
 package com.github.sybila.checker
 
-import com.github.sybila.checker.ReachModel.Prop.*
-import com.github.sybila.checker.channel.connectWithSharedMemory
-import com.github.sybila.checker.map.mutable.ContinuousStateMap
-import com.github.sybila.checker.partition.asUniformPartitions
+import com.github.sybila.checker.map.asStateMap
+import com.github.sybila.checker.map.lazyAnd
+import com.github.sybila.checker.map.lazyOr
 import com.github.sybila.huctl.EF
 import com.github.sybila.huctl.EU
 import com.github.sybila.huctl.False
 import org.junit.Test
-
 
 class SequentialExistsFutureTest {
 
@@ -16,13 +14,13 @@ class SequentialExistsFutureTest {
     fun oneStateModel() {
 
         ReachModel(1,1).run {
-            SequentialChecker(this).use { checker ->
-                val expected = 0.asStateMap(tt)
+            Checker(this, parallelism = 1).use { checker ->
+                val expected = 0.asStateMap(TT)
 
-                expected.assertDeepEquals(checker.verify(EF(UPPER_CORNER())))
-                expected.assertDeepEquals(checker.verify(EF(LOWER_CORNER())))
-                expected.assertDeepEquals(checker.verify(EF(CENTER())))
-                expected.assertDeepEquals(checker.verify(EF(BORDER())))
+                expected.assertDeepEquals(checker.verify(EF(ReachModel.Prop.UPPER_CORNER())))
+                expected.assertDeepEquals(checker.verify(EF(ReachModel.Prop.LOWER_CORNER())))
+                expected.assertDeepEquals(checker.verify(EF(ReachModel.Prop.CENTER())))
+                expected.assertDeepEquals(checker.verify(EF(ReachModel.Prop.BORDER())))
             }
         }
 
@@ -31,16 +29,15 @@ class SequentialExistsFutureTest {
     fun chainModel(chainSize: Int) {
 
         ReachModel(1, chainSize).run {
-            SequentialChecker(this).use { checker ->
+            Checker(this, parallelism = 1).use { checker ->
 
-                LOWER_CORNER().eval().assertDeepEquals(checker.verify(EF(LOWER_CORNER())))
+                ReachModel.Prop.LOWER_CORNER().eval().assertDeepEquals(checker.verify(EF(ReachModel.Prop.LOWER_CORNER())))
 
-                val reach = ContinuousStateMap(0, stateCount, ff)
-                (0 until stateCount).forEach { reach[it] = stateColors(it) }
+                val reach = Array<Params?>(stateCount) { stateColors(it) }.asStateMap()
 
-                (UPPER_CORNER().eval() lazyOr reach).assertDeepEquals(checker.verify(EF(UPPER_CORNER())))
+                (ReachModel.Prop.UPPER_CORNER().eval() lazyOr reach).assertDeepEquals(checker.verify(EF(ReachModel.Prop.UPPER_CORNER())))
 
-                (BORDER().eval() lazyOr reach).assertDeepEquals(checker.verify(EF(BORDER())))
+                (ReachModel.Prop.BORDER().eval() lazyOr reach).assertDeepEquals(checker.verify(EF(ReachModel.Prop.BORDER())))
             }
         }
 
@@ -49,21 +46,20 @@ class SequentialExistsFutureTest {
     fun generalModel(dimensions: Int, dimensionSize: Int) {
 
         ReachModel(dimensions, dimensionSize).run {
-            SequentialChecker(this).use { checker ->
+            Checker(this, parallelism = 1).use { checker ->
 
-                LOWER_CORNER().eval().assertDeepEquals(checker.verify(EF(LOWER_CORNER())))
+                ReachModel.Prop.LOWER_CORNER().eval().assertDeepEquals(checker.verify(EF(ReachModel.Prop.LOWER_CORNER())))
 
-                val reach = ContinuousStateMap(0, stateCount, ff)
-                (0 until stateCount).forEach { reach[it] = stateColors(it) }
+                val reach = Array<Params?>(stateCount) { stateColors(it) }.asStateMap()
 
-                (UPPER_CORNER().eval() lazyOr reach).assertDeepEquals(checker.verify(EF(UPPER_CORNER())))
+                (ReachModel.Prop.UPPER_CORNER().eval() lazyOr reach).assertDeepEquals(checker.verify(EF(ReachModel.Prop.UPPER_CORNER())))
 
-                (BORDER().eval() lazyOr reach).assertDeepEquals(checker.verify(EF(BORDER())))
+                (ReachModel.Prop.BORDER().eval() lazyOr reach).assertDeepEquals(checker.verify(EF(ReachModel.Prop.BORDER())))
 
-                BORDER().eval().assertDeepEquals(checker.verify(False EU BORDER()))
+                ReachModel.Prop.BORDER().eval().assertDeepEquals(checker.verify(False EU ReachModel.Prop.BORDER()))
 
-                (UPPER_CORNER().eval() lazyOr (reach lazyAnd BORDER().eval())).assertDeepEquals(
-                        checker.verify(BORDER() EU UPPER_CORNER())
+                (ReachModel.Prop.UPPER_CORNER().eval() lazyOr (reach lazyAnd ReachModel.Prop.BORDER().eval())).assertDeepEquals(
+                        checker.verify(ReachModel.Prop.BORDER() EU ReachModel.Prop.UPPER_CORNER())
                 )
             }
         }
@@ -127,34 +123,22 @@ abstract class ConcurrentExistsFutureTest {
     fun generalModel(dimensions: Int, dimensionSize: Int) {
 
         ReachModel(dimensions, dimensionSize).run {
-            SequentialChecker(this).use { sequential ->
+            Checker(this, parallelism = workers).use { checker ->
 
-                val partitions = (0 until workers).map { ReachModel(dimensions, dimensionSize) }.asUniformPartitions()
+                ReachModel.Prop.LOWER_CORNER().eval().assertDeepEquals(checker.verify(EF(ReachModel.Prop.LOWER_CORNER())))
 
-                Checker(partitions.connectWithSharedMemory()).use { parallel ->
+                val reach = Array<Params?>(stateCount) { stateColors(it) }.asStateMap()
 
-                    LOWER_CORNER().eval().assertDeepEquals(partitions.zip(parallel.verify(EF(LOWER_CORNER()))))
+                (ReachModel.Prop.UPPER_CORNER().eval() lazyOr reach).assertDeepEquals(checker.verify(EF(ReachModel.Prop.UPPER_CORNER())))
 
-                    val reach = ContinuousStateMap(0, stateCount, ff)
-                    (0 until stateCount).forEach { reach[it] = stateColors(it) }
+                (ReachModel.Prop.BORDER().eval() lazyOr reach).assertDeepEquals(checker.verify(EF(ReachModel.Prop.BORDER())))
 
-                    (UPPER_CORNER().eval() lazyOr reach).assertDeepEquals(
-                            partitions.zip(parallel.verify(EF(UPPER_CORNER())))
-                    )
+                ReachModel.Prop.BORDER().eval().assertDeepEquals(checker.verify(False EU ReachModel.Prop.BORDER()))
 
-                    (BORDER().eval() lazyOr reach).assertDeepEquals(
-                            partitions.zip(parallel.verify(EF(BORDER())))
-                    )
+                (ReachModel.Prop.UPPER_CORNER().eval() lazyOr (reach lazyAnd ReachModel.Prop.BORDER().eval())).assertDeepEquals(
+                        checker.verify(ReachModel.Prop.BORDER() EU ReachModel.Prop.UPPER_CORNER())
+                )
 
-                    BORDER().eval().assertDeepEquals(
-                            partitions.zip(parallel.verify(False EU BORDER()))
-                    )
-
-                    (UPPER_CORNER().eval() lazyOr (reach lazyAnd BORDER().eval())).assertDeepEquals(
-                            partitions.zip(parallel.verify(BORDER() EU UPPER_CORNER()))
-                    )
-
-                }
             }
         }
 
