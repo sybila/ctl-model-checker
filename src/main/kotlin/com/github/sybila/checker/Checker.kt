@@ -15,7 +15,7 @@ import java.util.concurrent.Future
 class Checker(
         private val transitionSystem: TransitionSystem,
         parallelism: Int = Runtime.getRuntime().availableProcessors(),
-        private val progress: PrintStream? = System.out
+        private val progress: PrintStream? = null
 ) : Closeable {
 
     init {
