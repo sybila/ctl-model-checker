@@ -1,6 +1,7 @@
 package com.github.sybila.checker.solver
 
 import com.github.sybila.checker.Solver
+import com.github.sybila.checker.byTheWay
 import java.nio.ByteBuffer
 
 class BoolSolver : Solver<Boolean> {
@@ -16,7 +17,7 @@ class BoolSolver : Solver<Boolean> {
 
     override fun Boolean.not(): Boolean = !this
 
-    override fun Boolean.isSat(): Boolean = this
+    override fun Boolean.isSat(): Boolean = this.byTheWay { SolverStats.solverCall() }
 
     override fun Boolean.minimize() {}
 
@@ -33,6 +34,6 @@ class BoolSolver : Solver<Boolean> {
     override fun Boolean.canSat(): Boolean = this
     override fun Boolean.canNotSat(): Boolean = !this
 
-    override fun Boolean.andNot(other: Boolean): Boolean = this && !other
-    override fun Boolean.equals(other: Boolean): Boolean = this == other
+    override fun Boolean.andNot(other: Boolean): Boolean = (this && !other).byTheWay { SolverStats.solverCall() }
+    override fun Boolean.equals(other: Boolean): Boolean = (this == other).byTheWay { SolverStats.solverCall() }
 }

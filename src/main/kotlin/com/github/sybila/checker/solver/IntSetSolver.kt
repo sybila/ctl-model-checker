@@ -1,6 +1,7 @@
 package com.github.sybila.checker.solver
 
 import com.github.sybila.checker.Solver
+import com.github.sybila.checker.byTheWay
 import java.nio.ByteBuffer
 import java.util.*
 
@@ -18,7 +19,7 @@ class IntSetSolver(
 
     override fun Set<Int>.not(): Set<Int> = tt - this
 
-    override fun Set<Int>.isSat(): Boolean = this.isNotEmpty()
+    override fun Set<Int>.isSat(): Boolean = this.isNotEmpty().byTheWay { SolverStats.solverCall() }
 
     override fun Set<Int>.minimize() {}
 
@@ -36,7 +37,7 @@ class IntSetSolver(
     override fun Set<Int>.canSat(): Boolean = this.isNotEmpty()
     override fun Set<Int>.canNotSat(): Boolean = this.isEmpty()
 
-    override fun Set<Int>.andNot(other: Set<Int>): Boolean = this.any { it !in other }
-    override fun Set<Int>.equals(other: Set<Int>): Boolean = this == other
+    override fun Set<Int>.andNot(other: Set<Int>): Boolean = this.any { it !in other }.byTheWay { SolverStats.solverCall() }
+    override fun Set<Int>.equals(other: Set<Int>): Boolean = this == other.byTheWay { SolverStats.solverCall() }
 
 }

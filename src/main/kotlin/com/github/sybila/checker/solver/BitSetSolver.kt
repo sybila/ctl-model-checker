@@ -1,6 +1,7 @@
 package com.github.sybila.checker.solver
 
 import com.github.sybila.checker.Solver
+import com.github.sybila.checker.byTheWay
 import java.nio.ByteBuffer
 import java.util.*
 
@@ -22,7 +23,7 @@ class BitSetSolver(
     override fun BitSet.not(): BitSet
             = (tt.clone() as BitSet).apply { this.andNot(this@not) }
 
-    override fun BitSet.isSat(): Boolean = !this.isEmpty
+    override fun BitSet.isSat(): Boolean = !this.isEmpty.byTheWay { SolverStats.solverCall() }
 
     override fun BitSet.minimize() {}
 
@@ -47,7 +48,7 @@ class BitSetSolver(
     override fun BitSet.andNot(other: BitSet): Boolean = (this.clone() as BitSet).run {
         this.andNot(other)
         !this.isEmpty
-    }
+    }.byTheWay { SolverStats.solverCall() }
 
-    override fun BitSet.equals(other: BitSet): Boolean = this == other
+    override fun BitSet.equals(other: BitSet): Boolean = (this == other).byTheWay { SolverStats.solverCall() }
 }

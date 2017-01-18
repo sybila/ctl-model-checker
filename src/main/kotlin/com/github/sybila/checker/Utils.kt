@@ -41,3 +41,12 @@ fun PathQuantifier.invertCardinality(): PathQuantifier = when (this) {
 
 fun PathQuantifier.isExistential(): Boolean = this == PathQuantifier.E || this == PathQuantifier.pE
 fun PathQuantifier.isNormalTimeFlow(): Boolean = this == PathQuantifier.E || this == PathQuantifier.A
+
+inline fun <T> T?.assuming(predicate: (T) -> Boolean): T? {
+    return if (this != null && predicate(this)) this else null
+}
+
+inline fun <T> T.byTheWay(action: () -> Unit): T {
+    action()
+    return this
+}
