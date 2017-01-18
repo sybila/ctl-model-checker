@@ -1,5 +1,5 @@
 buildscript {
-    ext.kotlin_version = '1.0.6'
+    ext.kotlin_version = '1.0.5'
 
     repositories {
         jcenter()
@@ -21,7 +21,9 @@ apply plugin: 'antlr'
 apply plugin: 'maven'
 apply plugin: 'jacoco'
 
+sourceCompatibility = 1.7
 group = "com.github.sybila"
+archivesBaseName = "ctl-model-checker"
 version = '2.0.0'
 
 //antlr config
@@ -30,6 +32,7 @@ generateGrammarSource {
             "-no-visitor",
             "-listener"
     ]
+    outputDirectory = new File('src/main/gen/')
 }
 
 // make the Java compile task depend on the antlr4 task
@@ -54,6 +57,17 @@ dependencies {
     antlr "org.antlr:antlr4:4.6"
 }
 
+//create a single Jar with all dependencies
+task fullJar(type: Jar) {
+    manifest {
+        attributes 'Implementation-Title': 'CTL Model Checker',
+                'Implementation-Version': version
+    }
+    baseName = project.name + '-all'
+    from { configurations.compile.collect { it.isDirectory() ? it : zipTree(it) } }
+    with jar
+}
+
 sourceSets {
     main.java.srcDirs += 'src/main/kotlin'
     test.java.srcDirs += 'src/test/kotlin'
@@ -70,8 +84,7 @@ task sourcesJar(type: Jar) {
 }
 
 artifacts {
-    archives javadocJar
-    archives sourcesJar
+    archives javadocJar, sourcesJar
 }
 
 jacoco {
@@ -91,7 +104,6 @@ test {
     testLogging {
         events "passed", "skipped", "failed"
     }
-    void
 }
 
 //travis has some strict RAM restrictions, can't afford to exceed this

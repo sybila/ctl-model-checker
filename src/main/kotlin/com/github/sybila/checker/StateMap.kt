@@ -1,28 +1,56 @@
 package com.github.sybila.checker
 
 /**
- * Read only mapping from states to parameter values.
+ * A collection of states with assigned parameters.
  *
- * StateMap operations should be THREAD SAFE, however the iterators
- * adhere to the usual standards (since the map is read only,
- * there is no concurrent modification, but the iterator itself
- * is not thread safe).
+ * Note that the contains operation is also just an approximation:
+ * Even if the contains check returns true, the returned params can be empty.
+ * However, you should try to avoid this when possible.
  *
- * General convention is that
+ * @Contract All param values belong to the same solver.
  */
-interface StateMap {
-
-    val states: Sequence<Int>
-    val entries: Sequence<Pair<Int, Params>>
+interface StateMap<out Params : Any> {
 
     /**
-     * Return stored parameter value (null represents false)
+     * Increasing iterator over all states in the map.
      */
-    operator fun get(state: Int): Params?
+    fun states(): Iterator<Int>
 
     /**
-     * Return true if get(state) would return non null value.
+     * Increasing (in states) iterator over all entries in the map.
+     */
+    fun entries(): Iterator<Pair<Int, Params>>
+
+    /**
+     * Return the stored value, or empty set if value is not present.
+     */
+    operator fun get(state: Int): Params
+
+    /**
+     * Return true if a non-empty value is present in this set.
      */
     operator fun contains(state: Int): Boolean
+
+    /**
+     * The size of the map doesn't have to be known at all times.
+     *
+     * This value should however provide an over-approximation of the map size.
+     * (In the worst case, stateCount is a valid upper bound)
+     */
+    val sizeHint: Int
+
+}
+
+/**
+ * A mutable variant of [StateMap].
+ *
+ * It is simpler than [MutableMap] because it doesn't support removing.
+ */
+interface MutableStateMap<Params : Any> : StateMap<Params> {
+
+    /**
+     * Store this value in the map.
+     */
+    operator fun set(state: Int, value: Params): Unit
 
 }

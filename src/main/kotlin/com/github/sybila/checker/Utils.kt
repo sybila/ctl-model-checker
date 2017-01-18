@@ -2,10 +2,7 @@ package com.github.sybila.checker
 
 import com.github.sybila.huctl.*
 
-/**
- * Create formula where reference with given name is substituted with a specific state.
- */
-internal fun Formula.bindReference(name: String, value: Int): Formula {
+fun Formula.bindReference(name: String, value: Int): Formula {
     return this.fold({
         if (this is Formula.Atom.Reference && this.name == name) {
             Formula.Atom.Reference(value.toString())
@@ -44,12 +41,3 @@ fun PathQuantifier.invertCardinality(): PathQuantifier = when (this) {
 
 fun PathQuantifier.isExistential(): Boolean = this == PathQuantifier.E || this == PathQuantifier.pE
 fun PathQuantifier.isNormalTimeFlow(): Boolean = this == PathQuantifier.E || this == PathQuantifier.A
-
-inline fun <T> T?.assuming(predicate: (T) -> Boolean): T? {
-    return if (this != null && predicate(this)) this else null
-}
-
-inline fun <T> T.byTheWay(action: () -> Unit): T {
-    action()
-    return this
-}

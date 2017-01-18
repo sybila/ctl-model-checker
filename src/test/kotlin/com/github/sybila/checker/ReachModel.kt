@@ -1,11 +1,9 @@
 package com.github.sybila.checker
 
-import com.github.sybila.checker.map.asStateMap
-import com.github.sybila.checker.solver.BitSetParams
 import com.github.sybila.checker.solver.BitSetSolver
-import com.github.sybila.checker.solver.asParams
 import com.github.sybila.huctl.*
 import java.util.*
+
 
 /**
  * Representation of n-dimensional hypercube of size s where all transitions lead
@@ -25,7 +23,8 @@ import java.util.*
 class ReachModel(
         private val dimensions: Int,
         private val dimensionSize: Int
-) : TransitionSystem, Solver by BitSetSolver((dimensionSize - 1) * dimensions + 2) {
+) : Model<BitSet>, Solver<BitSet> by BitSetSolver((dimensionSize - 1) * dimensions + 2) {
+
 
     /**
      * Use these propositions in your model queries, nothing else is supported!
@@ -48,7 +47,7 @@ class ReachModel(
         assert(dimensionSize > 0)
         assert(dimensions > 0)
         val size = Math.pow(dimensionSize.toDouble(), dimensions.toDouble())
-        if (size.toLong() > size.toInt()) throw IllegalArgumentException("TransitionSystem too big: $size")
+        if (size.toLong() > size.toInt()) throw IllegalArgumentException("Model too big: $size")
     }
 
     override val stateCount = pow(dimensionSize, dimensions)
@@ -66,12 +65,12 @@ class ReachModel(
     }.sum()
 
 
-    private val colorCache = HashMap<Int, BitSetParams>()
+    private val colorCache = HashMap<Int, BitSet>()
 
     /**
      * Returns the set of colors that can reach upper corner from given state. Very useful ;)
      */
-    fun stateColors(state: Int): BitSetParams {
+    fun stateColors(state: Int): BitSet {
         return colorCache.computeIfAbsent(state) {
             val set = BitSet()
 
@@ -82,47 +81,47 @@ class ReachModel(
                 }
             }
 
-            set.asParams()
+            set
         }
     }
 
-    private fun step(from: Int, successors: Boolean, timeFlow: Boolean): Sequence<Transition> {
+    private fun step(from: Int, successors: Boolean, timeFlow: Boolean): Iterator<Transition<BitSet>> {
         val dim = (0 until dimensions).asSequence()
         val step = if (successors == timeFlow) {
             dim .filter { extractCoordinate(from, it) + 1 < dimensionSize }
-                    .map { it to from + pow(dimensionSize, it) }
+                .map { it to from + pow(dimensionSize, it) }
         } else {
             dim .filter { extractCoordinate(from, it) - 1 > -1 }
-                    .map { it to from - pow(dimensionSize, it) }
+                .map { it to from - pow(dimensionSize, it) }
         }
         val transitions = step.map {
             val state = it.second
             val dimName = it.first.toString()
             Transition(state, if (timeFlow) dimName.increaseProp() else dimName.decreaseProp(), stateColors(state))
         }
-        val loop = Transition(from, DirectionFormula.Atom.Loop, Not(stateColors(from)))
-        return (transitions + sequenceOf(loop)).asSequence()
+        val loop = Transition(from, DirectionFormula.Atom.Loop, stateColors(from).not())
+        return (transitions + sequenceOf(loop)).iterator()
     }
 
-    override fun Int.successors(timeFlow: Boolean): Sequence<Transition> = step(this, true, timeFlow)
+    override fun Int.successors(timeFlow: Boolean): Iterator<Transition<BitSet>> = step(this, true, timeFlow)
 
-    override fun Int.predecessors(timeFlow: Boolean): Sequence<Transition> = step(this, false, timeFlow)
+    override fun Int.predecessors(timeFlow: Boolean): Iterator<Transition<BitSet>> = step(this, false, timeFlow)
 
-    override fun Formula.Atom.Float.eval(): StateMap {
+    override fun Formula.Atom.Float.eval(): StateMap<BitSet> {
         return when (this) {
-            Prop.CENTER() -> toStateIndex((1..dimensions).map { dimensionSize / 2 }).asStateMap(TT)
-            Prop.UPPER_CORNER() -> toStateIndex((1..dimensions).map { dimensionSize - 1 }).asStateMap(TT)
-            Prop.LOWER_CORNER() -> toStateIndex((1..dimensions).map { 0 }).asStateMap(TT)
+            Prop.CENTER() -> toStateIndex((1..dimensions).map { dimensionSize / 2 }).asStateMap(tt)
+            Prop.UPPER_CORNER() -> toStateIndex((1..dimensions).map { dimensionSize - 1 }).asStateMap(tt)
+            Prop.LOWER_CORNER() -> toStateIndex((1..dimensions).map { 0 }).asStateMap(tt)
             Prop.BORDER() -> (0 until stateCount).asSequence().filter { state ->
                 (0 until dimensions).any { val c = extractCoordinate(state, it); c == 0 || c == dimensionSize - 1 }
-            }.associateBy({it}, { TT }).asStateMap()
+            }.associateBy({it}, { tt }).asStateMap()
             Prop.UPPER_HALF() -> (0 until stateCount).asSequence().filter { state ->
                 (0 until dimensions).all { extractCoordinate(state, it) >= dimensionSize/2 }
-            }.associateBy({it}, { TT }).asStateMap()
+            }.associateBy({it}, { tt }).asStateMap()
             else -> throw IllegalStateException("Unexpected atom $this")
         }
     }
 
-    override fun Formula.Atom.Transition.eval(): StateMap { throw UnsupportedOperationException("not implemented") }
+    override fun Formula.Atom.Transition.eval(): StateMap<BitSet> { throw UnsupportedOperationException("not implemented") }
 
 }

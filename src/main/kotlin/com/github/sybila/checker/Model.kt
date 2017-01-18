@@ -2,11 +2,10 @@ package com.github.sybila.checker
 
 import com.github.sybila.huctl.Formula
 
-
 /**
- * A transition system with successor/predecessor functions and proposition evaluation.
+ * A transition system tied to a channel.
  */
-interface TransitionSystem : Solver {
+interface Model<Params : Any> : Solver<Params> {
 
     /**
      * Total number of states.
@@ -20,17 +19,17 @@ interface TransitionSystem : Solver {
      * timeFlow == false -> Reversed transition system.
      *
      * Note: predecessors/successors have inverted directions, hence we can't just
-     * decide based on timeFlow.
+     * decide based timeFlow.
      *
      * @Contract state \in (0 until stateCount)
      */
-    fun Int.successors(timeFlow: Boolean): Sequence<Transition>
-    fun Int.predecessors(timeFlow: Boolean): Sequence<Transition>
+    fun Int.successors(timeFlow: Boolean): Iterator<Transition<Params>>
+    fun Int.predecessors(timeFlow: Boolean): Iterator<Transition<Params>>
 
     /**
      * Proposition evaluation.
      */
-    fun Formula.Atom.Float.eval(): StateMap
-    fun Formula.Atom.Transition.eval(): StateMap
+    fun Formula.Atom.Float.eval(): StateMap<Params>
+    fun Formula.Atom.Transition.eval(): StateMap<Params>
 
 }

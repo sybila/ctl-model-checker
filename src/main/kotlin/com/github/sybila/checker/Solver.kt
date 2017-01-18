@@ -1,31 +1,58 @@
 package com.github.sybila.checker
 
-import com.github.daemontus.Option
+import com.github.sybila.checker.map.*
+import com.github.sybila.checker.map.mutable.HashStateMap
+import java.nio.ByteBuffer
+import java.util.*
 
 /**
- * Solver manages parameter set operations.
+ * All color related actions are part of the solver.
  *
- * Solver can have internal state, caches, etc. etc.
- * but this has to be implemented in a thread safe manner!
+ * This provides a way to add decoupled caching and
+ * other advanced options without complicating the
+ * colors interface implementation.
  */
-interface Solver {
+interface Solver<Params : Any> {
+
+    val tt: Params
+    val ff: Params
 
     /**
-     * Unite [other] parameters with this params set.
+     * Standard logical operations.
      *
-     * If resulting parameters contain something more (result andNot this), return them.
-     * If other subset this, return None.
+     * [and]: { x \in P | x \in this && x \in other }
+     * [or]: { x \in P | x \in this || x \in other }
+     * [not]: { x \in P | x \not\in this }
      *
-     * (the returned parameters can be also optimized in some way)
+     * Operations don't modify (at least visibly) the original set.
+     *
+     * @Complexity: constant
      */
-    fun Params?.extendWith(other: Params?): Option<Params>
+
+    infix fun Params.and(other: Params): Params
+    infix fun Params.or(other: Params): Params
+    fun Params.not(): Params
 
     /**
-     * Classic emptiness check.
+     * Return a constant-time over- and under-approximation of the
+     * [isSat] value.
      *
-     * Return null if this is not sat, otherwise return new optimized params object.
+     * Invariants:
+     * [canSat] || [isNotSat]
+     * [canNotSat] || [isSat]
+     *
+     * @Complexity: constant
      */
-    fun Params.isSat(): Params?
+    fun Params.canSat(): Boolean = true
+    fun Params.canNotSat(): Boolean = true
+
+    /**
+     * Full emptiness check.
+     *
+     * @Complexity: exponential
+     */
+    fun Params.isSat(): Boolean
+    fun Params.isNotSat(): Boolean = !this.isSat()
 
     /**
      * Semantic comparison operators:
@@ -33,53 +60,111 @@ interface Solver {
      * A andNot B = exists x \in A: x \not\in B
      * A equals B = x \in A <-> \in B
      *
-     * (these are used mainly for testing, overriding them won't speed up the model checker)
+     * (sometimes can be implemented faster)
      *
+     * @Complexity: exponential
      */
-    infix fun Params?.andNot(other: Params?): Boolean = (this and other.not())?.isSat() != null
-    infix fun Params?.semanticEquals(other: Params?): Boolean = !((this or other) andNot (this and other))
+    infix fun Params.andNot(other: Params): Boolean = (this and other.not()).isSat()
+    infix fun Params.equals(other: Params): Boolean = !((this or other) andNot (this and other))
 
     /**
-     * Use these functions to override default toString implementation of logical operators.
+     * Try to reduce the size of the params representation (in place).
      *
-     * (default toString should be equivalent to SMT lib 2)
+     * This is useful for concise printing and network transfers.
+     *
+     * @Complexity: exponential
      */
-    fun Params?.prettyPrint(): String = this?.let(Params::toString) ?: "(false)"
-    fun StateMap.prettyPrint(): String = this.entries
-            .map { "(${it.first} ${it.second.prettyPrint()})" }
-            .joinToString(prefix = "(map ", postfix = ")", separator = " ")
+    fun Params.minimize()
+
+    /**
+     * Return required number of bytes to serialize this object.
+     *
+     * @Complexity: constant
+     */
+    fun Params.byteSize(): Int
+
+    /**
+     * Write a params object into a byte buffer.
+     */
+    fun ByteBuffer.putColors(colors: Params): ByteBuffer
+
+    /**
+     * Read a params object from buffer.
+     */
+    fun ByteBuffer.getColors(): Params
+
+    /**
+     * Create a copy of this color set with transferred ownership.
+     * (Has to be synchronized on both solvers)
+     */
+    fun Params.transferTo(solver: Solver<Params>): Params
+
+    /**
+     * Return true if value in state map has changed.
+     */
+    fun MutableStateMap<Params>.setOrUnion(state: Int, value: Params): Boolean {
+        val current = this[state]
+        return if (value andNot current) {
+            this[state] = value or current
+            true
+        } else false
+    }
+
+    /**
+     * Create a human readable version of this params object.
+     */
+    fun Params.prettyPrint(): String
+
+    fun StateMap<Params>.prettyPrint(): String {
+        return this.entries().asSequence().map { it.first to it.second.prettyPrint() }.joinToString()
+    }
 
     // Functions for testing
 
-    fun StateMap.semanticEquals(other: StateMap): Boolean {
-        val states = (this.states + other.states).toSet()
-        return states.all {
-            this[it] semanticEquals other[it]
+    fun StateMap<Params>.deepEquals(other: StateMap<Params>): Boolean {
+        return OrStateMap(this, other, this@Solver).states().asSequence().all {
+            this[it] equals other[it]
         }
     }
 
-    fun StateMap.assertDeepEquals(other: StateMap) {
-        if (!this.semanticEquals(other)) {
+    fun StateMap<Params>.assertDeepEquals(other: StateMap<Params>) {
+        if (!this.deepEquals(other)) {
             throw IllegalStateException("Expected ${this.prettyPrint()}, but got ${other.prettyPrint()}")
         }
     }
 
-
-}
-
-/**
- * Throw this exception if your solver encounters a parameter value which it does not recognize.
- *
- * In general, you should support [And], [Or], [Not], [TT], null (False) and whatever you use as propositions.
- */
-class UnsupportedParameterType(message: Params) : RuntimeException(message.toString())
-
-fun Params?.prettyPrint(propositions: (Params) -> String): String {
-    return when (this) {
-        null -> "(false)"
-        is And -> this.args.joinToString(separator = " ", prefix = "(and ", postfix = ")") { it.prettyPrint(propositions) }
-        is Or -> this.args.joinToString(separator = " ", prefix = "(or ", postfix = ")") { it.prettyPrint(propositions) }
-        is Not -> "(not ${this.inner.prettyPrint(propositions)})"
-        else -> propositions(this)
+    fun StateMap<Params>.deepEquals(partitions: List<Pair<Solver<Params>, StateMap<Params>>>): Boolean {
+        val keys = (this.states().asSequence() + partitions.flatMap { it.second.states().asSequence().asIterable() }).toSet()
+        return keys.all { key ->
+            val expected = this[key]
+            val actual = partitions.asSequence().filter { it.second.contains(key) }.fold(ff) { a, i ->
+                val (solver, states) = i
+                a or solver.run { states[key].transferTo(this@Solver) }
+            }
+            expected equals actual
+        }
     }
+
+    fun StateMap<Params>.assertDeepEquals(partitions: List<Pair<Solver<Params>, StateMap<Params>>>) {
+        if (!this.deepEquals(partitions)) {
+            throw IllegalStateException("Expected ${this.prettyPrint()}, but got ${partitions.map { it.first.run { it.second.prettyPrint() } }}")
+        }
+    }
+
+    // Utility functions
+
+    fun emptyStateMap() = EmptyStateMap(ff)
+    fun Int.asStateMap(value: Params): StateMap<Params> = SingletonStateMap(this, value, ff)
+    fun IntRange.asStateMap(value: Params): StateMap<Params> = RangeStateMap(this, value, ff)
+    fun BitSet.asStateMap(value: Params): StateMap<Params> = ConstantStateMap(this, value, ff)
+    fun Map<Int, Params>.asStateMap(): StateMap<Params> = this.asMutableStateMap()
+    fun Map<Int, Params>.asMutableStateMap(): MutableStateMap<Params> = HashStateMap(ff, this)
+
+    infix fun StateMap<Params>.lazyAnd(other: StateMap<Params>): StateMap<Params>
+            = AndStateMap(this, other, this@Solver)
+    infix fun StateMap<Params>.lazyOr(other: StateMap<Params>): StateMap<Params>
+            = OrStateMap(this, other, this@Solver)
+    infix fun StateMap<Params>.complementAgainst(full: StateMap<Params>): StateMap<Params>
+            = ComplementStateMap(full, this, this@Solver)
+
 }

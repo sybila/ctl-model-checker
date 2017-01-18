@@ -1,66 +1,53 @@
 package com.github.sybila.checker.solver
 
-import com.github.daemontus.Option
-import com.github.daemontus.asSome
-import com.github.daemontus.none
-import com.github.sybila.checker.*
+import com.github.sybila.checker.Solver
+import java.nio.ByteBuffer
 import java.util.*
 
-data class BitSetParams(
-        val bitSet: BitSet
-) : Params
-
-fun BitSet.asParams() = BitSetParams(this)
-
 class BitSetSolver(
-        private val size: Int
-) : Solver {
+        private val nBits: Int
+) : Solver<BitSet> {
 
-    val universe = BitSet().apply { set(0, size) }
+    override fun BitSet.prettyPrint(): String = this.toString()
 
-    override fun Params?.extendWith(other: Params?): Option<Params> = when {
-        this === TT || other === null -> Option.None()
-        this === null -> other.asSome()
-        else -> {
-            val current = this.toBitSet()
-            val new = other.toBitSet().clone() as BitSet
-            new.or(current)
-            new .assuming { new != current }
-                ?.asParams()?.asSome() ?: none()
-        }
-    }.byTheWay { SolverStats.solverCall() }
+    override val tt: BitSet = BitSet().apply { this.set(0, nBits) }
+    override val ff: BitSet = BitSet()
 
-    override fun Params.isSat(): Params?
-            = this.byTheWay { SolverStats.solverCall() }
-            .toBitSet().assuming { !it.isEmpty }?.asParams()
+    override fun BitSet.and(other: BitSet): BitSet
+            = (this.clone() as BitSet).apply { this.and(other) }
 
-    fun Params.toBitSet(): BitSet = when (this) {
-        is TT -> universe
-        is BitSetParams -> this.bitSet
-        is And -> {
-            val result = universe.clone() as BitSet
-            args.forEach { result.and(it.toBitSet()) }
-            result
-        }
-        is Or -> {
-            val result = BitSet()
-            args.forEach { result.or(it.toBitSet()) }
-            result
-        }
-        is Not -> {
-            val result = universe.clone() as BitSet
-            result.andNot(inner.toBitSet())
-            result
-        }
-        else -> throw UnsupportedParameterType(this)
+    override fun BitSet.or(other: BitSet): BitSet
+            = (this.clone() as BitSet).apply { this.or(other) }
+
+    override fun BitSet.not(): BitSet
+            = (tt.clone() as BitSet).apply { this.andNot(this@not) }
+
+    override fun BitSet.isSat(): Boolean = !this.isEmpty
+
+    override fun BitSet.minimize() {}
+
+    override fun BitSet.byteSize(): Int =  4 + this.toLongArray().size
+
+    override fun ByteBuffer.putColors(colors: BitSet): ByteBuffer = this.apply {
+        val array = colors.toLongArray()
+        this.putInt(array.size)
+        array.forEach { this.putLong(it) }
     }
 
-    override fun Params?.prettyPrint(): String = this.prettyPrint { when (it) {
-        is TT -> universe.prettyPrint()
-        is BitSetParams -> it.bitSet.prettyPrint()
-        else -> throw UnsupportedParameterType(it)
-    } }
+    override fun ByteBuffer.getColors(): BitSet {
+        val array = LongArray(this.int) { this.long }
+        return BitSet.valueOf(array)
+    }
 
-    private fun BitSet.prettyPrint() = this.stream().toArray().joinToString(prefix = "(", separator = " ", postfix = ")")
+    override fun BitSet.transferTo(solver: Solver<BitSet>): BitSet = this.clone() as BitSet
 
+    override fun BitSet.canSat(): Boolean = !this.isEmpty
+    override fun BitSet.canNotSat(): Boolean = this.isEmpty
+
+    override fun BitSet.andNot(other: BitSet): Boolean = (this.clone() as BitSet).run {
+        this.andNot(other)
+        !this.isEmpty
+    }
+
+    override fun BitSet.equals(other: BitSet): Boolean = this == other
 }

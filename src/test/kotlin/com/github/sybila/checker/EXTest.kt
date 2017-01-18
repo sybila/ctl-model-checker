@@ -1,25 +1,27 @@
 package com.github.sybila.checker
 
-import com.github.sybila.checker.map.asStateMap
-import com.github.sybila.checker.solver.asParams
+import com.github.sybila.checker.ReachModel.Prop.*
+import com.github.sybila.checker.channel.connectWithSharedMemory
+import com.github.sybila.checker.map.mutable.HashStateMap
+import com.github.sybila.checker.partition.asUniformPartitions
 import com.github.sybila.huctl.EX
 import org.junit.Test
 import java.util.*
 
-private val zero = BitSet().apply { set(0) }.asParams()
+private val zero = BitSet().apply { set(0) }
 
 class SequentialExistsNextTest {
 
     @Test(timeout = 500)
     fun oneStateModel() {
         ReachModel(1, 1).run {
-            Checker(this, parallelism = 1).use { checker ->
-                val expected = 0.asStateMap(BitSet().apply { set(1) }.asParams())
+            SequentialChecker(this).use { checker ->
+                val expected = 0.asStateMap(BitSet().apply { set(1) })
 
-                expected.assertDeepEquals(checker.verify(EX(ReachModel.Prop.UPPER_CORNER())))
-                expected.assertDeepEquals(checker.verify(EX(ReachModel.Prop.LOWER_CORNER())))
-                expected.assertDeepEquals(checker.verify(EX(ReachModel.Prop.CENTER())))
-                expected.assertDeepEquals(checker.verify(EX(ReachModel.Prop.BORDER())))
+                expected.assertDeepEquals(checker.verify(EX(UPPER_CORNER())))
+                expected.assertDeepEquals(checker.verify(EX(LOWER_CORNER())))
+                expected.assertDeepEquals(checker.verify(EX(CENTER())))
+                expected.assertDeepEquals(checker.verify(EX(BORDER())))
             }
         }
     }
@@ -27,21 +29,23 @@ class SequentialExistsNextTest {
     fun chainModel(chainSize: Int) {
 
         ReachModel(1, chainSize).run {
-            Checker(this, parallelism = 1).use { checker ->
+            SequentialChecker(this).use { checker ->
 
-                0.asStateMap(zero.not()).assertDeepEquals(checker.verify(EX(ReachModel.Prop.LOWER_CORNER())))
+                0.asStateMap(zero.not()).assertDeepEquals(checker.verify(EX(LOWER_CORNER())))
 
                 mapOf(
-                        chainSize - 1 to BitSet().apply { set(chainSize) }.asParams(),
-                        chainSize - 2 to BitSet().apply { for (p in 0..(chainSize-2)) set(p) }.asParams()
+                        chainSize - 1 to BitSet().apply { set(chainSize) },
+                        chainSize - 2 to BitSet().apply { for (p in 0..(chainSize-2)) set(p) }
 
-                ).asStateMap().assertDeepEquals(checker.verify(EX(ReachModel.Prop.UPPER_CORNER())))
+                ).asStateMap().assertDeepEquals(checker.verify(EX(UPPER_CORNER())))
 
-                val expected = ReachModel.Prop.BORDER().eval().states.flatMap { state ->
-                    state.predecessors(true).asSequence().map { it.target to it.bound }
-                }.groupBy({ it.first }, { it.second }).mapValues { Or(it.value) }.asStateMap()
-
-                expected.assertDeepEquals(checker.verify(EX(ReachModel.Prop.BORDER())))
+                val expected = HashStateMap(ff)
+                BORDER().eval().states().asSequence().forEach { state ->
+                    for ((p, t, bound) in state.predecessors(true)) {
+                        expected.setOrUnion(p, bound)
+                    }
+                }
+                expected.assertDeepEquals(checker.verify(EX(BORDER())))
 
             }
         }
@@ -50,20 +54,23 @@ class SequentialExistsNextTest {
     fun generalModel(dimensions: Int, dimensionSize: Int) {
 
         ReachModel(dimensions, dimensionSize).run {
-            Checker(this, parallelism = 1).use { checker ->
+            SequentialChecker(this).use { checker ->
 
-                0.asStateMap(zero.not()).assertDeepEquals(checker.verify(EX(ReachModel.Prop.LOWER_CORNER())))
+                0.asStateMap(zero.not()).assertDeepEquals(checker.verify(EX(LOWER_CORNER())))
 
-                val upperCorner = ReachModel.Prop.UPPER_CORNER().eval().states.first()
+                val upperCorner = UPPER_CORNER().eval().states().next()
                 upperCorner.predecessors(true)
                         .asSequence().associateBy({it.target}, {it.bound})
                         .asStateMap()
-                        .assertDeepEquals(checker.verify(EX(ReachModel.Prop.UPPER_CORNER())))
+                        .assertDeepEquals(checker.verify(EX(UPPER_CORNER())))
 
-                val expected = ReachModel.Prop.BORDER().eval().states.flatMap { state ->
-                    state.predecessors(true).asSequence().map { it.target to it.bound }
-                }.groupBy({ it.first }, { it.second }).mapValues { Or(it.value) }.asStateMap()
-                expected.assertDeepEquals(checker.verify(EX(ReachModel.Prop.BORDER())))
+                val expected = HashStateMap(ff)
+                BORDER().eval().states().asSequence().forEach { state ->
+                    for ((p, t, bound) in state.predecessors(true)) {
+                        expected.setOrUnion(p, bound)
+                    }
+                }
+                expected.assertDeepEquals(checker.verify(EX(BORDER())))
 
             }
         }
@@ -126,21 +133,23 @@ abstract class ConcurrentExistsNextTest {
     fun generalModel(dimensions: Int, dimensionSize: Int) {
 
         ReachModel(dimensions, dimensionSize).run {
-            Checker(this, parallelism = workers).use { checker ->
+            SequentialChecker(this).use { sequential ->
 
-                0.asStateMap(zero.not()).assertDeepEquals(checker.verify(EX(ReachModel.Prop.LOWER_CORNER())))
+                val partitions = (0 until workers).map { ReachModel(dimensions, dimensionSize) }.asUniformPartitions()
 
-                val upperCorner = ReachModel.Prop.UPPER_CORNER().eval().states.first()
-                upperCorner.predecessors(true)
-                        .asSequence().associateBy({it.target}, {it.bound})
-                        .asStateMap()
-                        .assertDeepEquals(checker.verify(EX(ReachModel.Prop.UPPER_CORNER())))
+                Checker(partitions.connectWithSharedMemory()).use { parallel ->
 
-                val expected = ReachModel.Prop.BORDER().eval().states.flatMap { state ->
-                    state.predecessors(true).asSequence().map { it.target to it.bound }
-                }.groupBy({ it.first }, { it.second }).mapValues { Or(it.value) }.asStateMap()
-                expected.assertDeepEquals(checker.verify(EX(ReachModel.Prop.BORDER())))
+                    val formulas = listOf(
+                            EX(LOWER_CORNER()),
+                            EX(UPPER_CORNER()),
+                            EX(BORDER())
+                    )
 
+                    formulas.forEach {
+                        sequential.verify(it).assertDeepEquals(partitions.zip(parallel.verify(it)))
+                    }
+
+                }
             }
         }
 

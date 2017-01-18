@@ -1,52 +1,42 @@
 package com.github.sybila.checker.solver
 
-import com.github.daemontus.Option
-import com.github.daemontus.asSome
-import com.github.daemontus.none
-import com.github.sybila.checker.*
-
-data class IntSetParams(
-     val set: Set<Int>
-) : Params
-
-fun Set<Int>.asParams(): Params = IntSetParams(this)
+import com.github.sybila.checker.Solver
+import java.nio.ByteBuffer
+import java.util.*
 
 class IntSetSolver(
-        private val universe: Set<Int>
-) : Solver {
+        override val tt: Set<Int>
+) : Solver<Set<Int>> {
 
+    override fun Set<Int>.prettyPrint(): String = this.toString()
 
-    override fun Params?.extendWith(other: Params?): Option<Params> = when {
-        this === TT || other === null -> Option.None()
-        this === null -> other.asSome()
-        else -> {
-            val current = this.toSet()
-            val new = other.toSet() + current
-            new .assuming { new != current }
-                ?.asParams()?.asSome() ?: none()
-        }
-    }.byTheWay { SolverStats.solverCall() }
+    override val ff: Set<Int> = setOf()
 
-    override fun Params.isSat(): Params?
-            = this.byTheWay { SolverStats.solverCall() }
-            .toSet().assuming { it.isNotEmpty() }?.asParams()
+    override fun Set<Int>.and(other: Set<Int>): Set<Int> = this.intersect(other)
 
+    override fun Set<Int>.or(other: Set<Int>): Set<Int> = this + other
 
-    private fun Params.toSet(): Set<Int> = when (this) {
-        is TT -> universe
-        is IntSetParams -> set
-        is And -> args.fold(universe) { a, i -> a.intersect(i.toSet()) }
-        is Or -> args.fold(emptySet()) { a, i -> a + i.toSet() }
-        is Not -> universe - inner.toSet()
-        else -> throw UnsupportedParameterType(this)
+    override fun Set<Int>.not(): Set<Int> = tt - this
+
+    override fun Set<Int>.isSat(): Boolean = this.isNotEmpty()
+
+    override fun Set<Int>.minimize() {}
+
+    override fun Set<Int>.byteSize(): Int = 4 + 4 * this.size
+
+    override fun ByteBuffer.putColors(colors: Set<Int>): ByteBuffer = this.apply {
+        this.putInt(colors.size)
+        colors.forEach { this.putInt(it) }
     }
 
-    override fun Params?.prettyPrint(): String = this.prettyPrint { when (it) {
-        is TT -> universe.prettyPrint()
-        is IntSetParams -> it.set.prettyPrint()
-        else -> throw UnsupportedParameterType(it)
-    } }
+    override fun ByteBuffer.getColors(): Set<Int> = (1..this.int).map { this.int }.toSet()
 
-    private fun Set<Int>.prettyPrint() = this.joinToString(prefix = "(", separator = " ", postfix = ")")
+    override fun Set<Int>.transferTo(solver: Solver<Set<Int>>): Set<Int> = HashSet(this)
+
+    override fun Set<Int>.canSat(): Boolean = this.isNotEmpty()
+    override fun Set<Int>.canNotSat(): Boolean = this.isEmpty()
+
+    override fun Set<Int>.andNot(other: Set<Int>): Boolean = this.any { it !in other }
+    override fun Set<Int>.equals(other: Set<Int>): Boolean = this == other
 
 }
