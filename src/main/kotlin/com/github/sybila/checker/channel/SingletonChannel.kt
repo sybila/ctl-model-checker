@@ -1,6 +1,7 @@
 package com.github.sybila.checker.channel
 
 import com.github.sybila.checker.Channel
+import com.github.sybila.checker.CheckerStats
 import com.github.sybila.checker.Partition
 
 class SingletonChannel<Params : Any>(
@@ -11,6 +12,7 @@ class SingletonChannel<Params : Any>(
         if (outgoing.size != 1 || outgoing[0]?.isNotEmpty() ?: false) {
             throw IllegalStateException("Trying to send messages using a singleton channel!")
         }
+        CheckerStats.mapReduce(0)
         return null
     }
 

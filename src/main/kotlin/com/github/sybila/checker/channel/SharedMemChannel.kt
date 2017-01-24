@@ -1,6 +1,7 @@
 package com.github.sybila.checker.channel
 
 import com.github.sybila.checker.Channel
+import com.github.sybila.checker.CheckerStats
 import com.github.sybila.checker.Partition
 import java.nio.ByteBuffer
 import java.util.*
@@ -48,6 +49,7 @@ class SharedMemChannel<Params : Any> private constructor(
                 buffer
             }
         }
+        CheckerStats.mapReduce(buffers.sumBy { it?.limit() ?: 0 }.toLong())
         barrier.await()
         // everyone has a prepared transmission, now everyone will write it into channels
         buffers.forEachIndexed { i, byteBuffer ->

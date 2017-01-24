@@ -1,6 +1,7 @@
 package com.github.sybila.checker.operator
 
 import com.github.sybila.checker.Channel
+import com.github.sybila.checker.CheckerStats
 import com.github.sybila.checker.Operator
 import com.github.sybila.checker.eval
 import com.github.sybila.checker.map.mutable.HashStateMap
@@ -13,8 +14,12 @@ class ExistsNextOperator<out Params: Any>(
 
     val storage = (0 until partitionCount).map { newLocalMutableMap(it) }
 
+    val i = inner.compute()
+
+    CheckerStats.setOperator("ExistsNext")
+
     //distribute data from inner formula
-    for ((state, value) in inner.compute().entries()) {
+    for ((state, value) in i.entries()) {
         for ((predecessor, dir, bound) in state.predecessors(timeFlow)) {
             if (direction.eval(dir)) {
                 val witness = value and bound
@@ -42,9 +47,13 @@ class AllNextOperator<out Params : Any>(
     val mySatisfied = satisfied[partitionId]
     val myCandidates = candidates[partitionId]
 
+    val i = inner.compute()
+
+    CheckerStats.setOperator("AllNext")
+
     //distribute data so that everyone sees their successors that are satisfied in the inner formula
     //and also mark all such states as candidates (candidate essentially means EX phi holds)
-    for ((state, value) in inner.compute().entries()) {
+    for ((state, value) in i.entries()) {
         for ((predecessor, dir, bound) in state.predecessors(timeFlow)) {
             if (direction.eval(dir)) {  //if direction is false, predecessor will be false for the entire bound
                 val candidate = value and bound

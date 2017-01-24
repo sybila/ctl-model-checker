@@ -28,6 +28,7 @@ class SolverStatsTest {
                     """\r?
 Started solver throughput measuring\. Metric: No\. of solver calls per second\.\r?
 Total elapse time: \d+ ms\r?
+Total solver calls: 1\r?
 Average throughput: 1/s\r?
 """.toRegex()
             ))
@@ -49,10 +50,12 @@ Average throughput: 1/s\r?
             tt.isSat()
             SolverStats.printGlobal()
             val printed = String(bytes.toByteArray(), StandardCharsets.UTF_8)
+            println(printed)
             assertTrue(printed.matches(
                     """\r?
 Started solver throughput measuring\. Metric: No\. of solver calls per second\.\r?
 Total elapse time: \d+ ms\r?
+Total solver calls: 1\r?
 Average throughput: 1/s\r?
 """.toRegex()
             ))

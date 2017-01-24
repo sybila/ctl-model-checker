@@ -1,6 +1,7 @@
 package com.github.sybila.checker.operator
 
 import com.github.sybila.checker.Channel
+import com.github.sybila.checker.CheckerStats
 import com.github.sybila.checker.Operator
 
 class AndOperator<out Params : Any>(
@@ -11,6 +12,8 @@ class AndOperator<out Params : Any>(
 
     val l = left.compute()
     val r = right.compute()
+
+    CheckerStats.setOperator("And")
 
     partition.run {
         for ((state, value) in l.entries()) {
@@ -34,6 +37,8 @@ class OrOperator<out Params : Any>(
 
     val l = left.compute()
     val r = right.compute()
+
+    CheckerStats.setOperator("Or")
 
     partition.run {
         for ((state, value) in l.entries()) {
@@ -60,6 +65,8 @@ class ComplementOperator<out Params : Any>(
     val result = partition.newLocalMutableMap(partitionId)
     val f = full.compute()
     val i = inner.compute()
+
+    CheckerStats.setOperator("Not")
 
     partition.run {
         for ((state, value) in f.entries()) {

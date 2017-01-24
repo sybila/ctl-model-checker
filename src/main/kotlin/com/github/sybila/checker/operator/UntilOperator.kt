@@ -1,6 +1,7 @@
 package com.github.sybila.checker.operator
 
 import com.github.sybila.checker.Channel
+import com.github.sybila.checker.CheckerStats
 import com.github.sybila.checker.Operator
 import com.github.sybila.checker.eval
 import com.github.sybila.checker.map.mutable.HashStateMap
@@ -39,6 +40,8 @@ class ExistsUntilOperator<out Params : Any>(
             }
         }
     }
+
+    CheckerStats.setOperator("ExistsUntil")
 
     var received: List<Pair<Int, Params>>? = null
 
@@ -135,6 +138,8 @@ class AllUntilOperator<out Params : Any>(
             }
         }
     }
+
+    CheckerStats.setOperator("AllUntil")
 
 
     var received: List<Pair<Int, Params>>? = null
