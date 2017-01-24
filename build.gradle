@@ -18,7 +18,7 @@ apply plugin: 'maven'
 apply plugin: 'jacoco'
 
 group = "com.github.sybila"
-version = '2.1.0'
+version = '2.1.1'
 
 //antlr config
 generateGrammarSource {
