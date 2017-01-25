@@ -38,7 +38,7 @@ object CheckerStats {
         if (time > last + printInterval && lastPrint.compareAndSet(last, time)) {
             mapReduce.set(0)
             mapReduceSize.set(0)
-            output?.println("Map-Reduce: $calls calls. (avr. size: ${currentSize/calls}")
+            output?.println("Map-Reduce: $calls calls. (avr. size: ${currentSize/calls})")
             output?.println("Verification: ${operator.get()}")
         }
         //update global stats
