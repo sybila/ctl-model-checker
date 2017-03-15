@@ -43,7 +43,7 @@ class ContinuousStateMap<Params : Any>(
 
     override fun set(state: Int, value: Params) {
         val key = state.toKey()
-        if (key < 0 || key >= data.size) throw IndexOutOfBoundsException("Map holds values [$from, $to), but index $this was given.")
+        if (key < 0 || key >= data.size) throw IndexOutOfBoundsException("Map holds values [$from, $to), but index $state was given.")
         if (data[key] == null) size += 1
         data[key] = value
     }
