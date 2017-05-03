@@ -27,7 +27,7 @@ class BitSetSolver(
 
     override fun BitSet.minimize() {}
 
-    override fun BitSet.byteSize(): Int =  4 + this.toLongArray().size
+    override fun BitSet.byteSize(): Int =  4 + this.toLongArray().size * 8
 
     override fun ByteBuffer.putColors(colors: BitSet): ByteBuffer = this.apply {
         val array = colors.toLongArray()
