@@ -1,13 +1,19 @@
 buildscript {
-    ext.kotlin_version = '1.0.6'
+    ext.version_kotlin = '1.1.2-2'
+    ext.version_rxjava = '2.1.0'
+    ext.version_antlr = '4.7'
+    ext.version_huctl = '3.0.0'
+    ext.version_dokka = '0.9.13'
 
     repositories {
         jcenter()
         mavenCentral()
+        maven { url "https://plugins.gradle.org/m2/" }
     }
 
     dependencies {
-        classpath "org.jetbrains.kotlin:kotlin-gradle-plugin:$kotlin_version"
+        classpath "org.jetbrains.kotlin:kotlin-gradle-plugin:$version_kotlin"
+        classpath "org.jetbrains.dokka:dokka-gradle-plugin:$version_dokka"
     }
 }
 
@@ -16,9 +22,10 @@ apply plugin: 'kotlin'
 apply plugin: 'antlr'
 apply plugin: 'maven'
 apply plugin: 'jacoco'
+apply plugin: 'org.jetbrains.dokka'
 
 group = "com.github.sybila"
-version = '2.1.2'
+version = '3.0.0'
 
 //antlr config
 generateGrammarSource {
@@ -38,23 +45,13 @@ repositories {
 
 dependencies {
     testCompile group: 'junit', name: 'junit', version: '4.11'
-    compile 'com.intellij:annotations:5.1'
-    compile 'com.github.daemontus:jafra:1.0.8'
-    compile 'com.github.daemontus:egholm:0.3.0'
-    compile 'com.github.sybila:ctl-parser:2.2.2'
-    compile "org.jetbrains.kotlin:kotlin-stdlib:$kotlin_version"
-    testCompile "org.jetbrains.kotlin:kotlin-test:$kotlin_version"
-    antlr "org.antlr:antlr4:4.6"
-}
+    testCompile "org.jetbrains.kotlin:kotlin-test:$version_kotlin"
 
-sourceSets {
-    main.java.srcDirs += 'src/main/kotlin'
-    test.java.srcDirs += 'src/test/kotlin'
-}
+    compile "com.github.sybila:huctl:$version_huctl"
+    compile "io.reactivex.rxjava2:rxjava:$version_rxjava"
+    compile "org.jetbrains.kotlin:kotlin-stdlib:$version_kotlin"
 
-task javadocJar(type: Jar) {
-    classifier = 'javadoc'
-    from javadoc
+    antlr "org.antlr:antlr4:$version_antlr"
 }
 
 task sourcesJar(type: Jar) {
@@ -63,12 +60,7 @@ task sourcesJar(type: Jar) {
 }
 
 artifacts {
-    archives javadocJar
     archives sourcesJar
-}
-
-jacoco {
-    toolVersion = "0.7.5.201505241946"
 }
 
 jacocoTestReport {
@@ -80,9 +72,10 @@ jacocoTestReport {
 
 check.dependsOn jacocoTestReport
 
+// verbose test logging
 test {
     testLogging {
-        events "passed", "skipped", "failed"
+        events "skipped", "failed", "standardOut", "standardError"
     }
     void
 }
@@ -91,4 +84,16 @@ test {
 tasks.withType(Test) {
     maxHeapSize = "1024m"
     jvmArgs "-Xmx1024m"
+}
+
+
+dokka {
+    moduleName = "Coloured Model Checking"
+    sourceDirs = files('src/main/java')     // excludes generated antlr classes
+    /*includes = [
+            'src/main/java/com/github/sybila/package.md',
+            'src/main/java/com/github/sybila/huctl/package.md',
+            'src/main/java/com/github/sybila/huctl/parser/package.md',
+            'src/main/java/com/github/sybila/huctl/dsl/package.md'
+    ]*/
 }

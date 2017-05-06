@@ -1,6 +1,7 @@
 package com.github.sybila.checker
 
 import com.github.sybila.huctl.*
+import io.reactivex.Flowable
 
 fun Formula.bindReference(name: String, value: Int): Formula {
     return this.fold({
@@ -49,4 +50,8 @@ inline fun <T> T?.assuming(predicate: (T) -> Boolean): T? {
 inline fun <T> T.byTheWay(action: () -> Unit): T {
     action()
     return this
+}
+
+fun main(args: Array<String>) {
+
 }
