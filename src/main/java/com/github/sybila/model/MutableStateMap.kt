@@ -4,11 +4,12 @@ import com.github.sybila.solver.Solver
 
 /**
  * State map with a backing array. It is not strictly thread safe, but
- * it is publish safe under parallel read and sequential write.
+ * it is safe under parallel read and sequential write.
  *
- * That is, you can read from any cell, but as long as you consistently write
- * to a cell from a single thread and you have some other synchronisation point
- * somewhere else, you are good to go.
+ * That is, you can safely write from different threads as long as your
+ * writes don't access the same indices. You can also safely read from any index,
+ * concurrently, but you are not guaranteed to observe the latest value if it was
+ * written by another thread.
  */
 internal class MutableStateMap<Param : Any>(size: Int) : StateMap<Param> {
 
@@ -36,13 +37,10 @@ internal class MutableStateMap<Param : Any>(size: Int) : StateMap<Param> {
 
     fun increaseKey(key: Int, value: Param, solver: Solver<Param>): Boolean {
         val current = get(key)
-        val union = solver.run { current or value }
-        return if (union == null || solver.run { current equal union }) {
-            false
-        } else {
+        return solver.run { current tryOr value }?.let { union ->
             array[key] = union
             true
-        }
+        } ?: false
     }
 
 }

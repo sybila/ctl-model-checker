@@ -2,7 +2,10 @@ package com.github.sybila.model
 
 import com.github.sybila.solver.Solver
 
-interface Model<Param : Any> : Solver<Param> {
+/**
+ *
+ */
+interface TransitionSystem<Param : Any> : Solver<Param> {
 
     val stateCount: Int
 
