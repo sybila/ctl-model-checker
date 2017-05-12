@@ -1,5 +1,6 @@
 package com.github.sybila.fixedpoint
 
+typealias State = Int
 /*
 typealias State = Int
 
@@ -10,7 +11,7 @@ internal fun <Param : Any> Observable<StateMap<Param>>.fixedPoint(
 ) : Observable<StateMap<Param>> = this.map { initial ->
 
     val result = MutableStateMap<Param>(model.stateCount)
-    val queue = BfsStateQueue<State>()
+    val queue = TierStateQueue<State>()
 
     // copy initial states
     initial.entries.forEach { (k, v) -> result.increaseKey(k, v, model) }
