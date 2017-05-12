@@ -4,14 +4,16 @@ import com.github.sybila.solver.Solver
 
 /**
  * State map with a backing array. It is not strictly thread safe, but
- * it is safe under parallel read and sequential write.
+ * it is safe under parallel read and sequential write, just as a standard array.
  *
  * That is, you can safely write from different threads as long as your
- * writes don't access the same indices. You can also safely read from any index,
+ * writes don't write to the same indices. You can also safely read from any index,
  * concurrently, but you are not guaranteed to observe the latest value if it was
  * written by another thread.
+ *
+ * Each map has an associated solver.
  */
-internal class MutableStateMap<Param : Any>(size: Int) : StateMap<Param> {
+class MutableStateMap<Param : Any>(size: Int, private val solver: Solver<Param>) : StateMap<Param> {
 
     private val array = arrayOfNulls<Any?>(size)
 
@@ -19,23 +21,33 @@ internal class MutableStateMap<Param : Any>(size: Int) : StateMap<Param> {
         get() = array.indices.filter { array[it] != null }
 
     override val entries: Iterable<Pair<Int, Param>>
-        get() = array.indices.filter { array[it] != null }.map { it to get(it)!! }
+        get() = array.indices.map { state -> get(state)?.let { state to it } }.filterNotNull()
 
     override fun get(key: Int): Param? {
-        return if (key < 0 || key >= array.size) null
+        if (key < 0) throw IllegalArgumentException("Accessing negative key: $key")
+        return if (key >= array.size) null
         else {
             @Suppress("UNCHECKED_CAST")
             array[key] as Param?
         }
     }
 
-    override fun contains(key: Int): Boolean
-            = key >= 0 && key < array.size && array[key] != null
+    override fun contains(key: Int): Boolean {
+        if (key < 0) throw IllegalArgumentException("Checking negative key: $key")
+        return key < array.size && array[key] != null
+    }
 
     override fun isEmpty(): Boolean
             = array.indices.all { array[it] == null }
 
-    fun increaseKey(key: Int, value: Param, solver: Solver<Param>): Boolean {
+    /**
+     * Union current state of [key] with the given [value] using the associated solver.
+     *
+     * If the state changed (increased), return true. Otherwise return false.
+     */
+    fun increaseKey(key: Int, value: Param): Boolean {
+        if (key < 0) throw IllegalArgumentException("Increasing negative key: $key")
+        if (key >= array.size) throw IllegalArgumentException("Increasing key $key, array size: ${array.size}")
         val current = get(key)
         return solver.run { current tryOr value }?.let { union ->
             array[key] = union

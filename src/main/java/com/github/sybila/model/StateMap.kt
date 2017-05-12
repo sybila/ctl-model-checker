@@ -1,5 +1,17 @@
 package com.github.sybila.model
 
+/**
+ * Generalization of a collection holding a parametrized set of states.
+ *
+ * We don't use standard [Map] interface because:
+ *  - we want to avoid [Map.Entry] types, since the <State, Param> pairs are
+ *  frequently passed around without any associated map.
+ *  - we don't need access to [Map.values].
+ *  - we have a special meaning for null values, which currently aligns with [Map],
+ *  but that can change in the future.
+ *
+ *  Note that negative integers are not allowed as indices!
+ */
 interface StateMap<out Param : Any> {
 
     /**
@@ -26,5 +38,10 @@ interface StateMap<out Param : Any> {
      * Check the map for emptiness.
      */
     fun isEmpty(): Boolean
+
+    /**
+     * @see [isEmpty]
+     */
+    fun isNotEmpty(): Boolean = !isEmpty()
 
 }

@@ -1,11 +1,6 @@
 package com.github.sybila.fixedpoint
 
-import com.github.sybila.model.MutableStateMap
-import com.github.sybila.model.StateMap
-import com.github.sybila.model.TransitionSystem
-import io.reactivex.Observable
-import java.util.concurrent.ExecutorService
-
+/*
 typealias State = Int
 
 internal fun <Param : Any> Observable<StateMap<Param>>.fixedPoint(
@@ -80,4 +75,4 @@ class HUCTLpAlgorithm<Param : Any>(model: TransitionSystem<Param>, executor: Exe
         }
     })
 
-}
+}*/
