@@ -1,6 +1,8 @@
 package com.github.sybila.solver
 
 import org.junit.Test
+import kotlin.test.assertEquals
+import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
 class UnitSolverTest {
@@ -12,6 +14,8 @@ class UnitSolverTest {
         solver.run {
             assertTrue(universe.isSat())
             assertTrue(null.isNotSat())
+            assertFalse(universe.isNotSat())
+            assertFalse(null.isSat())
         }
     }
 
@@ -22,6 +26,10 @@ class UnitSolverTest {
             assertTrue(null equal null)
             assertTrue(universe notEqual null)
             assertTrue(null notEqual universe)
+            assertFalse(universe notEqual universe)
+            assertFalse(null notEqual null)
+            assertFalse(universe equal null)
+            assertFalse(null equal universe)
         }
     }
 
@@ -50,6 +58,16 @@ class UnitSolverTest {
             assertTrue((universe or null).isSat())
             assertTrue((null or universe).isSat())
             assertTrue((null or null).isNotSat())
+        }
+    }
+
+    @Test
+    fun tryOrTest() {
+        solver.run {
+            assertEquals(universe tryOr universe, null)
+            assertEquals(universe tryOr null, null)
+            assertEquals(null tryOr universe, universe)
+            assertEquals(null tryOr null, null)
         }
     }
 

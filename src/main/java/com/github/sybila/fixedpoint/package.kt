@@ -1,20 +1,17 @@
 package com.github.sybila.fixedpoint
 
-import com.github.sybila.model.Model
 import com.github.sybila.model.MutableStateMap
 import com.github.sybila.model.StateMap
-import com.sun.org.apache.xpath.internal.operations.Mod
+import com.github.sybila.model.TransitionSystem
 import io.reactivex.Observable
-import java.util.*
 import java.util.concurrent.ExecutorService
-import java.util.concurrent.Executors
 
 typealias State = Int
 
 internal fun <Param : Any> Observable<StateMap<Param>>.fixedPoint(
-        model: Model<Param>,
+        model: TransitionSystem<Param>,
         executor: ExecutorService,
-        stepFunction: Model<Param>.(MutableStateMap<Param>, State) -> Iterable<State>
+        stepFunction: TransitionSystem<Param>.(MutableStateMap<Param>, State) -> Iterable<State>
 ) : Observable<StateMap<Param>> = this.map { initial ->
 
     val result = MutableStateMap<Param>(model.stateCount)
@@ -37,12 +34,12 @@ internal fun <Param : Any> Observable<StateMap<Param>>.fixedPoint(
 }
 
 open class FixedPointAlgorithm<Param : Any>(
-        protected val model: Model<Param>,
+        protected val model: TransitionSystem<Param>,
         protected val executor: ExecutorService
 ) {
 
     fun Observable<StateMap<Param>>.next(
-            stepFunction: Model<Param>.(StateMap<Param>, State) -> Param?,
+            stepFunction: TransitionSystem<Param>.(StateMap<Param>, State) -> Param?,
             future: Boolean = true
     ) : Observable<StateMap<Param>> = this.map { initial ->
 
@@ -66,7 +63,7 @@ open class FixedPointAlgorithm<Param : Any>(
 
 }
 
-class HUCTLpAlgorithm<Param : Any>(model: Model<Param>, executor: ExecutorService)
+class HUCTLpAlgorithm<Param : Any>(model: TransitionSystem<Param>, executor: ExecutorService)
     : FixedPointAlgorithm<Param>(model, executor) {
 
     fun Observable<StateMap<Param>>.existsNext(timeFlow: Boolean = true): Observable<StateMap<Param>>
