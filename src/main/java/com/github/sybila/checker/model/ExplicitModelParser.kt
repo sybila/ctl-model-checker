@@ -8,7 +8,6 @@ import com.github.sybila.checker.antlr.ModelBaseListener
 import com.github.sybila.checker.antlr.ModelLexer
 import com.github.sybila.checker.antlr.ModelParser
 import com.github.sybila.checker.channel.connectWithSharedMemory
-import com.github.sybila.checker.solver.IntSetSolver
 import com.github.sybila.huctl.DirectionFormula
 import com.github.sybila.huctl.Formula
 import com.github.sybila.huctl.HUCTLParser

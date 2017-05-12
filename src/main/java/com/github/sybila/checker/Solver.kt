@@ -1,7 +1,6 @@
 package com.github.sybila.checker
 
 import com.github.sybila.checker.map.*
-import com.github.sybila.checker.map.mutable.HashStateMap
 import java.nio.ByteBuffer
 import java.util.*
 
@@ -12,7 +11,7 @@ import java.util.*
  * other advanced options without complicating the
  * colors interface implementation.
  */
-interface Solver<Params : Any> {
+interface SolverOld<Params : Any> {
 
     val tt: Params
     val ff: Params
@@ -29,9 +28,11 @@ interface Solver<Params : Any> {
      * @Complexity: constant
      */
 
-    infix fun Params.and(other: Params): Params
-    infix fun Params.or(other: Params): Params
+    infix fun Params?.and(other: Params?): Params?
+    infix fun Params?.or(other: Params?): Params?
     fun Params.not(): Params
+
+    infix fun Params?.equal(other: Params?): Boolean
 
     /**
      * Return a constant-time over- and under-approximation of the

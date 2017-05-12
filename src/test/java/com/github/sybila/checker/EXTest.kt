@@ -2,7 +2,6 @@ package com.github.sybila.checker
 
 import com.github.sybila.checker.ReachModel.Prop.*
 import com.github.sybila.checker.channel.connectWithSharedMemory
-import com.github.sybila.checker.map.mutable.HashStateMap
 import com.github.sybila.checker.partition.asUniformPartitions
 import com.github.sybila.huctl.EX
 import org.junit.Test

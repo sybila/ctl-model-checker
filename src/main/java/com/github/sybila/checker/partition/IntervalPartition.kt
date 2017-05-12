@@ -4,7 +4,6 @@ import com.github.sybila.checker.Model
 import com.github.sybila.checker.MutableStateMap
 import com.github.sybila.checker.Partition
 import com.github.sybila.checker.map.mutable.ContinuousStateMap
-import com.github.sybila.checker.map.mutable.HashStateMap
 
 class IntervalPartition<Params: Any>(
         override val partitionId: Int,

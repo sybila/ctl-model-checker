@@ -2,7 +2,6 @@ package com.github.sybila.checker.operator
 
 import com.github.sybila.checker.Channel
 import com.github.sybila.checker.Operator
-import com.github.sybila.checker.map.mutable.HashStateMap
 
 class ForAllOperator<out Params : Any>(
         full: Operator<Params>,

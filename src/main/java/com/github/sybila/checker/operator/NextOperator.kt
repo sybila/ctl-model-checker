@@ -3,8 +3,6 @@ package com.github.sybila.checker.operator
 import com.github.sybila.checker.Channel
 import com.github.sybila.checker.CheckerStats
 import com.github.sybila.checker.Operator
-import com.github.sybila.checker.eval
-import com.github.sybila.checker.map.mutable.HashStateMap
 import com.github.sybila.huctl.DirectionFormula
 
 class ExistsNextOperator<out Params: Any>(

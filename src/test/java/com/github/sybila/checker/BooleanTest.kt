@@ -3,7 +3,6 @@ package com.github.sybila.checker
 import com.github.sybila.checker.channel.connectWithSharedMemory
 import com.github.sybila.checker.partition.IntervalPartition
 import com.github.sybila.checker.partition.asIntervalPartitions
-import com.github.sybila.checker.solver.IntSetSolver
 import com.github.sybila.huctl.*
 import org.junit.Test
 

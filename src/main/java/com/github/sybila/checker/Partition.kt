@@ -1,7 +1,6 @@
 package com.github.sybila.checker
 
 import com.github.sybila.checker.map.PartitionStateMap
-import com.github.sybila.checker.map.mutable.HashStateMap
 
 /**
  * A portion of a state space.
