@@ -23,7 +23,8 @@ class BitSetSolver(
     override fun BitSet?.not(): BitSet? = when {
         this == null -> universe
         this == universe -> null
-        else -> universe.copy().apply { andNot(this@not) }.takeIf { !it.isEmpty }
+        // Note: andNot can't produce an empty BitSet, since this is not universe
+        else -> universe.copy().apply { andNot(this@not) }
     }
 
     override fun BitSet?.equal(other: BitSet?): Boolean = this == other
