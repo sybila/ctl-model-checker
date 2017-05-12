@@ -1,4 +1,4 @@
-package com.github.sybila.fixedpoint
+package com.github.sybila.algorithm
 
 import java.util.*
 

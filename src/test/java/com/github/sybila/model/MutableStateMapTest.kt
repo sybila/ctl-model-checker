@@ -22,7 +22,7 @@ class MutableStateMapTest {
     @Test
     fun basicUsageTest() {
         solver.run {
-            val map = MutableStateMap(10)
+            val map = mutableStateMap(10)
 
             for (s in 0..20) {    //we are checking also out of range
                 assertTrue(s !in map)
@@ -58,7 +58,7 @@ class MutableStateMapTest {
     @Test
     fun negativeKeysTest() {
         solver.run {
-            val map = MutableStateMap(0)
+            val map = mutableStateMap(0)
 
             assertFailsWith<IllegalArgumentException> {
                 map[-1]
@@ -78,7 +78,7 @@ class MutableStateMapTest {
     @Test
     fun outOfRangeIncreaseTest() {
         solver.run {
-            val map = MutableStateMap(1)
+            val map = mutableStateMap(1)
 
             assertFailsWith<IllegalArgumentException> {
                 map.increaseKey(1, ab)
@@ -97,7 +97,7 @@ class MutableStateMapTest {
         val states = 2000
         BitSetSolver(BitSet().apply { set(0, states) }).run {
 
-            val map = MutableStateMap(states)
+            val map = mutableStateMap(states)
 
             for (s in 0 until states) {
                 map.increaseKey(s, BitSet().apply { set(s) })

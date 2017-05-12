@@ -1,6 +1,7 @@
 buildscript {
     ext.version_kotlin = '1.1.2-2'
     ext.version_rxjava = '2.1.0'
+    ext.version_rxkotlin = '2.0.2'
     ext.version_antlr = '4.7'
     ext.version_huctl = '3.0.0'
     ext.version_dokka = '0.9.13'
@@ -41,6 +42,7 @@ compileKotlin.dependsOn generateGrammarSource
 repositories {
     mavenCentral()
     maven { url "https://jitpack.io" }
+    maven { url 'http://repo.spring.io/milestone' } // reactor
 }
 
 dependencies {
@@ -49,7 +51,10 @@ dependencies {
 
     compile "com.github.sybila:huctl:$version_huctl"
     compile "io.reactivex.rxjava2:rxjava:$version_rxjava"
+    compile "io.reactivex.rxjava2:rxkotlin:$version_rxkotlin"
     compile "org.jetbrains.kotlin:kotlin-stdlib:$version_kotlin"
+
+    compile "io.projectreactor:reactor-core:3.1.0.M1"
 
     antlr "org.antlr:antlr4:$version_antlr"
 }

@@ -13,9 +13,20 @@ import com.github.sybila.solver.Solver
  *
  * Each map has an associated solver.
  */
-class MutableStateMap<Param : Any>(size: Int, private val solver: Solver<Param>) : StateMap<Param> {
+class MutableStateMap<Param : Any> internal constructor(private val array: Array<Any?>,
+                                                        private val solver: Solver<Param>
+) : StateMap<Param> {
 
-    private val array = arrayOfNulls<Any?>(size)
+    constructor(size: Int, solver: Solver<Param>) : this(arrayOfNulls(size), solver)
+/*
+    fun merge(other: MutableStateMap<Param>): MutableStateMap<Param> {
+        if (this.array.size != other.array.size) error("Sizes don't match")
+        return MutableStateMap(Array(this.array.size) {
+
+        }, solver)
+    }
+*/
+    //private val array = arrayOfNulls<Any?>(size)
 
     override val states: Iterable<Int>
         get() = array.indices.filter { array[it] != null }

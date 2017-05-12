@@ -1,4 +1,4 @@
-package com.github.sybila.fixedpoint
+package com.github.sybila.algorithm
 
 import org.junit.Test
 import kotlin.test.assertEquals
