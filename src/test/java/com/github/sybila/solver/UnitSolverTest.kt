@@ -12,63 +12,72 @@ class UnitSolverTest {
     @Test
     fun isSatTest() {
         solver.run {
-            assertTrue(universe.isSat())
-            assertTrue(null.isNotSat())
-            assertFalse(universe.isNotSat())
-            assertFalse(null.isSat())
+            assertTrue(tt.isSat())
+            assertTrue(ff.isNotSat())
+            assertFalse(tt.isNotSat())
+            assertFalse(ff.isSat())
         }
     }
 
     @Test
     fun equalTest() {
         solver.run {
-            assertTrue(universe equal universe)
-            assertTrue(null equal null)
-            assertTrue(universe notEqual null)
-            assertTrue(null notEqual universe)
-            assertFalse(universe notEqual universe)
-            assertFalse(null notEqual null)
-            assertFalse(universe equal null)
-            assertFalse(null equal universe)
+            assertTrue(tt equal tt)
+            assertTrue(ff equal ff)
+            assertTrue(tt notEqual ff)
+            assertTrue(ff notEqual tt)
+            assertFalse(tt notEqual tt)
+            assertFalse(ff notEqual ff)
+            assertFalse(tt equal ff)
+            assertFalse(ff equal tt)
         }
     }
 
     @Test
     fun notTest() {
         solver.run {
-            assertTrue(universe.not().isNotSat())
-            assertTrue(null.not().isSat())
+            assertTrue(tt.not().isNotSat())
+            assertTrue(ff.not().isSat())
         }
     }
 
     @Test
     fun andTest() {
         solver.run {
-            assertTrue((universe and universe).isSat())
-            assertTrue((universe and null).isNotSat())
-            assertTrue((null and universe).isNotSat())
-            assertTrue((null and null).isNotSat())
+            assertTrue((tt and tt).isSat())
+            assertTrue((tt and ff).isNotSat())
+            assertTrue((ff and tt).isNotSat())
+            assertTrue((ff and ff).isNotSat())
         }
     }
 
     @Test
     fun orTest() {
         solver.run {
-            assertTrue((universe or universe).isSat())
-            assertTrue((universe or null).isSat())
-            assertTrue((null or universe).isSat())
-            assertTrue((null or null).isNotSat())
+            assertTrue((tt or tt).isSat())
+            assertTrue((tt or ff).isSat())
+            assertTrue((ff or tt).isSat())
+            assertTrue((ff or ff).isNotSat())
         }
     }
 
     @Test
     fun tryOrTest() {
         solver.run {
-            assertEquals(universe tryOr universe, null)
-            assertEquals(universe tryOr null, null)
-            assertEquals(null tryOr universe, universe)
-            assertEquals(null tryOr null, null)
+            assertEquals(tt tryOr tt, null)
+            assertEquals(tt tryOr ff, null)
+            assertEquals(ff tryOr tt, tt)
+            assertEquals(ff tryOr ff, null)
         }
     }
 
+    @Test
+    fun tryAndTest() {
+        solver.run {
+            assertEquals(tt tryAnd tt, null)
+            assertEquals(tt tryAnd ff, ff)
+            assertEquals(ff tryAnd tt, null)
+            assertEquals(ff tryAnd ff, null)
+        }
+    }
 }

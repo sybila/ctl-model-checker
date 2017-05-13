@@ -10,21 +10,21 @@ import kotlin.test.assertFailsWith
 import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
-class MutableStateMapTest {
+class IncreasingStateMapTest {
 
-    val f = null
+    val f = setOf<Boolean>()
     val a = setOf(true)
     val b = setOf(false)
     val ab = setOf(true, false)
 
-    val solver = SetSolver(universe = ab)
+    val solver = SetSolver(tt = ab)
 
     @Test
     fun basicUsageTest() {
         solver.run {
-            val map = mutableStateMap(10)
+            val map = increasingStateMap(10)
 
-            for (s in 0..20) {    //we are checking also out of range
+            for (s in -10..20) {    //we are checking also out of range
                 assertTrue(s !in map)
             }
 
@@ -56,32 +56,16 @@ class MutableStateMapTest {
     }
 
     @Test
-    fun negativeKeysTest() {
-        solver.run {
-            val map = mutableStateMap(0)
-
-            assertFailsWith<IllegalArgumentException> {
-                map[-1]
-            }
-
-            assertFailsWith<IllegalArgumentException> {
-                map.increaseKey(-2, ab)
-            }
-
-            assertFailsWith<IllegalArgumentException> {
-                -2 in map
-            }
-
-        }
-    }
-
-    @Test
     fun outOfRangeIncreaseTest() {
         solver.run {
-            val map = mutableStateMap(1)
+            val map = increasingStateMap(1)
 
             assertFailsWith<IllegalArgumentException> {
                 map.increaseKey(1, ab)
+            }
+
+            assertFailsWith<IllegalArgumentException> {
+                map.increaseKey(-1, ab)
             }
         }
     }
@@ -97,7 +81,7 @@ class MutableStateMapTest {
         val states = 2000
         BitSetSolver(BitSet().apply { set(0, states) }).run {
 
-            val map = mutableStateMap(states)
+            val map = increasingStateMap(states)
 
             for (s in 0 until states) {
                 map.increaseKey(s, BitSet().apply { set(s) })
@@ -107,18 +91,14 @@ class MutableStateMapTest {
                 val myStates = (0 until states).filter { it % 4 == id }
                 do {
                     for (s in myStates) {
-                        (if (s != 0) map[s-1] else null)?.let { left ->
-                            map.increaseKey(s, left)
-                        }
-                        map[s+1]?.let { right ->
-                            map.increaseKey(s, right)
-                        }
+                        map.increaseKey(s, map[s-1])
+                        map.increaseKey(s, map[s+1])
                     }
-                } while (myStates.any { map[it] notEqual universe })
+                } while (myStates.any { map[it] notEqual tt })
             } }.map { it.join() }
 
             assertEquals((0 until states).toList(), map.states.toList())
-            assertEquals((0 until states).map { it to universe }, map.entries.toList())
+            assertEquals((0 until states).map { it to tt }, map.entries.toList())
 
         }
     }

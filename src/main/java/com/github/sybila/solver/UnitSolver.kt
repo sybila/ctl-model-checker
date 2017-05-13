@@ -1,18 +1,33 @@
 package com.github.sybila.solver
 
+import com.github.sybila.solver.Truth.*
+
 /**
- * Simple solver for binary parameter sets. [Unit] represents true, null false.
+ * Simple solver for binary parameter sets.
+ *
+ * It uses
  */
-class UnitSolver : Solver<Unit> {
+class UnitSolver : Solver<Truth> {
 
-    override val universe: Unit = Unit
+    override val tt: Truth = True
+    override val ff: Truth = False
 
-    override fun Unit?.and(other: Unit?): Unit? = this?.takeIf { other != null }
+    override fun Truth.and(other: Truth): Truth = when {
+        this === False -> this
+        other === False -> other
+        else -> this
+    }
 
-    override fun Unit?.or(other: Unit?): Unit? = this ?: other
+    override fun Truth.or(other: Truth): Truth = when {
+        this === True -> this
+        other === True -> other
+        else -> this
+    }
 
-    override fun Unit?.not(): Unit? = Unit.takeIf { this == null }
+    override fun Truth.not(): Truth = if (this === True) False else True
 
-    override fun Unit?.equal(other: Unit?): Boolean = this == other
+    override fun Truth.equal(other: Truth): Boolean = this === other
+
+    override fun Truth.isSat(): Boolean = this === True
 
 }

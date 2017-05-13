@@ -10,4 +10,5 @@ import com.github.sybila.solver.Solver
  */
 typealias State = Int
 
-fun <Param : Any> Solver<Param>.mutableStateMap(size: Int) = MutableStateMap(size, this)
+fun <Param : Any> Solver<Param>.increasingStateMap(size: Int) = IncreasingStateMap(size, this)
+fun <Param : Any> Solver<Param>.decreasingStateMap(size: Int) = DecreasingStateMap(size, this)

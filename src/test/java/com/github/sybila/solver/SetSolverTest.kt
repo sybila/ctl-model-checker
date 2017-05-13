@@ -5,17 +5,17 @@ import kotlin.test.assertTrue
 
 class SetSolverTest {
 
-    val f = null
+    val f = emptySet<Boolean>()
     val a = setOf(true)
     val b = setOf(false)
     val ab = setOf(true, false)
 
-    val solver = SetSolver(universe = ab)
+    val solver = SetSolver(tt = ab)
 
     @Test
     fun isSatTest() {
         solver.run {
-            assertTrue(universe.isSat())
+            assertTrue(tt.isSat())
             assertTrue(a.isSat())
             assertTrue(b.isSat())
             assertTrue(ab.isSat())
@@ -28,7 +28,7 @@ class SetSolverTest {
         solver.run {
             assertTrue(a equal a)
             assertTrue(b equal b)
-            assertTrue(ab equal universe)
+            assertTrue(ab equal tt)
             assertTrue(f equal f)
             assertTrue(a notEqual b)
             assertTrue(a notEqual ab)
@@ -76,10 +76,21 @@ class SetSolverTest {
             assertTrue((a tryOr a) === null)
             assertTrue((b tryOr b) === null)
             assertTrue((ab tryOr a) === null)
-            assertTrue((a tryOr b) equal ab)
-            assertTrue((a tryOr ab) equal ab)
-            assertTrue((f tryOr a) equal a)
+            assertTrue((a tryOr b)!! equal ab)
+            assertTrue((a tryOr ab)!! equal ab)
+            assertTrue((f tryOr a)!! equal a)
         }
     }
 
+    @Test
+    fun tryAndTest() {
+        solver.run {
+            assertTrue((a tryAnd a) === null)
+            assertTrue((b tryAnd b) === null)
+            assertTrue((a tryAnd ab) === null)
+            assertTrue((f tryAnd a) === null)
+            assertTrue((a tryAnd b)!! equal ff)
+            assertTrue((ab tryAnd a)!! equal a)
+        }
+    }
 }

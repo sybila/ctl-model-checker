@@ -1,6 +1,6 @@
 package com.github.sybila.algorithm
 
-import com.github.sybila.model.MutableStateMap
+import com.github.sybila.model.IncreasingStateMap
 import com.github.sybila.model.StateMap
 import com.github.sybila.solver.SetSolver
 import com.github.sybila.solver.Solver
@@ -8,13 +8,9 @@ import org.reactivestreams.Subscriber
 import org.reactivestreams.Subscription
 import reactor.core.publisher.Flux
 import reactor.core.publisher.Mono
-import reactor.core.publisher.ParallelFlux
 import reactor.core.scheduler.Schedulers
-import java.util.concurrent.ExecutorService
-import java.util.concurrent.atomic.AtomicBoolean
-import java.util.concurrent.atomic.AtomicInteger
 
-
+/*
 typealias I<P> = Pair<Int, P>
 
 interface BooleanLogic<P : Any> {
@@ -24,9 +20,9 @@ interface BooleanLogic<P : Any> {
     val size: Int
 
     fun Mono<StateMap<P>>.complement(): Mono<StateMap<P>> {
-        return ParallelCollector<Pair<State, P>, StateMap<P>, MutableStateMap<P>>(
+        return ParallelCollector<Pair<State, P>, StateMap<P>, IncreasingStateMap<P>>(
                 sourceProvider = Flux.from(this).flatMap { Flux.fromIterable(it.entries) },
-                openState = { MutableStateMap(size, solver, increasing = false) },
+                openState = { IncreasingStateMap(size, solver, increasing = false) },
                 closeState = { it },
                 join = { map, (state, params) ->
                     solver.run { params.not()?.let { p ->
@@ -37,18 +33,18 @@ interface BooleanLogic<P : Any> {
     }
 
     fun Mono<StateMap<P>>.conjunction(other: Mono<StateMap<P>>): Mono<StateMap<P>> {
-        return ParallelCollector<Pair<State, P>, StateMap<P>, MutableStateMap<P>>(
+        return ParallelCollector<Pair<State, P>, StateMap<P>, IncreasingStateMap<P>>(
                 sourceProvider = Flux.merge(this, other).flatMap { Flux.fromIterable(it.entries) },
-                openState = { MutableStateMap(size, solver, increasing = false) },
+                openState = { IncreasingStateMap(size, solver, increasing = false) },
                 closeState = { it },
                 join = { map, (state, params) -> map.decreaseKey(state, params) }
         )
     }
 
     fun Mono<StateMap<P>>.disjunction(other: Mono<StateMap<P>>): Mono<StateMap<P>> {
-        return ParallelCollector<Pair<State, P>, StateMap<P>, MutableStateMap<P>>(
+        return ParallelCollector<Pair<State, P>, StateMap<P>, IncreasingStateMap<P>>(
                 sourceProvider = Flux.merge(this, other).flatMap { Flux.fromIterable(it.entries) },
-                openState = { MutableStateMap(size, solver, increasing = true) },
+                openState = { IncreasingStateMap(size, solver, increasing = true) },
                 closeState = { it },
                 join = { map, (state, params) -> map.increaseKey(state, params) }
         )
@@ -63,9 +59,9 @@ interface FirstOrder<P : Any> {
     val size: Int
 
     fun Flux<StateMap<P>>.exists(): Mono<StateMap<P>> {
-        return ParallelCollector<Pair<State, P>, StateMap<P>, MutableStateMap<P>>(
+        return ParallelCollector<Pair<State, P>, StateMap<P>, IncreasingStateMap<P>>(
                 sourceProvider = Flux.merge(this.map { Flux.fromIterable(it.entries) }, 4),
-                openState = { MutableStateMap(size, solver, increasing = true) },
+                openState = { IncreasingStateMap(size, solver, increasing = true) },
                 closeState = { it },
                 join = { map, (state, params) ->
                     map.increaseKey(state, params)
@@ -83,8 +79,8 @@ fun main(args: Array<String>) {
     val states = 100
     val leftA = Array(size = states) { a } as Array<Any?>
     val rightA = Array(size = states) { b } as Array<Any?>
-    val left = MutableStateMap<Set<Int>>(leftA, solver, true)
-    val right = MutableStateMap<Set<Int>>(rightA, solver, true)
+    val left = IncreasingStateMap<Set<Int>>(leftA, solver, true)
+    val right = IncreasingStateMap<Set<Int>>(rightA, solver, true)
 
     val logic = object : BooleanLogic<Set<Int>> {
         override val solver: Solver<Set<Int>> = solver
@@ -153,4 +149,4 @@ class ParallelFixedPointCollector<P, R, S : Any>(
         TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
     }
 
-}*/
+}*/*/

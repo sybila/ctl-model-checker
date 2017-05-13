@@ -1,6 +1,6 @@
 package com.github.sybila.algorithm
 
-import com.github.sybila.model.MutableStateMap
+import com.github.sybila.model.IncreasingStateMap
 import com.github.sybila.model.StateMap
 import com.github.sybila.model.TransitionSystem
 import com.github.sybila.solver.Solver
@@ -8,7 +8,7 @@ import java.io.Closeable
 import java.util.concurrent.Executors
 
 typealias State = Int
-
+/*
 class FixedPointAlgorithm<Param : Any>(parallelism: Int,
                                            transitionSystem: TransitionSystem<Param>,
                                            solver: Solver<Param>
@@ -22,10 +22,10 @@ class FixedPointAlgorithm<Param : Any>(parallelism: Int,
 
     fun fixedPoint(
             initial: StateMap<Param>,
-            iteration: FixedPointAlgorithm<Param>.(MutableStateMap<Param>, State) -> Iterable<State>
+            iteration: FixedPointAlgorithm<Param>.(IncreasingStateMap<Param>, State) -> Iterable<State>
     ): StateMap<Param> {
 
-        val result = MutableStateMap(stateCount, this, increasing = true)
+        val result = IncreasingStateMap(stateCount, this, increasing = true)
         val queue = TierStateQueue(stateCount)
 
         // this could be parallel, but it is rather trivial, so we probably don't need it
@@ -46,4 +46,4 @@ class FixedPointAlgorithm<Param : Any>(parallelism: Int,
     }
 
 
-}
+}*/

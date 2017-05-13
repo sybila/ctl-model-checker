@@ -6,17 +6,17 @@ import kotlin.test.assertTrue
 
 class BitSetSolverTest {
 
-    val f = null
+    val f = BitSet()
     val a = BitSet().apply { set(0) }
     val b = BitSet().apply { set(1) }
     val ab = BitSet().apply { set(0); set(1) }
 
-    val solver = BitSetSolver(universe = ab)
+    val solver = BitSetSolver(tt = ab)
 
     @Test
     fun isSatTest() {
         solver.run {
-            assertTrue(universe.isSat())
+            assertTrue(tt.isSat())
             assertTrue(a.isSat())
             assertTrue(b.isSat())
             assertTrue(ab.isSat())
@@ -29,7 +29,7 @@ class BitSetSolverTest {
         solver.run {
             assertTrue(a equal a)
             assertTrue(b equal b)
-            assertTrue(ab equal universe)
+            assertTrue(ab equal tt)
             assertTrue(f equal f)
             assertTrue(a notEqual b)
             assertTrue(a notEqual ab)
@@ -77,9 +77,21 @@ class BitSetSolverTest {
             assertTrue((a tryOr a) === null)
             assertTrue((b tryOr b) === null)
             assertTrue((ab tryOr a) === null)
-            assertTrue((a tryOr b) equal ab)
-            assertTrue((a tryOr ab) equal ab)
-            assertTrue((f tryOr a) equal a)
+            assertTrue((a tryOr b)!! equal ab)
+            assertTrue((a tryOr ab)!! equal ab)
+            assertTrue((f tryOr a)!! equal a)
+        }
+    }
+
+    @Test
+    fun tryAndTest() {
+        solver.run {
+            assertTrue((a tryAnd a) === null)
+            assertTrue((b tryAnd b) === null)
+            assertTrue((a tryAnd ab) === null)
+            assertTrue((f tryAnd a) === null)
+            assertTrue((a tryAnd b)!! equal ff)
+            assertTrue((ab tryAnd a)!! equal a)
         }
     }
 

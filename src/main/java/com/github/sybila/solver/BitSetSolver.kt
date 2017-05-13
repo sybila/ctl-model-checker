@@ -6,28 +6,31 @@ import java.util.*
  * Solver for enumerated parameter sets represented as a [BitSet].
  */
 class BitSetSolver(
-        override val universe: BitSet
+        override val tt: BitSet
 ) : Solver<BitSet> {
 
-    override fun BitSet?.and(other: BitSet?): BitSet? = when {
-        this == null || other == null -> null
-        else -> this.copy().apply { and(other) }.takeIf { !it.isEmpty }
+    override val ff: BitSet = BitSet()
+
+    override fun BitSet.and(other: BitSet): BitSet = when {
+        this.isEmpty || other.isEmpty -> ff
+        else -> this.copy().apply { and(other) }
     }
 
-    override fun BitSet?.or(other: BitSet?): BitSet? = when {
-        this == null -> other
-        other == null -> this
+    override fun BitSet.or(other: BitSet): BitSet = when {
+        this.isEmpty -> other
+        other.isEmpty -> this
         else -> this.copy().apply { or(other) }
     }
 
-    override fun BitSet?.not(): BitSet? = when {
-        this == null -> universe
-        this == universe -> null
-        // Note: andNot can't produce an empty BitSet, since this is not universe
-        else -> universe.copy().apply { andNot(this@not) }
+    override fun BitSet.not(): BitSet = when {
+        this.isEmpty -> tt
+        this == tt -> ff
+        else -> tt.copy().apply { andNot(this@not) }
     }
 
-    override fun BitSet?.equal(other: BitSet?): Boolean = this == other
+    override fun BitSet.equal(other: BitSet): Boolean = this == other
+
+    override fun BitSet.isSat(): Boolean = !this.isEmpty
 
     private fun BitSet.copy() = this.clone() as BitSet
 
