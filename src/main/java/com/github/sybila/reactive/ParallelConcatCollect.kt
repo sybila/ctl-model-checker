@@ -21,10 +21,11 @@ import java.util.concurrent.atomic.AtomicBoolean
  * you can split your flux into sequence of fluxes of distinct values
  * and execute them sequentially with each stream being processed in parallel.
  */
-class ParallelConcatCollect<I, S>(
+class ParallelConcatCollect<I, S, R>(
         private val makeState: () -> S,
         private val makeFlux: (S) -> Flux<ParallelFlux<I>>,
-        private val collect: (S, I) -> Unit
+        private val collect: (S, I) -> R,
+        private val restart: (S, R) -> Unit = { _, _ -> Unit }
 ) : Mono<S>() {
 
     override fun subscribe(s: Subscriber<in S>) {
@@ -46,7 +47,9 @@ class ParallelConcatCollect<I, S>(
             private fun start() {
                 makeFlux(state).concatMap {
                     it.map { collect(state, it) }
-                }.subscribe({ /* do nothing */ }, { error ->
+                }.subscribe({
+                     restart(state, it)
+                }, { error ->
                     s.onError(error)
                 }, {
                     s.onNext(state)
