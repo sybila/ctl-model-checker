@@ -4,7 +4,7 @@ import com.github.sybila.solver.Solver
 
 class DecreasingStateMap<Param : Any>(
         size: Int, solver: Solver<Param>
-) : ArrayStateMap<Param>(Array(size) { solver.tt }, solver) {
+) : ArrayStateMap<Param>(size, solver.tt, solver) {
 
     fun decreaseKey(key: Int, value: Param): Boolean {
         if (key < 0 || key >= array.size) {

@@ -37,11 +37,11 @@ class DecreasingStateMapTest {
             assertTrue(map.decreaseKey(5, b))
 
             assertTrue(map[4] equal ff)
-            assertTrue(map[5] equal a)
+            assertTrue(map[5] equal b)
 
-            assertTrue(map[12] equal ab) //out of range access
+            assertTrue(map[12] equal ff) //out of range access
 
-            assertTrue(map.decreaseKey(5, ab))
+            assertTrue(map.decreaseKey(5, ff))
 
             for (s in 0..9) {
                 assertEquals(s in map, s !in 4..5)
@@ -69,7 +69,7 @@ class DecreasingStateMapTest {
         }
     }
 
-    @Test
+    @Test(timeout = 5000)
     fun concurrentEventualPublishTest() {
 
         // This test is a very basic sample of the parallel read, sequential write
@@ -93,7 +93,7 @@ class DecreasingStateMapTest {
                         map.decreaseKey(s, map[s-1])
                         map.decreaseKey(s, map[s+1])
                     }
-                } while (myStates.any { map[it] notEqual tt })
+                } while (myStates.any { map[it].isSat() })
             } }.map { it.join() }
 
             assertTrue(map.isEmpty())

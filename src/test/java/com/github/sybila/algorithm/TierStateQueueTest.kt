@@ -39,8 +39,7 @@ class TierStateQueueTest {
         queue.add(5, 1)
         queue.add(6, 3)
 
-        assertEquals(listOf(5), queue.remove().toList())
-        assertEquals(listOf(6), queue.remove().toList())
+        assertEquals(listOf(listOf(5), listOf(6)), queue.map { it.toList() })
 
     }
 

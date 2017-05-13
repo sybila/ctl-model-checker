@@ -70,7 +70,7 @@ class IncreasingStateMapTest {
         }
     }
 
-    @Test
+    @Test(timeout = 5000)
     fun concurrentEventualPublishTest() {
 
         // This test is a very basic sample of the parallel read, sequential write

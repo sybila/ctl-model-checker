@@ -3,8 +3,10 @@ package com.github.sybila.model
 import com.github.sybila.solver.Solver
 
 abstract class ArrayStateMap<Param : Any> internal constructor(
-        protected val array: Array<Any>, protected val solver: Solver<Param>
+        size: Int, default: Param, protected val solver: Solver<Param>
 ) : StateMap<Int, Param> {
+
+    protected val array: Array<Any> = Array(size) { default }
 
     override val states: Iterable<Int>
         get() = array.indices.filter { it in this }

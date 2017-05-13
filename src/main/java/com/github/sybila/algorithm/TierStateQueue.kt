@@ -15,7 +15,7 @@ import java.util.*
  *
  * TierStateQueue is not thread safe!
  */
-class TierStateQueue(stateCount: Int) : Iterable<Iterable<State>> {
+class TierStateQueue(stateCount: Int) : FixedPointQueue<State> {
 
     private val distance = IntArray(stateCount) { Int.MAX_VALUE }
     private val tiers: MutableList<MutableSet<State>?> = ArrayList()
@@ -30,39 +30,39 @@ class TierStateQueue(stateCount: Int) : Iterable<Iterable<State>> {
     }
 
     /**
-     * Enqueue given [state], updating it's distance based on [from]. If [from] is null,
-     * [state] distance is updated to 0.
+     * Enqueue given [item], updating it's distance based on [from]. If [from] is null,
+     * [item] distance is updated to 0.
      *
      * Amortized complexity of this method is constant.
      */
-    fun add(state: State, from: State?) {
-        val previousDistance = distance[state]
+    override fun add(item: State, from: State?) {
+        val previousDistance = distance[item]
         // If the search is performed correctly, distance[from] should be well defined at this point!
         // Also note that the distance can't reach Int.MAX_VALUE since there are only so many states.
-        distance[state] = if (from == null) 0 else {
+        distance[item] = if (from == null) 0 else {
             if (distance[from] == Int.MAX_VALUE) {
-                throw IllegalStateException("Search strategy broken. $state discovered from $from, but $from is not discovered yet.")
+                throw IllegalStateException("Search strategy broken. $item discovered from $from, but $from is not discovered yet.")
             }
-            Math.min(distance[state], distance[from] + 1)
+            Math.min(distance[item], distance[from] + 1)
         }
-        val newDistance = distance[state]
+        val newDistance = distance[item]
         // At this point either:
-        // - distance is the same and state is in the correct tier  (1)
-        // - distance is the same but state is nowhere in tiers     (2)
-        // - distance decreased and state is in the wrong tier      (3)
-        // - distance decreased and state is nowhere in tiers       (4)
+        // - distance is the same and item is in the correct tier  (1)
+        // - distance is the same but item is nowhere in tiers     (2)
+        // - distance decreased and item is in the wrong tier      (3)
+        // - distance decreased and item is nowhere in tiers       (4)
         if (
                     previousDistance > newDistance                      // (3), (4)
-                    || !(tiers[newDistance]?.contains(state) ?: false)   // (2)
+                    || !(tiers[newDistance]?.contains(item) ?: false)   // (2)
         ) {
-            // remove state from old tier if it is still present    (3)
+            // remove item from old tier if it is still present    (3)
             if (previousDistance != Int.MAX_VALUE) {
                 // Tier must have existed, but it might have been processed already, in which case all is well.
                 // We don't use getTier because we don't want to create useless set if it is not there any more.
-                tiers[previousDistance]?.remove(state)
+                tiers[previousDistance]?.remove(item)
             }
-            // add state to the new tier    (2), (3), (4)
-            getTier(newDistance).add(state)
+            // add item to the new tier    (2), (3), (4)
+            getTier(newDistance).add(item)
         }
     }
 
@@ -71,7 +71,7 @@ class TierStateQueue(stateCount: Int) : Iterable<Iterable<State>> {
      *
      * Worst case linear, but very fast (a predictable branch per iteration)
      */
-    fun remove(): Iterable<State> {
+    override fun remove(): Iterable<State> {
         for (distance in tiers.indices) {
             val tier = tiers[distance]
             if (tier != null) {
@@ -97,7 +97,6 @@ class TierStateQueue(stateCount: Int) : Iterable<Iterable<State>> {
     // statistically, non-empty tiers will be near the end
     fun isNotEmpty(): Boolean = tiers.asReversed().any { it != null }
 
-    //TODO
     override fun iterator(): Iterator<Iterable<State>> = object : Iterator<Iterable<State>> {
         override fun hasNext(): Boolean = isNotEmpty()
         override fun next(): Iterable<State> = remove()
