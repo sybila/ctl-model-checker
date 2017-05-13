@@ -14,10 +14,12 @@ import com.github.sybila.solver.Solver
  * Each map has an associated solver.
  */
 class MutableStateMap<Param : Any> internal constructor(private val array: Array<Any?>,
-                                                        private val solver: Solver<Param>
+                                                        private val solver: Solver<Param>,
+                                                        private val increasing: Boolean = true
 ) : StateMap<Param> {
 
-    constructor(size: Int, solver: Solver<Param>) : this(arrayOfNulls(size), solver)
+    constructor(size: Int, solver: Solver<Param>, increasing: Boolean = true)
+            : this(if (increasing) arrayOfNulls(size) else Array<Any?>(size) { solver.universe }, solver)
 /*
     fun merge(other: MutableStateMap<Param>): MutableStateMap<Param> {
         if (this.array.size != other.array.size) error("Sizes don't match")
@@ -64,6 +66,19 @@ class MutableStateMap<Param : Any> internal constructor(private val array: Array
             array[key] = union
             true
         } ?: false
+    }
+
+    fun decreaseKey(key: Int, value: Param): Boolean {
+        if (key < 0) throw IllegalArgumentException("Increasing negative key: $key")
+        if (key >= array.size) throw IllegalArgumentException("Increasing key $key, array size: ${array.size}")
+        val current = get(key)
+        return solver.run {
+            val new = (current and value)
+            if (new equal current) false else {
+                array[key] = new
+                true
+            }
+        }
     }
 
 }

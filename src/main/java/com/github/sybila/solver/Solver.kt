@@ -1,5 +1,7 @@
 package com.github.sybila.solver
 
+import com.github.daemontus.Option
+
 /**
  * Solver class provides an implementation for all parameter related operations.
  *

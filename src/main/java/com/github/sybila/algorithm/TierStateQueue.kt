@@ -15,7 +15,7 @@ import java.util.*
  *
  * TierStateQueue is not thread safe!
  */
-class TierStateQueue(stateCount: Int) {
+class TierStateQueue(stateCount: Int) : Iterable<Iterable<State>> {
 
     private val distance = IntArray(stateCount) { Int.MAX_VALUE }
     private val tiers: MutableList<MutableSet<State>?> = ArrayList()
@@ -97,5 +97,10 @@ class TierStateQueue(stateCount: Int) {
     // statistically, non-empty tiers will be near the end
     fun isNotEmpty(): Boolean = tiers.asReversed().any { it != null }
 
+    //TODO
+    override fun iterator(): Iterator<Iterable<State>> = object : Iterator<Iterable<State>> {
+        override fun hasNext(): Boolean = isNotEmpty()
+        override fun next(): Iterable<State> = remove()
+    }
 
 }

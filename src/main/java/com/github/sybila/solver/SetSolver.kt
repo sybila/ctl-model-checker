@@ -10,7 +10,7 @@ class SetSolver<Item>(
     override fun Set<Item>?.and(other: Set<Item>?): Set<Item>? = when {
         this == null || other == null -> null
         else -> this.intersect(other).takeIf { it.isNotEmpty() }
-    }
+    }.also { Thread.sleep(100) }
 
     override fun Set<Item>?.or(other: Set<Item>?): Set<Item>? = when {
         this == null -> other

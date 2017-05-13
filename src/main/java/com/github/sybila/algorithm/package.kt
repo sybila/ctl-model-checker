@@ -25,7 +25,7 @@ class FixedPointAlgorithm<Param : Any>(parallelism: Int,
             iteration: FixedPointAlgorithm<Param>.(MutableStateMap<Param>, State) -> Iterable<State>
     ): StateMap<Param> {
 
-        val result = MutableStateMap(stateCount, this)
+        val result = MutableStateMap(stateCount, this, increasing = true)
         val queue = TierStateQueue(stateCount)
 
         // this could be parallel, but it is rather trivial, so we probably don't need it
