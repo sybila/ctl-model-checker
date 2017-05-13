@@ -49,9 +49,6 @@ class IncreasingStateMapTest {
                 assertEquals(s in map, s in 4..5)
             }
 
-            assertEquals(listOf(4,5), map.states.toList())
-            assertEquals(listOf(4 to ab, 5 to b), map.entries.toList())
-
         }
     }
 

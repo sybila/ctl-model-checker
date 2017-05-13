@@ -46,11 +46,6 @@ class DecreasingStateMapTest {
             for (s in 0..9) {
                 assertEquals(s in map, s !in 4..5)
             }
-
-            val s = ((0..9) - (4..5)).toList()
-            assertEquals(s, map.states.toList())
-            assertEquals(s.map { it to solver.tt }, map.entries.toList())
-
         }
     }
 
@@ -97,8 +92,6 @@ class DecreasingStateMapTest {
             } }.map { it.join() }
 
             assertTrue(map.isEmpty())
-            assertEquals(0, map.states.count())
-            assertEquals(0, map.entries.count())
         }
     }
 }

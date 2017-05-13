@@ -11,15 +11,14 @@ package com.github.sybila.model
 interface StateMap<State : Any, Param : Any> {
 
     /**
-     * Provides access to all keys managed by this state map.
+     * Provides access to all keys managed by this state map. (even empty ones!)
      */
     val states: Iterable<State>
 
     /**
      * Provides access to all entries managed by this state map.
      *
-     * Note that the iterator may choose to omit unsatisfiable parameter sets,
-     * but is not required to do so.
+     * Note that the iterator should not emit empty values. Only invalid ones.
      */
     val entries: Iterable<Pair<State, Param>>
 

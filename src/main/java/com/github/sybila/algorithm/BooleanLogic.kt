@@ -38,8 +38,8 @@ interface BooleanLogic<P : Any> {
 
     fun Result<P>.conjunction(other: Result<P>): Result<P> {
         return ParallelConcatCollect(
-                makeState = { this.block().toDecreasing() },
-                makeFlux = { Flux.just(other.entriesParallel(scheduler)) },
+                makeState = { solver.decreasingStateMap(stateCount) },
+                makeFlux = { Flux.just(this.entriesParallel(scheduler), other.entriesParallel(scheduler)) },
                 collect = { map, (state, params) ->
                     solver.run { map.decreaseKey(state, params) }
                 }

@@ -14,3 +14,9 @@ fun <Param : Any> Solver<Param>.increasingStateMap(size: Int): IncreasingStateMa
         = ArrayStateMap(size, this.ff, this)
 fun <Param : Any> Solver<Param>.decreasingStateMap(size: Int): DecreasingStateMap<Int, Param>
         = ArrayStateMap(size, this.tt, this)
+
+fun <P: Any> Map<Int, P>.toStateMap(solver: Solver<P>, size: Int): StateMap<Int, P> {
+    val map = ArrayStateMap(size, solver.ff, solver)
+    map.fillFrom(this)
+    return map
+}

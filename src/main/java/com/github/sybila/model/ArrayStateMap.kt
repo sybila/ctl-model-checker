@@ -3,13 +3,13 @@ package com.github.sybila.model
 import com.github.sybila.solver.Solver
 
 class ArrayStateMap<Param : Any> internal constructor(
-        size: Int, default: Param, protected val solver: Solver<Param>
+        size: Int, default: Param, private val solver: Solver<Param>
 ) : StateMap<Int, Param>, IncreasingStateMap<Int, Param>, DecreasingStateMap<Int, Param> {
 
-    protected val array: Array<Any> = Array(size) { default }
+    private val array: Array<Any> = Array(size) { default }
 
     override val states: Iterable<Int>
-        get() = array.indices.filter { it in this }
+        get() = array.indices//.filter { it in this }
     override val entries: Iterable<Pair<Int, Param>>
         get() = states.map { it to get(it) }
 
@@ -59,6 +59,12 @@ class ArrayStateMap<Param : Any> internal constructor(
             array[key] = union
             true
         } ?: false
+    }
+
+    fun fillFrom(map: Map<Int, Param>) {
+        for (s in array.indices) {
+            array[s] = map[s] ?: solver.ff
+        }
     }
 
 }

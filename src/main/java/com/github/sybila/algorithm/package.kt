@@ -19,6 +19,8 @@ fun <S : Any, P : Any> Mono<StateMap<S, P>>.entriesParallel(scheduler: Scheduler
 fun <S : Any, P : Any> StateMap<S, P>.entriesParallel(scheduler: Scheduler): ParallelFlux<Pair<S, P>>
         = Flux.fromIterable(this.entries).parallel().runOn(scheduler)
 
+fun <T> T.asMono(): Mono<T> = Mono.just(this)
+
 /*
 class FixedPointAlgorithm<Param : Any>(parallelism: Int,
                                            transitionSystem: TransitionSystem<Param>,
