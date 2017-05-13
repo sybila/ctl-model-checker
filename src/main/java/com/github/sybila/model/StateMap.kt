@@ -8,7 +8,7 @@ package com.github.sybila.model
  *  frequently passed around without any association with a map.
  *  - we don't need access the [Map.values].
  */
-interface StateMap<State : Any, out Param : Any> {
+interface StateMap<State : Any, Param : Any> {
 
     /**
      * Provides access to all keys managed by this state map.
@@ -49,4 +49,6 @@ interface StateMap<State : Any, out Param : Any> {
      */
     fun isNotEmpty(): Boolean = !isEmpty()
 
+    fun toIncreasing(): IncreasingStateMap<State, Param>
+    fun toDecreasing(): DecreasingStateMap<State, Param>
 }

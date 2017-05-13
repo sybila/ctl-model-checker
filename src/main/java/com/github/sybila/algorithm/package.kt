@@ -1,13 +1,24 @@
 package com.github.sybila.algorithm
 
-import com.github.sybila.model.IncreasingStateMap
 import com.github.sybila.model.StateMap
-import com.github.sybila.model.TransitionSystem
-import com.github.sybila.solver.Solver
-import java.io.Closeable
-import java.util.concurrent.Executors
+import org.intellij.lang.annotations.Flow
+import reactor.core.publisher.Flux
+import reactor.core.publisher.Mono
+import reactor.core.publisher.ParallelFlux
+import reactor.core.scheduler.Scheduler
+
+
+typealias Result<P> = Mono<StateMap<Int, P>>
+typealias ResultFlux<P> = Flux<Mono<Pair<Int, StateMap<Int, P>>>>
 
 typealias State = Int
+
+fun <S : Any, P : Any> Mono<StateMap<S, P>>.entriesParallel(scheduler: Scheduler): ParallelFlux<Pair<S, P>>
+        = this.flatMapMany { Flux.fromIterable(it.entries) }.parallel().runOn(scheduler)
+
+fun <S : Any, P : Any> StateMap<S, P>.entriesParallel(scheduler: Scheduler): ParallelFlux<Pair<S, P>>
+        = Flux.fromIterable(this.entries).parallel().runOn(scheduler)
+
 /*
 class FixedPointAlgorithm<Param : Any>(parallelism: Int,
                                            transitionSystem: TransitionSystem<Param>,
