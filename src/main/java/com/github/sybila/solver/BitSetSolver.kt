@@ -32,6 +32,4 @@ class BitSetSolver(
 
     override fun BitSet.isSat(): Boolean = !this.isEmpty
 
-    private fun BitSet.copy() = this.clone() as BitSet
-
 }

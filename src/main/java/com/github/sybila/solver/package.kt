@@ -1,5 +1,7 @@
 package com.github.sybila.solver
 
+import java.util.*
+
 /**
  * A simple class which has only two instances: [True] and [False].
  *
@@ -10,3 +12,5 @@ sealed class Truth {
     object True : Truth()
     object False : Truth()
 }
+
+fun BitSet.copy() = this.clone() as BitSet
