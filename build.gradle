@@ -105,3 +105,13 @@ dokka {
             'src/main/java/com/github/sybila/huctl/dsl/package.md'
     ]*/
 }
+
+task runBench(type: JavaExec) {
+    classpath sourceSets.main.runtimeClasspath
+    main = "com.github.sybila.BenchmarkKt"
+    args = [
+            "60000",                // time limit
+            "1"                     // parallelism
+    ]
+    jvmArgs = ["-Xmx8g"]
+}
