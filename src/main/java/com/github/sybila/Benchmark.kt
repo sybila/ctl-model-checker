@@ -80,7 +80,7 @@ fun main(args: Array<String>) {
     try {
         do {
             //increase state count
-            stateCounts[varIndex] = (stateCounts[varIndex] * 1.3).toInt() + 1
+            stateCounts[varIndex] = (stateCounts[varIndex] * 1.5).toInt() + 1
             varIndex = (varIndex + 1) % stateCounts.size
             val model = modelPrototype.copy(
                     variables = modelPrototype.variables.zip(stateCounts).map { (variable, count) ->
@@ -112,6 +112,7 @@ fun main(args: Array<String>) {
             results.add(transitionSystem.stateCount to measuredTime)
 
             println("${transitionSystem.stateCount} in $measuredTime")
+            System.gc()
         } while (measuredTime < timeLimit)
     } finally {
         // print even on error
