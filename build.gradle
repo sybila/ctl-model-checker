@@ -110,8 +110,8 @@ task runBench(type: JavaExec) {
     classpath sourceSets.main.runtimeClasspath
     main = "com.github.sybila.BenchmarkKt"
     args = [
-            "60000",                // time limit
-            "1"                     // parallelism
+            project.timeout,                // time limit
+            project.parallelism,           // parallelism
     ]
-    jvmArgs = ["-Xmx8g"]
+    jvmArgs = ["-Xmx${project.parallelism * 4}g"]
 }

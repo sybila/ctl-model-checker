@@ -72,7 +72,7 @@ fun main(args: Array<String>) {
 
     val timeLimit = args[0].toLong()
     val modelPrototype = model_2D_2P //Parser().parse(args[1]) //model_2D_2P
-    val scheduler = Schedulers.fromExecutor(Executors.newFixedThreadPool(args[1].toInt()))
+    val scheduler = Schedulers.newParallel("my-parallel", args[1].toInt())
 
     var varIndex = 0
     val stateCounts = modelPrototype.variables.map { 1 }.toMutableList()
@@ -80,7 +80,7 @@ fun main(args: Array<String>) {
     try {
         do {
             //increase state count
-            stateCounts[varIndex] = (stateCounts[varIndex] * 1.2).toInt() + 1
+            stateCounts[varIndex] = (stateCounts[varIndex] * 1.3).toInt() + 1
             varIndex = (varIndex + 1) % stateCounts.size
             val model = modelPrototype.copy(
                     variables = modelPrototype.variables.zip(stateCounts).map { (variable, count) ->
@@ -93,7 +93,7 @@ fun main(args: Array<String>) {
             val solver = Grid2Solver(model.parameters[0].range, model.parameters[1].range)
 
             // also computes transitions!
-            val transitionSystem = Grid2TransitionSystem(model, solver)
+            val transitionSystem = Grid2TransitionSystem(model, solver, scheduler)
 
             // repeat 5 times and take average
             val measuredTime = (1..5).map {
@@ -118,6 +118,7 @@ fun main(args: Array<String>) {
         for ((s, t) in results) {
             println("$s \t $t")
         }
+        scheduler.dispose()
     }
 
 

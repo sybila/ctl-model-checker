@@ -6,11 +6,12 @@ import com.github.sybila.ode.generator.NodeEncoder
 import com.github.sybila.ode.model.OdeModel
 import com.github.sybila.solver.Solver
 import reactor.core.publisher.Flux
+import reactor.core.scheduler.Scheduler
 import reactor.core.scheduler.Schedulers
 import java.util.*
 
 abstract class OdeTransitionSystem<Param : Any>(
-    val model: OdeModel, val solver: Solver<Param>
+    val model: OdeModel, val solver: Solver<Param>, scheduler: Scheduler
 ) : TransitionSystem<Param> {
 
     val createSelfLoops = true
@@ -39,7 +40,7 @@ abstract class OdeTransitionSystem<Param : Any>(
             }
 
             Flux.fromIterable(0 until encoder.vertexCount)
-                    .parallel().runOn(Schedulers.parallel())
+                    .parallel().runOn(scheduler)
                     .map { vertex ->
                         for (dim in 0 until dimensions) {
                             vertices[vertex][dim] = computeVertexColors(vertex, dim)
@@ -62,7 +63,7 @@ abstract class OdeTransitionSystem<Param : Any>(
             }.toIntArray()
 
             Flux.fromIterable(0 until stateCount)
-                    .parallel().runOn(Schedulers.parallel())
+                    .parallel().runOn(scheduler)
                     .map { state ->
                         for (dim in 0 until dimensions) {
                             for (orientation in 0..3) {
@@ -84,7 +85,7 @@ abstract class OdeTransitionSystem<Param : Any>(
                 val storage = if (time) successors else predecessors
 
                 Flux.fromIterable(0 until stateCount)
-                        .parallel().runOn(Schedulers.parallel())
+                        .parallel().runOn(scheduler)
                         .map { state ->
                             val result = ArrayList<Pair<Int, Param>>()
                             var selfloop = tt

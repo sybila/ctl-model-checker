@@ -3,11 +3,12 @@ package com.github.sybila.model.ode
 import com.github.sybila.ode.model.OdeModel
 import com.github.sybila.solver.grid.Grid2
 import com.github.sybila.solver.grid.Grid2Solver
+import reactor.core.scheduler.Scheduler
 import java.util.*
 
 class Grid2TransitionSystem(
-        model: OdeModel, solver: Grid2Solver
-) : OdeTransitionSystem<Grid2>(model, solver) {
+        model: OdeModel, solver: Grid2Solver, scheduler: Scheduler
+) : OdeTransitionSystem<Grid2>(model, solver, scheduler) {
 
     override fun computeVertexColors(vertex: Int, dimension: Int): Grid2 {
         var derivationValue = 0.0
