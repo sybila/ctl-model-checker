@@ -44,4 +44,27 @@ interface TemporalLogic<P : Any> : TransitionSystem<P> {
         }
     }
 
+    fun existsNext(next: Result<P>, time: Boolean = true): Result<P> {
+        solver.run {
+            return ParallelConcatCollect<Int, Pair<TierStateQueue, IncreasingStateMap<Int, P>>, Unit>(
+                    makeState = { TierStateQueue(stateCount) to increasingStateMap(stateCount) },
+                    makeFlux = { (queue, _) ->
+                        val n = next.block()
+                        n.states.filter { it in n }.flatMap { it.step(!time) }.forEach {
+                            queue.add(it.first, null)
+                        }
+                        Flux.fromIterable(queue).map {
+                            Flux.fromIterable(it).parallel().runOn(scheduler)
+                        }
+                    },
+                    collect = { (_, map), state ->
+                        val witness = state.step(time).fold(ff) { witness, (succ, bound) ->
+                            witness or (map[succ] and bound)
+                        }
+                        map.increaseKey(state, witness)
+                    }
+            ).map { it.second }
+        }
+    }
+
 }

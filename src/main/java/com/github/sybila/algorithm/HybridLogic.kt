@@ -43,7 +43,9 @@ interface HybridLogic<P : Any> {
                         state to map[state]
                     }.parallel())
                 },
-                collect = { map, (state, params) -> map.increaseKey(state, params) }
+                collect = { map, (state, params) ->
+                    map.increaseKey(state, params)
+                }
         ).map { it }
     }
 

@@ -1,7 +1,9 @@
 package com.github.sybila
 
+import com.github.sybila.algorithm.HybridLogic
 import com.github.sybila.algorithm.TemporalLogic
 import com.github.sybila.algorithm.asMono
+import com.github.sybila.model.StateMap
 import com.github.sybila.model.TransitionSystem
 import com.github.sybila.model.ode.Grid2TransitionSystem
 import com.github.sybila.model.toStateMap
@@ -11,6 +13,8 @@ import com.github.sybila.ode.model.Summand
 import com.github.sybila.solver.Solver
 import com.github.sybila.solver.grid.Grid2
 import com.github.sybila.solver.grid.Grid2Solver
+import reactor.core.publisher.Flux
+import reactor.core.publisher.Mono
 import reactor.core.scheduler.Scheduler
 import reactor.core.scheduler.Schedulers
 import java.util.*
@@ -72,7 +76,8 @@ fun main(args: Array<String>) {
 
     val timeLimit = args[0].toLong()
     val modelPrototype = model_2D_2P //Parser().parse(args[1]) //model_2D_2P
-    val scheduler = Schedulers.newParallel("my-parallel", args[1].toInt())
+    val parallelism = args[1].toInt()
+    val scheduler = Schedulers.newParallel("my-parallel", parallelism)//args[1].toInt())
 
     var varIndex = 0
     val stateCounts = modelPrototype.variables.map { 1 }.toMutableList()
@@ -80,7 +85,7 @@ fun main(args: Array<String>) {
     try {
         do {
             //increase state count
-            stateCounts[varIndex] = (stateCounts[varIndex] * 1.5).toInt() + 1
+            stateCounts[varIndex] = (stateCounts[varIndex] * 1.1).toInt() + 1
             varIndex = (varIndex + 1) % stateCounts.size
             val model = modelPrototype.copy(
                     variables = modelPrototype.variables.zip(stateCounts).map { (variable, count) ->
@@ -100,11 +105,29 @@ fun main(args: Array<String>) {
                 measureTimeMillis {
                     val center = mapOf(transitionSystem.stateCount / 2 to solver.tt).toStateMap(solver, transitionSystem.stateCount)
 
-                    object : TemporalLogic<Grid2>, TransitionSystem<Grid2> by transitionSystem {
+                    object : TemporalLogic<Grid2>, HybridLogic<Grid2>, TransitionSystem<Grid2> by transitionSystem {
                         override val scheduler: Scheduler = scheduler
                         override val solver: Solver<Grid2> = solver
+                        override val fork: Int = parallelism
                     }.run {
-                        existsFinally(center.asMono()).block()
+                        //existsFinally(center.asMono()).block()
+                        val inner: Iterable<Mono<Pair<Int, StateMap<Int, Grid2>>>> = object : Iterable<Mono<Pair<Int, StateMap<Int, Grid2>>>> {
+                            override fun iterator(): Iterator<Mono<Pair<Int, StateMap<Int, Grid2>>>> = object : Iterator<Mono<Pair<Int, StateMap<Int, Grid2>>>> {
+
+                                private var state = 0
+
+                                override fun hasNext(): Boolean = state < transitionSystem.stateCount
+
+                                override fun next(): Mono<Pair<Int, StateMap<Int, Grid2>>> {
+                                    val state = this.state
+                                    this.state += 1
+                                    return existsNext(existsFinally(
+                                            mapOf(state to solver.tt).toStateMap(solver, stateCount).asMono()
+                                    )).map { state to it }
+                                }
+                            }
+                        }
+                        bind(Flux.fromIterable(inner)).block()
                     }
                 }
             }.sum() / 5
