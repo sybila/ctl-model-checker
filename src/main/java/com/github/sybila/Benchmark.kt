@@ -103,7 +103,7 @@ fun main(args: Array<String>) {
                 override fun next(): Mono<Pair<Int, StateMap<Int, Grid2>>> {
                     val state = this.state
                     this.state += 1
-                    return allNext(allFinally(
+                    return existsNext(existsFinally(
                             mapOf(state to solver.tt).toStateMap(solver, stateCount).asMono()
                     )).map { state to it }.doOnSubscribe { print("start $state, ") }.doOnSuccess { print("done $state, ") }
                 }
