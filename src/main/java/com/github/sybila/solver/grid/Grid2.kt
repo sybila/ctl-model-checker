@@ -137,12 +137,14 @@ class Grid2(
     }
 
     override fun toString(): String = buildString {
+        append("[")
         values.stream().forEach { value ->
             val X = value % modifier
             val Y = value / modifier
             append("[[${thresholdsX[X]}, ${thresholdsX[X+1]}], [${thresholdsY[Y]}, ${thresholdsY[Y+1]}]]")
             append(",")
         }
+        append("]")
     }
 
 }

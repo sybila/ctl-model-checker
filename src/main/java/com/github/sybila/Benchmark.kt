@@ -10,6 +10,7 @@ import com.github.sybila.model.toStateMap
 import com.github.sybila.ode.model.OdeModel
 import com.github.sybila.ode.model.Parser
 import com.github.sybila.ode.model.Summand
+import com.github.sybila.ode.model.computeApproximation
 import com.github.sybila.solver.Solver
 import com.github.sybila.solver.grid.Grid2
 import com.github.sybila.solver.grid.Grid2Solver
@@ -74,7 +75,7 @@ private fun Pair<Double, Double>.splitInto(stateCount: Int): List<Double> {
 fun main(args: Array<String>) {
 
     val timeLimit = args[0].toLong()
-    val modelPrototype = Parser().parse(File(args[1])) //model_2D_2P
+    val modelPrototype = Parser().parse(File(args[1])).computeApproximation(fast = true) //model_2D_2P
     val parallelism = args[2].toInt()
     val scheduler = Schedulers.newParallel("my-parallel", parallelism)//args[1].toInt())
 
@@ -108,8 +109,8 @@ fun main(args: Array<String>) {
             }
         }
         println("start computing...")
-        bind(Flux.fromIterable(inner)).block()
-        println("computed...")
+        val r = bind(Flux.fromIterable(inner)).block()
+        println("computed")
     }
 
     scheduler.dispose()

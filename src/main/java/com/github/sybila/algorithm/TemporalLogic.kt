@@ -34,7 +34,9 @@ interface TemporalLogic<P : Any> : TransitionSystem<P> {
                         val witness = state.step(time).fold(ff) { witness, (succ, bound) ->
                             witness or (map[succ] and bound)
                         }
-                        state to if (map.increaseKey(state, witness)) state.step(!time).map { it.first }
+                        state to if (map.increaseKey(state, witness)) {
+                            state.step(!time).map { it.first }
+                        }
                         else listOf()
                     },
                     restart = { (queue, _), (from, states) ->
