@@ -76,7 +76,7 @@ fun main(args: Array<String>) {
 
     val timeLimit = args[0].toLong()
     val modelPrototype = Parser().parse(File(args[1])) //model_2D_2P
-    val parallelism = args[1].toInt()
+    val parallelism = args[2].toInt()
     val scheduler = Schedulers.newParallel("my-parallel", parallelism)//args[1].toInt())
 
     var varIndex = 0
