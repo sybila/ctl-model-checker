@@ -75,7 +75,7 @@ private fun Pair<Double, Double>.splitInto(stateCount: Int): List<Double> {
 fun main(args: Array<String>) {
 
     val timeLimit = args[0].toLong()
-    val modelPrototype = Parser().parse(args[1]).computeApproximation(fast = true) //model_2D_2P
+    val modelPrototype = Parser().parse(File(args[1])).computeApproximation(fast = true) //model_2D_2P
     val parallelism = args[2].toInt()
     val scheduler1 = Schedulers.newParallel("my-parallel", parallelism)//args[1].toInt())
     val scheduler2 = Schedulers.newParallel("my-parallel-2", parallelism)//args[1].toInt())
