@@ -17,6 +17,7 @@ import reactor.core.publisher.Flux
 import reactor.core.publisher.Mono
 import reactor.core.scheduler.Scheduler
 import reactor.core.scheduler.Schedulers
+import java.io.File
 import java.util.*
 import kotlin.system.measureTimeMillis
 
@@ -74,7 +75,7 @@ private fun Pair<Double, Double>.splitInto(stateCount: Int): List<Double> {
 fun main(args: Array<String>) {
 
     val timeLimit = args[0].toLong()
-    val modelPrototype = Parser().parse(args[1]) //model_2D_2P
+    val modelPrototype = Parser().parse(File(args[1])) //model_2D_2P
     val parallelism = args[1].toInt()
     val scheduler = Schedulers.newParallel("my-parallel", parallelism)//args[1].toInt())
 
