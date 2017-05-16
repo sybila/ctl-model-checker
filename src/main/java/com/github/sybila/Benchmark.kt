@@ -18,7 +18,6 @@ import reactor.core.publisher.Mono
 import reactor.core.scheduler.Scheduler
 import reactor.core.scheduler.Schedulers
 import java.util.*
-import java.util.concurrent.Executors
 import kotlin.system.measureTimeMillis
 
 val model_2D_2P = OdeModel(
@@ -75,7 +74,7 @@ private fun Pair<Double, Double>.splitInto(stateCount: Int): List<Double> {
 fun main(args: Array<String>) {
 
     val timeLimit = args[0].toLong()
-    val modelPrototype = model_2D_2P //Parser().parse(args[1]) //model_2D_2P
+    val modelPrototype = Parser().parse(args[1]) //model_2D_2P
     val parallelism = args[1].toInt()
     val scheduler = Schedulers.newParallel("my-parallel", parallelism)//args[1].toInt())
 
@@ -108,7 +107,7 @@ fun main(args: Array<String>) {
                     object : TemporalLogic<Grid2>, HybridLogic<Grid2>, TransitionSystem<Grid2> by transitionSystem {
                         override val scheduler: Scheduler = scheduler
                         override val solver: Solver<Grid2> = solver
-                        override val fork: Int = parallelism
+                        override val fork: Int = parallelism + 1
                     }.run {
                         //existsFinally(center.asMono()).block()
                         val inner: Iterable<Mono<Pair<Int, StateMap<Int, Grid2>>>> = object : Iterable<Mono<Pair<Int, StateMap<Int, Grid2>>>> {
