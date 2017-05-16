@@ -19,7 +19,6 @@ import reactor.core.scheduler.Scheduler
 import reactor.core.scheduler.Schedulers
 import java.io.File
 import java.util.*
-import kotlin.system.measureTimeMillis
 
 val model_2D_2P = OdeModel(
         variables = listOf(modelVarOneParam(0, 0), modelVarOneParam(1, 1)),
@@ -79,7 +78,40 @@ fun main(args: Array<String>) {
     val parallelism = args[2].toInt()
     val scheduler = Schedulers.newParallel("my-parallel", parallelism)//args[1].toInt())
 
-    var varIndex = 0
+    val model = modelPrototype
+
+    val solver = Grid2Solver(model.parameters[0].range, model.parameters[1].range)
+
+    // also computes transitions!
+    val transitionSystem = Grid2TransitionSystem(model, solver, scheduler)
+
+
+    object : TemporalLogic<Grid2>, HybridLogic<Grid2>, TransitionSystem<Grid2> by transitionSystem {
+        override val scheduler: Scheduler = scheduler
+        override val solver: Solver<Grid2> = solver
+        override val fork: Int = parallelism + 1
+    }.run {
+        //existsFinally(center.asMono()).block()
+        val inner: Iterable<Mono<Pair<Int, StateMap<Int, Grid2>>>> = object : Iterable<Mono<Pair<Int, StateMap<Int, Grid2>>>> {
+            override fun iterator(): Iterator<Mono<Pair<Int, StateMap<Int, Grid2>>>> = object : Iterator<Mono<Pair<Int, StateMap<Int, Grid2>>>> {
+
+                private var state = 0
+
+                override fun hasNext(): Boolean = state < transitionSystem.stateCount
+
+                override fun next(): Mono<Pair<Int, StateMap<Int, Grid2>>> {
+                    val state = this.state
+                    this.state += 1
+                    return existsNext(existsFinally(
+                            mapOf(state to solver.tt).toStateMap(solver, stateCount).asMono()
+                    )).map { state to it }
+                }
+            }
+        }
+        bind(Flux.fromIterable(inner)).block()
+    }
+
+    /*var varIndex = 0
     val stateCounts = modelPrototype.variables.map { 1 }.toMutableList()
     val results = ArrayList<Pair<Int, Long>>()
     try {
@@ -143,7 +175,7 @@ fun main(args: Array<String>) {
             println("$s \t $t")
         }
         scheduler.dispose()
-    }
+    }*/
 
 
 }
