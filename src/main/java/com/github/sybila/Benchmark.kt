@@ -85,7 +85,6 @@ fun main(args: Array<String>) {
     // also computes transitions!
     val transitionSystem = Grid2TransitionSystem(model, solver, scheduler)
 
-
     object : TemporalLogic<Grid2>, HybridLogic<Grid2>, TransitionSystem<Grid2> by transitionSystem {
         override val scheduler: Scheduler = scheduler
         override val solver: Solver<Grid2> = solver
@@ -108,8 +107,12 @@ fun main(args: Array<String>) {
                 }
             }
         }
+        println("start computing...")
         bind(Flux.fromIterable(inner)).block()
+        println("computed...")
     }
+
+    scheduler.dispose()
 
     /*var varIndex = 0
     val stateCounts = modelPrototype.variables.map { 1 }.toMutableList()
