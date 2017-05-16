@@ -16,7 +16,7 @@ interface TemporalLogic<P : Any> : TransitionSystem<P> {
 
     fun existsFinally(finally: Result<P>, time: Boolean = true): Result<P> {
         solver.run {
-            return ParallelConcatCollect<Int, Pair<TierStateQueue, IncreasingStateMap<Int, P>>, Pair<Int, Iterable<Int>>>(
+            return ParallelConcatCollect<List<Int>, Pair<TierStateQueue, IncreasingStateMap<Int, P>>, List<Pair<Int, Iterable<Int>>>>(
                     makeState = { TierStateQueue(stateCount) to solver.increasingStateMap(stateCount) },
                     makeFlux = { (queue, map) ->
                         finally.block().entries.forEach { (s, p) ->
@@ -27,20 +27,24 @@ interface TemporalLogic<P : Any> : TransitionSystem<P> {
                             }
                         }
                         Flux.fromIterable(queue).map {
-                            Flux.fromIterable(it).parallel().runOn(scheduler)
+                            Flux.fromIterable(it).buffer(20).parallel().runOn(scheduler)
                         }
                     },
-                    collect = { (_, map), state ->
-                        val witness = state.step(time).fold(ff) { witness, (succ, bound) ->
-                            witness or (map[succ] and bound)
+                    collect = { (_, map), states ->
+                        states.fold(listOf<Pair<Int, List<Int>>>()) { list, state ->
+                            val witness = state.step(time).fold(ff) { witness, (succ, bound) ->
+                                witness or (map[succ] and bound)
+                            }
+                            list + (state to if (map.increaseKey(state, witness)) {
+                                state.step(!time).map { it.first }
+                            }
+                            else listOf())
                         }
-                        state to if (map.increaseKey(state, witness)) {
-                            state.step(!time).map { it.first }
-                        }
-                        else listOf()
                     },
-                    restart = { (queue, _), (from, states) ->
-                        states.forEach { queue.add(it, from) }
+                    restart = { (queue, _), list ->
+                        list.forEach { (from, states) ->
+                            states.forEach { queue.add(it, from) }
+                        }
                     }
             ).map { it.second }
         }
