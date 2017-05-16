@@ -7,6 +7,7 @@ import com.github.sybila.reactive.ParallelConcatCollect
 import com.github.sybila.solver.Solver
 import reactor.core.publisher.Flux
 import reactor.core.scheduler.Scheduler
+import reactor.core.scheduler.Schedulers
 
 interface HybridLogic<P : Any> {
 
@@ -35,13 +36,18 @@ interface HybridLogic<P : Any> {
         ).map { it }
     }
 
-    fun bind(states: ResultFlux<P>): Result<P> {
+    fun bind(states: ResultFlux<P>, extraSched: Scheduler): Result<P> {
         return ParallelConcatCollect(
                 makeState = { solver.increasingStateMap(stateCount) },
                 makeFlux = {
-                    Flux.just(Flux.merge(states, fork).map { (state, map) ->
+                    Flux.just(states.parallel().runOn(extraSched).map { it.block() }
+                            .sequential()
+                            .map { (state, map) -> state to map[state] }
+                            .parallel()
+                    )
+                    /*Flux.just(Flux.merge(states.parallel().runOn(scheduler), fork).map { (state, map) ->
                         state to map[state]
-                    }.parallel())
+                    }.parallel())*/
                 },
                 collect = { map, (state, params) ->
                     map.increaseKey(state, params)

@@ -74,20 +74,21 @@ private fun Pair<Double, Double>.splitInto(stateCount: Int): List<Double> {
 
 fun main(args: Array<String>) {
 
-    val timeLimit = args[0].toLong()
-    val modelPrototype = Parser().parse(File(args[1])).computeApproximation(fast = true) //model_2D_2P
-    val parallelism = args[2].toInt()
-    val scheduler = Schedulers.newParallel("my-parallel", parallelism)//args[1].toInt())
+    val timeLimit = 0//args[0].toLong()
+    val modelPrototype = Parser().parse(File("/Users/daemontus/projects/code/biodivineGUI/example/repressilator_2D/model_indep.bio")).computeApproximation(fast = true) //model_2D_2P
+    val parallelism = 8//args[2].toInt()
+    val scheduler1 = Schedulers.newParallel("my-parallel", parallelism)//args[1].toInt())
+    val scheduler2 = Schedulers.newParallel("my-parallel-2", parallelism)//args[1].toInt())
 
     val model = modelPrototype
 
     val solver = Grid2Solver(model.parameters[0].range, model.parameters[1].range)
 
     // also computes transitions!
-    val transitionSystem = Grid2TransitionSystem(model, solver, scheduler)
+    val transitionSystem = Grid2TransitionSystem(model, solver, scheduler1)
 
     object : TemporalLogic<Grid2>, HybridLogic<Grid2>, TransitionSystem<Grid2> by transitionSystem {
-        override val scheduler: Scheduler = scheduler
+        override val scheduler: Scheduler = scheduler1
         override val solver: Solver<Grid2> = solver
         override val fork: Int = 2*parallelism + 1
     }.run {
@@ -102,19 +103,20 @@ fun main(args: Array<String>) {
                 override fun next(): Mono<Pair<Int, StateMap<Int, Grid2>>> {
                     val state = this.state
                     this.state += 1
-                    print("$state, ")
                     return allNext(allFinally(
                             mapOf(state to solver.tt).toStateMap(solver, stateCount).asMono()
-                    )).map { state to it }
+                    )).map { state to it }.doOnSuccess { print("$state, ") }
                 }
             }
         }
+        //Flux.fromIterable(inner).parallel().runOn(Schedulers.parallel()).map { it.block() }.sequential().blockLast()
         println("start computing...")
-        val r = bind(Flux.fromIterable(inner)).block()
+        val r = bind(Flux.fromIterable(inner), scheduler2).block()
         println("computed")
     }
 
-    scheduler.dispose()
+    scheduler2.dispose()
+    scheduler1.dispose()
 
     /*var varIndex = 0
     val stateCounts = modelPrototype.variables.map { 1 }.toMutableList()
