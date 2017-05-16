@@ -105,7 +105,7 @@ fun main(args: Array<String>) {
                     this.state += 1
                     return allNext(allFinally(
                             mapOf(state to solver.tt).toStateMap(solver, stateCount).asMono()
-                    )).map { state to it }.doOnSuccess { print("$state, ") }
+                    )).map { state to it }.doOnSubscribe { print("start $state, ") }.doOnSuccess { print("done $state, ") }
                 }
             }
         }
