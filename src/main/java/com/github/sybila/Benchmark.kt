@@ -89,7 +89,7 @@ fun main(args: Array<String>) {
     object : TemporalLogic<Grid2>, HybridLogic<Grid2>, TransitionSystem<Grid2> by transitionSystem {
         override val scheduler: Scheduler = scheduler
         override val solver: Solver<Grid2> = solver
-        override val fork: Int = parallelism + 1
+        override val fork: Int = 2*parallelism + 1
     }.run {
         //existsFinally(center.asMono()).block()
         val inner: Iterable<Mono<Pair<Int, StateMap<Int, Grid2>>>> = object : Iterable<Mono<Pair<Int, StateMap<Int, Grid2>>>> {
@@ -103,7 +103,7 @@ fun main(args: Array<String>) {
                     val state = this.state
                     this.state += 1
                     print("$state, ")
-                    return existsNext(existsFinally(
+                    return allNext(allFinally(
                             mapOf(state to solver.tt).toStateMap(solver, stateCount).asMono()
                     )).map { state to it }
                 }
