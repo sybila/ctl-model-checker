@@ -27,7 +27,7 @@ interface TemporalLogic<P : Any> : TransitionSystem<P> {
                             }
                         }
                         Flux.fromIterable(queue).map {
-                            Flux.fromIterable(it).buffer(50).parallel().runOn(scheduler)
+                            Flux.fromIterable(it).buffer(5).parallel().runOn(scheduler)
                         }
                     },
                     collect = { (_, map), states ->
