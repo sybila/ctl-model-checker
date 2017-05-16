@@ -93,7 +93,7 @@ fun main(args: Array<String>) {
         override val fork: Int = 2*parallelism + 1
     }.run {
         //existsFinally(center.asMono()).block()
-        val inner: Iterable<Mono<Pair<Int, StateMap<Int, Grid2>>>> = object : Iterable<Mono<Pair<Int, StateMap<Int, Grid2>>>> {
+        /*val inner: Iterable<Mono<Pair<Int, StateMap<Int, Grid2>>>> = object : Iterable<Mono<Pair<Int, StateMap<Int, Grid2>>>> {
             override fun iterator(): Iterator<Mono<Pair<Int, StateMap<Int, Grid2>>>> = object : Iterator<Mono<Pair<Int, StateMap<Int, Grid2>>>> {
 
                 private var state = 0
@@ -108,10 +108,12 @@ fun main(args: Array<String>) {
                     )).map { state to it }.doOnSubscribe { print("start $state, ") }.doOnSuccess { print("done $state, ") }
                 }
             }
-        }
+        }*/
         //Flux.fromIterable(inner).parallel().runOn(Schedulers.parallel()).map { it.block() }.sequential().blockLast()
         println("start computing...")
-        val r = bind(Flux.fromIterable(inner), scheduler2).block()
+        //val r = bind(Flux.fromIterable(inner), scheduler2).block()
+        val center = mapOf(transitionSystem.stateCount / 2 to solver.tt).toStateMap(solver, transitionSystem.stateCount)
+        existsFinally(center.asMono()).block()
         println("computed")
     }
 
