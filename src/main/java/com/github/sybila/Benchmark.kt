@@ -113,7 +113,7 @@ fun main(args: Array<String>) {
         println("start computing...")
         //val r = bind(Flux.fromIterable(inner), scheduler2).block()
         val center = mapOf(transitionSystem.stateCount / 2 to solver.tt).toStateMap(solver, transitionSystem.stateCount)
-        existsFinally(center.asMono()).block()
+        allFinally(center.asMono()).block()
         println("computed")
     }
 
