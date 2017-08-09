@@ -107,6 +107,11 @@ dokka {
     ]*/
 }
 
+//gradle -PmainClass=Boo execute
+task execute(type:JavaExec) {
+    main = mainClass
+    classpath = sourceSets.main.runtimeClasspath
+}
 
 /*if (!project.hasProperty("timeout")) {
     timeout = 1000
