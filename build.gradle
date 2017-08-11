@@ -42,6 +42,7 @@ compileKotlin.dependsOn generateGrammarSource
 
 repositories {
     mavenCentral()
+    jcenter()
     maven { url "https://jitpack.io" }
     maven { url 'http://repo.spring.io/milestone' } // reactor
 }
@@ -56,6 +57,8 @@ dependencies {
     compile "org.jetbrains.kotlin:kotlin-stdlib:$version_kotlin"
 
     compile "io.projectreactor:reactor-core:3.1.0.M1"
+
+    compile 'org.jetbrains.kotlinx:kotlinx-coroutines-core:0.17'
 
     // just for the .bio parser
     compile 'com.github.sybila:ode-generator:74d24977ab'
@@ -108,10 +111,10 @@ dokka {
 }
 
 //gradle -PmainClass=Boo execute
-task execute(type:JavaExec) {
+/*task execute(type:JavaExec) {
     main = mainClass
     classpath = sourceSets.main.runtimeClasspath
-}
+}*/
 
 /*if (!project.hasProperty("timeout")) {
     timeout = 1000
@@ -131,3 +134,9 @@ task runBench(type: JavaExec) {
 }*/
 
 mainClassName = "com.github.sybila.BenchmarkKt"
+
+kotlin {
+    experimental {
+        coroutines "enable"
+    }
+}

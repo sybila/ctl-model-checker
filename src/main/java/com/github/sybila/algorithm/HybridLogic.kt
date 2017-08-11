@@ -1,13 +1,11 @@
 package com.github.sybila.algorithm
 
-import com.github.sybila.model.ArrayStateMap
 import com.github.sybila.model.decreasingStateMap
 import com.github.sybila.model.increasingStateMap
 import com.github.sybila.reactive.ParallelConcatCollect
 import com.github.sybila.solver.Solver
 import reactor.core.publisher.Flux
 import reactor.core.scheduler.Scheduler
-import reactor.core.scheduler.Schedulers
 
 interface HybridLogic<P : Any> {
 
@@ -54,12 +52,12 @@ interface HybridLogic<P : Any> {
                 }
         ).map { it }
     }
-
+/*
     fun at(state: Int, inner: Result<P>): Result<P> {
         return inner.map { map ->
             val value = map[state]
-            ArrayStateMap(stateCount, value, solver)
+            //ArrayStateMap(stateCount, value, solver)
         }
-    }
+    }*/
 
 }

@@ -2,8 +2,6 @@ package com.github.sybila
 
 import com.github.sybila.algorithm.HybridLogic
 import com.github.sybila.algorithm.TemporalLogic
-import com.github.sybila.algorithm.asMono
-import com.github.sybila.model.StateMap
 import com.github.sybila.model.TransitionSystem
 import com.github.sybila.model.ode.Grid2TransitionSystem
 import com.github.sybila.model.toStateMap
@@ -14,8 +12,6 @@ import com.github.sybila.ode.model.computeApproximation
 import com.github.sybila.solver.Solver
 import com.github.sybila.solver.grid.Grid2
 import com.github.sybila.solver.grid.Grid2Solver
-import reactor.core.publisher.Flux
-import reactor.core.publisher.Mono
 import reactor.core.scheduler.Scheduler
 import reactor.core.scheduler.Schedulers
 import java.io.File
@@ -113,7 +109,7 @@ fun main(args: Array<String>) {
         println("start computing...")
         //val r = bind(Flux.fromIterable(inner), scheduler2).block()
         val center = mapOf(transitionSystem.stateCount / 2 to solver.tt).toStateMap(solver, transitionSystem.stateCount)
-        allFinally(center.asMono()).block()
+        //allFinally(center.asMono()).block()
         println("computed")
     }
 
