@@ -1,13 +1,15 @@
 package com.github.sybila
 
 import com.github.sybila.algorithm.TierStateQueue
-import com.github.sybila.huctl.Formula
-import com.github.sybila.huctl.PathQuantifier
+import com.github.sybila.huctl.*
+import com.github.sybila.huctl.dsl.toReference
 import com.github.sybila.model.TransitionSystem
 import io.reactivex.processors.BehaviorProcessor
 import kotlinx.coroutines.experimental.*
+import kotlinx.coroutines.experimental.channels.Channel
 import kotlinx.coroutines.experimental.channels.consumeEach
 import kotlinx.coroutines.experimental.channels.produce
+import java.util.*
 import java.util.concurrent.atomic.AtomicInteger
 import kotlin.system.measureTimeMillis
 
@@ -75,6 +77,7 @@ fun main(args: Array<String>) {
 
     val par = 4
     val context = newFixedThreadPoolContext(par, "work")
+    val single = newSingleThreadContext("s")
 
     val duration = measureTimeMillis {
         runBlocking {
@@ -93,63 +96,36 @@ fun main(args: Array<String>) {
                     close()
                 }
 
-                (1..par).map {
-                    async(context) {
-                        chunks.consumeEach { range ->
-                            println("Thread: ${Thread.currentThread()}")
-                            val elapsed = measureTimeMillis {
-                                Thread.sleep((range.last - range.first + 1).toLong())
-                            }
-                            val size = (range.last - range.first) + 1
-                            if (elapsed < 500) {
-                                System.out.println("Update $size to ${size * 2} because elapsed $elapsed")
-                                chunkSize.compareAndSet(size, size * 2)
-                            }
-                            if (elapsed > 1000) {
-                                System.out.println("Update $size to ${size / 2} because elapsed $elapsed")
-                                chunkSize.compareAndSet(size, size / 2)
-                            }
-                        }
+                val out = Channel<Unit>()
+                val f = async(context) {
+                    out.consumeEach {
+                        println("Consuming out on ${Thread.currentThread()}")
                     }
-                }.forEach { it.await() }
-            }
-            val l2 = async(context) {
-                val items = (1..10_000).toList()
-                val chunkSize = AtomicInteger(1)
-                val chunks = produce<IntRange>(context) {
-                    var start = 0
-                    while (start != items.size) {
-                        val size = chunkSize.get()
-                        println("Make chunk $size")
-                        val end = Math.min(items.size, start + size) - 1
-                        send(start..end)
-                        start = end + 1
-                    }
-                    close()
                 }
-
                 (1..par).map {
                     async(context) {
                         chunks.consumeEach { range ->
-                            println("Thread: ${Thread.currentThread()}")
+                           // println("Thread: ${Thread.currentThread()}")
                             val elapsed = measureTimeMillis {
                                 Thread.sleep((range.last - range.first + 1).toLong())
                             }
+                            out.send(Unit)
                             val size = (range.last - range.first) + 1
                             if (elapsed < 500) {
-                                System.out.println("Update $size to ${size * 2} because elapsed $elapsed")
+                               // System.out.println("Update $size to ${size * 2} because elapsed $elapsed")
                                 chunkSize.compareAndSet(size, size * 2)
                             }
                             if (elapsed > 1000) {
-                                System.out.println("Update $size to ${size / 2} because elapsed $elapsed")
+                               // System.out.println("Update $size to ${size / 2} because elapsed $elapsed")
                                 chunkSize.compareAndSet(size, size / 2)
                             }
                         }
                     }
                 }.forEach { it.await() }
+                out.close()
+                f.await()
             }
             l1.await()
-            l2.await()
         }
     }
 
@@ -228,5 +204,61 @@ class ModelChecker<State : Any, out Param : Any>(
 
     private fun <T> lazyAsync(block: suspend CoroutineScope.() -> T) = async(executor, CoroutineStart.LAZY, block)
 
+    // Transform the given formulas into a dependency graph of deferrable actions which compute
+    // the satisfaction of each formula (with possibly joint dependencies)
+    private fun buildDependencyGraph(formulas: Map<String, Formula>): Map<String, Deferred<TODO>> {
+        val nodeMap = HashMap<String, Deferred<TODO>>()
+
+        fun resolve(formula: Formula): Deferred<TODO> = nodeMap.computeIfAbsent(formula.canonicalKey) {
+            when (this) {
+                else -> error("Unexpected formula. Cannot verify $this")
+            }
+        }
+
+        return formulas.mapValues {
+            resolve(it.value)
+        }
+    }
 
 }
+
+typealias TODO = Unit
+
+// compute the set of quantified names present in this formula (bind, forall and exists are quantifiers)
+private val Formula.quantifiedNames: Set<String>
+    get() = this.fold(atom = {
+        emptySet()
+    }, unary = {
+        if (this is Formula.Bind) it + setOf(this.name) else it
+    }, binary = { l, r ->
+        val n = when (this) {
+            is Formula.Exists -> setOf(this.name)
+            is Formula.ForAll -> setOf(this.name)
+            else -> emptySet()
+        }
+        l + r + n
+    })
+
+// compute a string representation of this formula which has the names of variables transformed into a
+// canonical format (so for example, (bind x: EX x) and (bind z: EX z) are considered equal)
+private val Formula.canonicalKey: String
+    get() {
+        val nameMapping = this.quantifiedNames.sorted().mapIndexed { i, n -> n to "_var$i" }.toMap()
+        return this.map(atom = {
+            if (this is Formula.Reference && this.name in nameMapping) {
+                nameMapping[this.name]!!.toReference()
+            } else this
+        }, unary = { inner ->
+            when {
+                this is Formula.Bind -> bind(nameMapping[this.name]!!, inner)
+                this is Formula.At && this.name in nameMapping -> at(nameMapping[this.name]!!, inner)
+                else -> this.copy(inner)
+            }
+        }, binary = { l, r ->
+            when {
+                this is Formula.Exists -> exists(nameMapping[this.name]!!, l, r)
+                this is Formula.ForAll -> forall(nameMapping[this.name]!!, l, r)
+                else -> this.copy(l, r)
+            }
+        }).toString()
+    }
