@@ -1,6 +1,8 @@
 package com.github.sybila.funn
 
-interface Solver<P> {
+import com.github.sybila.collection.MutableStateMap
+
+interface Solver<P : Any> {
 
     // We will add stuff as we go
 
@@ -24,9 +26,9 @@ interface Solver<P> {
     fun P.isOne(): Boolean = this equal ONE
     fun P.isNotOne(): Boolean = !this.isOne()
 
-    fun <S> AtomicStateMap<S, P>.increaseKey(key: S, value: P): Boolean {
+    fun <S : Any> MutableStateMap<S, P>.increaseKey(key: S, value: P): Boolean {
         do {
-            val old = this[key]
+            val old = this[key] ?: ZERO
             val new = old + value
             if (new equal old) return false
         } while (!this.compareAndSet(key, old, new))

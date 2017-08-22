@@ -1,6 +1,5 @@
 package com.github.sybila
 
-import com.github.sybila.funn.StateMap
 import com.github.sybila.ode.generator.NodeEncoder
 import com.github.sybila.ode.model.OdeModel
 import com.github.sybila.solver.grid.Grid2

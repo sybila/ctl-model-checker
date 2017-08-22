@@ -1,5 +1,6 @@
 package com.github.sybila.funn
 
+import com.github.sybila.collection.StateMap
 import com.github.sybila.huctl.Formula
 import com.github.sybila.huctl.PathQuantifier
 import com.github.sybila.huctl.dsl.Not
@@ -35,7 +36,7 @@ import kotlin.system.measureTimeMillis
  *  so as to keep one chunk execution time at approx. [chunkTime]ms (of course, the formula does not know
  *  how long the next chunk will take, but if the behaviour is somewhat regular, that should be enough)
  */
-class ModelChecker<S, P>(
+class ModelChecker<S : Any, P : Any>(
         private val model: TransitionSystem<S, P>,
         private val solverFactory: () -> Solver<P>,
         private val parallelism: Int = Runtime.getRuntime().availableProcessors(),
@@ -91,7 +92,7 @@ class ModelChecker<S, P>(
         val inner = innerJob.await()
         val result = model.mutate(model.fullMap)
         inner.states.toList().parallelChunks { s ->
-            result[s] = (ONE - inner[s])
+            result.lazySet(s, ONE - (inner[s] ?: ZERO))
         }
         result
     }
@@ -101,7 +102,7 @@ class ModelChecker<S, P>(
         val right = rightJob.await()
         val result = model.mutate(left)
         left.states.toList().parallelChunks { s ->
-            result[s] = (left[s] * right[s])
+            result.lazySet(s, (left[s] ?: ZERO) * (right[s] ?: ZERO))
         }
         result
     }
@@ -111,7 +112,7 @@ class ModelChecker<S, P>(
         val right = rightJob.await()
         val result = model.mutate(left)
         right.states.toList().parallelChunks { s ->
-            result[s] = left[s] + right[s]  // this actually can't be zero if left or right is not zero
+            result.lazySet(s, (left[s] ?: ZERO) + (right[s] ?: ZERO))
         }
         result
     }
@@ -132,7 +133,7 @@ class ModelChecker<S, P>(
                         witness + (result[succ] * bound)
                     }*/
                     val bound: P = model.nextStep(s, true).find { it.first == f }?.second ?: ZERO
-                    s.takeIf { result.increaseKey(s, result[f] * bound) }
+                    s.takeIf { result.increaseKey(s, (result[f] ?: ZERO) * bound) }
                 }
             }
             println("Changed: ${changed.size}")

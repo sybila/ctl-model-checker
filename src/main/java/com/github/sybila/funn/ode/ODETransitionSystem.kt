@@ -1,8 +1,7 @@
 package com.github.sybila.funn.ode
 
-import com.github.sybila.funn.AtomicStateMap
+import com.github.sybila.collection.*
 import com.github.sybila.funn.Solver
-import com.github.sybila.funn.StateMap
 import com.github.sybila.funn.TransitionSystem
 import com.github.sybila.huctl.*
 import com.github.sybila.ode.generator.NodeEncoder
@@ -12,9 +11,10 @@ import reactor.core.publisher.Flux
 import reactor.core.scheduler.Scheduler
 import reactor.core.scheduler.Schedulers
 import java.util.*
+import java.util.concurrent.atomic.AtomicReferenceArray
 
 class ODETransitionSystem(
-        val model: OdeModel,
+        private val model: OdeModel,
         val solver: Solver<Grid2> = Grid2Solver(model.parameters[0].range, model.parameters[1].range),
         scheduler: Scheduler = Schedulers.parallel(),
         private val createSelfLoops:Boolean = true
@@ -31,7 +31,7 @@ class ODETransitionSystem(
     private val encoder = NodeEncoder(model)
     private val dimensions = model.variables.size
 
-    val stateCount: Int = encoder.stateCount
+    private val stateCount: Int = encoder.stateCount
 
     private val successors: Array<List<Pair<Int, Grid2>>> = Array(stateCount) { emptyList<Pair<Int, Grid2>>() }
     private val predecessors: Array<List<Pair<Int, Grid2>>> = Array(stateCount) { emptyList<Pair<Int, Grid2>>() }
@@ -184,16 +184,16 @@ class ODETransitionSystem(
         }
     }
 
-    override val emptyMap: StateMap<Int, Grid2> = ArrayStateMap(stateCount, zero = solver.ZERO)
-    override val fullMap: StateMap<Int, Grid2> = ArrayStateMap(stateCount, zero = solver.ZERO, default = solver.ONE)
+    override val emptyMap: StateMap<Int, Grid2> = EmptyStateMap()
+    override val fullMap: StateMap<Int, Grid2> = ArrayStateMap(stateCount) { solver.ONE }
 
     override fun nextStep(from: Int, timeFlow: Boolean): Iterable<Pair<Int, Grid2>> {
         return if (timeFlow) successors[from] else predecessors[from]
     }
 
-    override fun mutate(stateMap: StateMap<Int, Grid2>): AtomicStateMap<Int, Grid2> {
-        return if (stateMap is ArrayStateMap<Grid2>) ArrayStateMap(stateMap)
-        else ArrayStateMap(stateMap, solver.ZERO)
+    override fun mutate(stateMap: StateMap<Int, Grid2>): MutableStateMap<Int, Grid2> {
+        return if (stateMap is ArrayStateMap<Grid2>) stateMap.toAtomic()
+        else AtomicArrayStateMap(AtomicReferenceArray(Array(stateCount) { stateMap[it] }))
     }
 
     override fun makeProposition(proposition: Formula): StateMap<Int, Grid2> {
@@ -230,13 +230,13 @@ class ODETransitionSystem(
             }
             else -> throw IllegalAccessException("Proposition is too complex: ${this}")
         }
-        return ArrayStateMap(stateCount, solver.ZERO) { state ->
+        return ArrayStateMap(stateCount) { state ->
             val index = encoder.coordinate(state, dimension)
             if (gt == index > threshold) solver.ONE else solver.ZERO
         }
     }
 
-    override fun <T> genericMap(zero: T): AtomicStateMap<Int, T> = ArrayStateMap(stateCount, zero)
+    override fun <T: Any> genericMap(zero: T): MutableStateMap<Int, T> = AtomicArrayStateMap(stateCount)
 
     /*override fun Int.step(timeFlow: Boolean): Iterable<Pair<State, Grid2>> {
         return if (timeFlow) successors[this] else predecessors[this]

@@ -15,7 +15,7 @@ import java.util.*
  *
  * TierStateQueue is not thread safe!
  */
-class TierQueue<State>(model: TransitionSystem<State, *>) : Iterable<Set<Pair<State, State?>>> {
+class TierQueue<State:Any>(model: TransitionSystem<State, *>) : Iterable<Set<Pair<State, State?>>> {
 
     private val distance = model.genericMap(Int.MAX_VALUE)
     private val tiers: MutableList<MutableSet<Pair<State, State?>>?> = ArrayList()
@@ -36,16 +36,16 @@ class TierQueue<State>(model: TransitionSystem<State, *>) : Iterable<Set<Pair<St
      * Amortized complexity of this method is constant.
      */
     fun add(item: State, from: State?) {
-        val previousDistance = distance[item]
+        val previousDistance = distance[item] ?: Int.MAX_VALUE
         // If the search is performed correctly, distance[from] should be well defined at this point!
         // Also note that the distance can't reach Int.MAX_VALUE since there are only so many states.
-        distance[item] = if (from == null) 0 else {
+        val newDistance = if (from == null) 0 else {
             if (distance[from] == Int.MAX_VALUE) {
                 throw IllegalStateException("Search strategy broken. $item discovered from $from, but $from is not discovered yet.")
             }
-            Math.min(distance[item], distance[from] + 1)
+            Math.min(distance[item] ?: Int.MAX_VALUE, (distance[from] ?: Int.MAX_VALUE) + 1)
         }
-        val newDistance = distance[item]
+        distance.lazySet(item, newDistance)
         val insert = item to from
         // At this point either:
         // - distance is the same and item is in the correct tier  (1)
