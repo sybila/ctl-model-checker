@@ -1,26 +1,52 @@
 package com.github.sybila.model
 
+import com.github.sybila.funn.StateMap
+import com.github.sybila.huctl.DirFormula
+import com.github.sybila.huctl.Formula
+
 /**
- * TransitionSystem provides basic graph-like data structure using the [step] method.
+ * TransitionSystem provides basic graph-like data structure of the direction labelled transition system.
  *
- * The states of a transition system are integers and each transition system
- * has to declare how many states (not all have to be reachable) are present, i.e. the [stateCount].
+ * Use [states] to retrieve the complete list of states, [successors] and [predecessors] to discover the
+ * successors/predecessors of the given state and finally [transitionBound] and [transitionDirection]
+ * to obtain labels of each transition.
  *
- * TransitionSystem is always thread safe.
+ *
  */
-interface TransitionSystem<out Param : Any> {
+interface TransitionSystem<S: Any, P : Any> {
 
     /**
-     * Number of states in this system. `s` is a valid state if `0 <= s < stateCount`
+     * Complete list of states.
      */
-    val stateCount: Int
+    val states: Iterable<S>
 
     /**
-     * The immediate successors (`[timeFlow] = true`) or predecessors (`[timeFlow] = false`)
-     * of this state together with the parametric transition bound.
+     * Collection of successor states with respect to the [time] direction.
+     */
+    fun S.successors(time: Boolean = true): Iterable<S>
+
+    /**
+     * Collection of predecessor states with respect to the [time] direction.
+     */
+    fun S.predecessors(time: Boolean = true): Iterable<S> = this.successors(!time)
+
+    /**
+     * The parameter set associated with the transition from [start] to [end]. If such transition
+     * does not exist, return null.
+     */
+    fun transitionBound(start: S, end: S): P?
+
+    /**
+     * The direction proposition associated with the transition from [start] to [end]. If such transition
+     * does not exist, return null.
+     */
+    fun transitionDirection(start: S, end: S): DirFormula?
+
+    /**
+     * Create a [StateMap] representing the validity of the given proposition.
      *
-     * Note that only non empty transitions are actually returned, since Param is non null.
+     * @throws [IllegalArgumentException] when given formula is not a supported proposition.
      */
-    fun State.step(timeFlow: Boolean): Iterable<Pair<State, Param>>
+    fun makeProposition(formula: Formula): StateMap<S, P>
 
 }
