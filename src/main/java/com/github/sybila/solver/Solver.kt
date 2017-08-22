@@ -1,5 +1,7 @@
 package com.github.sybila.solver
 
+import com.github.sybila.collection.MutableStateMap
+
 /**
  * Solver class provides an implementation for all parameter related operations.
  *
@@ -7,79 +9,91 @@ package com.github.sybila.solver
  * it can maintain an internal state (caches, statistics) without polluting
  * the parameter set class or static context.
  *
- * Implementations of Solver should be always thread safe.
+ * Implementations of Solver should be always thread safe. If you need to store
+ * some thread-sensitive data, we recommend using [ThreadLocal]. If you also need
+ * a coordinated shutdown (or data collection) of such values, ensure that the solver
+ * is used only on a specific executor and then augment the threads (using [ThreadFactory])
+ * to handle the resource shutdown correctly. Or suck it up and use finalizers...
  *
+ * For example:
+ * ```
+ * val solver = ...
+ * val executor = Executors.newFixedThreadPool(10) { runnable ->
+ *      Thread(Runnable {
+ *          try {
+ *              solver.openLocal()
+ *              runnable.run()
+ *          } finally {
+ *              solver.closeLocal()
+ *          }
+ *      })
+ * }
+ * ```
+ *
+ * We consider null values to be implicitly valid parameter sets which represent the empty set.
+ * Hence we have in general two sets of operations - one, that operates on nullable types
+ * and is partially implemented, and a strict one, which assumes non-null values (but not necessarily
+ * non-empty).
+ *
+ * You can still use non-null Param values to represent empty sets (especially when you haven't yet
+ * safely determined that the set is empty), but if you can decide some emptiness questions quickly,
+ * you can just return null and let the non-strict operators handle the rest.
  */
 interface Solver<Param : Any> {
 
-    /**
-     * The true set includes all allowed parameter valuations, that is, the whole `P`
-     */
-    val tt: Param
+    /** Complete parameter set. */
+    val TT: Param
+
+    /** Intersection of the two parameter sets. */
+    infix fun Param?.and(with: Param?): Param?
+            = if (this == null || with == null) null else this.strictAnd(with)
+
+    /** Union of the two parameter sets. */
+    infix fun Param?.or(with: Param?): Param?
+            = if (this == null) with else if (with == null) this else this.strictOr(with)
+
+    /** Complement the target parameter set against the given set */
+    infix fun Param?.complement(against: Param?): Param?
+            = if (this == null || against == null) against else this.strictComplement(against)
 
     /**
-     * The false set is an empty parameter set which is not satisfiable.
-     */
-    val ff: Param
-
-    /**
-     * Logical conjunction: `A and B = { x in P | (x in A) and (x in B) }`
-     */
-    infix fun Param.and(other: Param): Param
-
-    /**
-     * Logical disjunction: `A or B = { x in P | (x in A) or (x in B) }`
-     */
-    infix fun Param.or(other: Param): Param
-
-    /**
-     * Logical negation: `A.not() = { x in P | x not in A }`
-     */
-    fun Param.not(): Param
-
-    /**
-     * Test for semantic equality. `A equal B = ForAll (x in P): (x in A) <-> (x in B)`
-     */
-    infix fun Param.equal(other: Param): Boolean
-
-    /**
-     * See [equal].
-     * @see [equal]
-     */
-    infix fun Param.notEqual(other: Param): Boolean = !(this equal other)
-
-    /**
-     * Simple emptiness test which relies on the fact that only null parameter
-     * set is empty.
-     */
-    fun Param.isSat(): Boolean
-
-    /**
-     * See [isSat].
-     * @see [isSat]
-     */
-    fun Param.isNotSat(): Boolean = !this.isSat()
-
-    /**
-     * Return disjunction of the two arguments if result is different ("bigger") than
-     * the target parameter set. Otherwise return null.
+     * Try to compute a union of the two given sets, but return it only if it contains
+     * more elements, than the original target set.
      *
-     * One of our "domain specific" operations, used heavily to update mutable state
-     * maps.
-     *
-     * Falls back to standard [or] and [equal] implementations.
+     * (This operation requires some kind of emptiness check)
      */
-    infix fun Param.tryOr(other: Param): Param? = (this or other).takeIf { it notEqual this }
+    fun Param?.tryOr(with: Param?): Param?
+            = if (with == null) null else this?.strictTryOr(with) ?: with
 
     /**
-     * Return conjunction of the two arguments if result is different ("smaller") than
-     * the target parameter set. Otherwise return null.
+     * An explicit emptiness check.
+     * It gives you an opportunity to also simplify the formula based on the check results,
+     * since you don't have to return the same parameter object. */
+    fun Param.takeIfNotEmpty(): Param?
+
+    /** @see [and] */
+    fun Param.strictAnd(with: Param): Param?
+
+    /** @see [or] */
+    fun Param.strictOr(with: Param): Param?
+
+    /** @see [complement] */
+    fun Param.strictComplement(against: Param): Param?
+
+    /** @see [tryOr] */
+    fun Param.strictTryOr(with: Param): Param?
+
+    /**
+     * Increase the parameter set associated with [state] using the [value] set.
      *
-     * One of our "domain specific" operations, used heavily to update mutable state
-     * maps.
-     *
-     * Falls back to standard [and] and [equal] implementations.
+     * @return True if the value actually increased, false if no new parameter values were added.
      */
-    infix fun Param.tryAnd(other: Param): Param? = (this and other).takeIf { it notEqual this }
+    fun <S: Any> MutableStateMap<S, Param>.increaseKey(state: S, value: Param?): Boolean {
+        do {
+            val old = this[state]
+            val new = old.tryOr(value) ?: return false
+        } while (!this.compareAndSet(state, old, new))
+        return true
+    }
 
 }
