@@ -31,6 +31,8 @@ class AtomicArrayStateMapTest {
         states.lazySet(8, "world")
         assertEquals("hello", states[3])
         assertEquals("world", states[8])
+        states.lazySet(3, null)
+        assertEquals(null, states[3])
     }
 
     @Test
@@ -43,11 +45,14 @@ class AtomicArrayStateMapTest {
     @Test
     fun inBoundsAtomicWrite() {
         val states = AtomicArrayStateMap<String>(1)
+        assertTrue(states.compareAndSet(0, null, null))
         assertTrue(states.compareAndSet(0, null, "hello"))
         assertEquals("hello", states[0])
         assertFalse(states.compareAndSet(0, "not hello", "world"))
         assertTrue(states.compareAndSet(0, "hello", "world"))
         assertEquals("world", states[0])
+        assertTrue(states.compareAndSet(0, "world", null))
+        assertEquals(null, states[0])
     }
 
     @Test
