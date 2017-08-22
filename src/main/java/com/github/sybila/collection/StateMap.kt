@@ -3,8 +3,8 @@ package com.github.sybila.collection
 /**
  * Interface representing a parametrised state set using a state->parameter set mapping.
  *
- * It is expected to be immutable by contract in the same way [List] or [Set] is.
- * Due to this expected immutability, it is also assumed to be thread safe.
+ * It is expected to be read-only by contract in the same way [List] or [Set] is.
+ * Due to this read-only nature, it is also assumed to be thread safe.
  *
  * Note that the StateMap can contain parameter sets which are empty, however
  * we discourage this behaviour and recommend removing these states from the map

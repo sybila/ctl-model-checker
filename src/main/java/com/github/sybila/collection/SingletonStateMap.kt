@@ -1,5 +1,8 @@
 package com.github.sybila.collection
 
+/**
+ * A simple [StateMap] for representing a single state-parameter set pair.
+ */
 class SingletonStateMap<S: Any, out P: Any>(
         private val state: S,
         private val value: P

@@ -3,7 +3,7 @@ package com.github.sybila.collection
 import java.util.concurrent.atomic.AtomicReferenceArray
 
 /**
- * A simple immutable [StateMap] which is backed by the given [data] array.
+ * A simple read-only [StateMap] which is backed by the given [data] array.
  *
  * Only allows indexation using [Int] states.
  */

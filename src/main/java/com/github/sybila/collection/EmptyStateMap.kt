@@ -1,5 +1,6 @@
 package com.github.sybila.collection
 
+/** A generic implementation of an empty [StateMap] */
 class EmptyStateMap<S: Any, out P: Any> : StateMap<S, P> {
 
     override val states: Sequence<S>
