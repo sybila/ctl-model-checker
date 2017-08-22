@@ -24,6 +24,9 @@ internal val Formula.quantifiedNames: Set<String>
 // canonical format (so for example, (bind x: EX x) and (bind z: EX z) are considered equal)
 internal val Formula.canonicalKey: String
     get() {
+        return this.toString()
+        // some issues here, but might be just conflicting dependencies...
+        /*println("Compute canonical key for $this.")
         val nameMapping = this.quantifiedNames.sorted().mapIndexed { i, n -> n to "_var$i" }.toMap()
         return this.map(atom = {
             if (this is Formula.Reference && this.name in nameMapping) {
@@ -41,5 +44,5 @@ internal val Formula.canonicalKey: String
                 this is Formula.ForAll -> forall(nameMapping[this.name]!!, l, r)
                 else -> this.copy(l, r)
             }
-        }).toString()
+        }).toString()*/
     }

@@ -1,228 +1,51 @@
 package com.github.sybila
 
-import com.github.sybila.algorithm.TierStateQueue
-import com.github.sybila.huctl.*
-import com.github.sybila.huctl.dsl.toReference
-import com.github.sybila.model.TransitionSystem
-import io.reactivex.processors.BehaviorProcessor
-import kotlinx.coroutines.experimental.*
-import kotlinx.coroutines.experimental.channels.Channel
-import kotlinx.coroutines.experimental.channels.consumeEach
-import kotlinx.coroutines.experimental.channels.produce
-import java.util.*
-import java.util.concurrent.atomic.AtomicInteger
-import kotlin.coroutines.experimental.buildSequence
+import com.github.sybila.funn.ModelChecker
+import com.github.sybila.funn.ode.ODETransitionSystem
+import com.github.sybila.huctl.parser.readHUCTLp
+import com.github.sybila.ode.model.Parser
+import java.io.File
+import java.io.PrintStream
 import kotlin.system.measureTimeMillis
 
-fun main(args: Array<String>) {
 /*
-    val fastDelays = listOf(1,2,4,8,4,2,1).map { it * 100L }
-    val slowDelays = (1..2).map { 1000L }
+1/40s
+5/43s
+10/29s
+20/25s
+30/24s
+35/25s
+40/26s
 
-    val duration = measureTimeMillis {
-        val smallFlows: Flowable<Flowable<Runnable>> = Flowable.fromArray(*Array(80) { i ->
-            val subj = BehaviorProcessor.create<Runnable>()
-            subj.onNext(subj.nextRun(fastDelays))
-            subj
-        })
-
-        val p = BehaviorProcessor.create<Runnable>()
-        p.onNext(p.nextRun(slowDelays))
-
-        val flows: Flowable<Flowable<Runnable>> = Flowable.just(p as Flowable<Runnable>).concatWith(smallFlows)
-
-        val par = 16
-
-        val e = Executors.newFixedThreadPool(par)
-
-        //flows.parallel(par).runOn(Schedulers.computation()).flatMap { it }.sequential()
-                Flowable.merge(flows, par)
-                .subscribe(object : FlowableSubscriber<Runnable> {
-
-            private lateinit var sub: Subscription
-
-            override fun onError(t: Throwable) {
-                throw t
-            }
-
-            override fun onComplete() {
-                println("Done")
-                synchronized(e) {
-                    (e as java.lang.Object).notify()
-                }
-            }
-
-            override fun onNext(t: Runnable) {
-                //println("On next")
-                e.execute {
-                    t.run()
-                    sub.request(1)
-                }
-            }
-
-            override fun onSubscribe(s: Subscription) {
-                sub = s
-                s.request(par.toLong())
-            }
-
-        })
-
-        synchronized(e) {
-            (e as java.lang.Object).wait()
-        }
-
-        e.shutdown()
-    }
-
-    println("Duration: $duration")*/
-
-    val par = 4
-    val context = newFixedThreadPoolContext(par, "work")
-    val single = newSingleThreadContext("s")
-
-    runBlocking {
-        val k = async(single) {
-            println("a")
-            val todo = async(single, CoroutineStart.LAZY) {
-                println("b")
-                val andThis = async(single, CoroutineStart.LAZY) {
-                    println("c")
-                }
-                andThis.await()
-                println("d")
-            }
-            todo.await()
-            println("e")
-        }
-        k.await()
-    }
-
-    val duration = measureTimeMillis {
-        runBlocking {
-            val l1 = async(context) {
-                val items = (1..10_000).toList()
-                val chunkSize = AtomicInteger(1)
-                val chunks = produce<IntRange>(context) {
-                    var start = 0
-                    while (start != items.size) {
-                        val size = chunkSize.get()
-                        println("Make chunk $size")
-                        val end = Math.min(items.size, start + size) - 1
-                        send(start..end)
-                        start = end + 1
-                    }
-                    close()
-                }
-
-                val out = Channel<Unit>()
-                val f = async(context) {
-                    out.consumeEach {
-                        println("Consuming out on ${Thread.currentThread()}")
-                    }
-                }
-                (1..par).map {
-                    async(context) {
-                        chunks.consumeEach { range ->
-                           // println("Thread: ${Thread.currentThread()}")
-                            val elapsed = measureTimeMillis {
-                                Thread.sleep((range.last - range.first + 1).toLong())
-                            }
-                            out.send(Unit)
-                            val size = (range.last - range.first) + 1
-                            if (elapsed < 500) {
-                               // System.out.println("Update $size to ${size * 2} because elapsed $elapsed")
-                                chunkSize.compareAndSet(size, size * 2)
-                            }
-                            if (elapsed > 1000) {
-                               // System.out.println("Update $size to ${size / 2} because elapsed $elapsed")
-                                chunkSize.compareAndSet(size, size / 2)
-                            }
-                        }
-                    }
-                }.forEach { it.await() }
-                out.close()
-                f.await()
-            }
-            l1.await()
-        }
-    }
-
-    println("Duration: $duration")
-
-
-}
-
-private fun BehaviorProcessor<Runnable>.nextRun(list: List<Long>): Runnable = Runnable {
-    println("Sleep for ${list.first()} on ${Thread.currentThread()} on ${this.hashCode()}")
-    Thread.sleep(list.first())
-    val rest = list.drop(1)
-    if (rest.isEmpty()) this.onComplete()
-    else this.onNext(this.nextRun(rest))
-}
-
-/*
-
-Processing architecture:
-
-DAG of dependent operators.
-
-Each operator holds a result map together with a
-
+1:101(25ms)/105(250ms)
+4:27s(25ms)
  */
+fun main(args: Array<String>) {
 
-class ModelChecker<State : Any, out Param : Any>(
-        val parallelism: Int = 1, val name: String = "MC",
-        val system: TransitionSystem<Param>
-) {
+    val elapsed = measureTimeMillis {
+        val mFile = File("model.bio")
+        val pFile = File("prop.ctl")
+        //val oFile = File("/Users/daemontus/Downloads/fun_result.json")
 
-    private val executor = newFixedThreadPoolContext(parallelism, name)
+        val model = Parser().parse(mFile)
+        val prop = readHUCTLp(pFile, onlyFlagged = true)
 
-    private fun Formula.Until.toJob(): Deferred<Unit> = lazyAsync {
-        val until = this@toJob
-        if (until.quantifier != PathQuantifier.E) TODO("Not implemented")
+        println(prop)
+        println(model)
 
-        val reach = until.reach.toJob()
-        val path = until.path.toJob()
+        val tSystem = ODETransitionSystem(model)
+        val mc = ModelChecker(tSystem, { tSystem.solver }, 4)
 
-        reach.start(); path.start()
-        reach.await(); path.await()
+        //val s = prop["stay_high"]!!
 
-        val queue = TierStateQueue(system.stateCount)
+        val result = mc.check(prop.map { it.key to it.value })//mc.check(listOf("stay_high" to s))
 
-        val chunkSize = AtomicInteger(10)
-        val tier = queue.remove().toList()
-        val chunks = produce<IntRange>(executor) {
-            var start = 0
-            while (start != tier.size) {
-                val size = chunkSize.get()
-                val end = Math.min(tier.size, start + size) - 1
-                send(start..end)
-                start = end + 1
-            }
-            close()
-        }
-        repeat(parallelism) {
-            chunks.channel.consumeEach { range ->
-                for (i in range) {
-
-                }
-                // update chunkSize
-            }
-        }
-
-        Unit
+        /*PrintStream(oFile.apply { this.createNewFile() }.outputStream()).use { outStream ->
+            outStream.println(printJsonRectResults(model, result.toMap()))
+        }*/
 
     }
 
-    private fun Formula.toJob(): Deferred<Unit> {
-        return when (this) {
-            is Formula.Until -> this.toJob()
-            else -> TODO("Not implemented")
-        }
-    }
-
-    private fun <T> lazyAsync(block: suspend CoroutineScope.() -> T) = async(executor, CoroutineStart.LAZY, block)
+    println("Elapsed: $elapsed")
 
 }
-
-typealias TODO = Unit

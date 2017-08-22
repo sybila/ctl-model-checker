@@ -1,6 +1,7 @@
 package com.github.sybila.solver.grid
 
 import java.util.*
+import java.util.stream.Collectors
 
 class Grid2(
         val thresholdsX: DoubleArray,
@@ -145,6 +146,14 @@ class Grid2(
             append(",")
         }
         append("]")
+    }
+
+    fun asIntervals(): List<List<List<Double>>> {
+        return values.stream().mapToObj { value ->
+            val X = value % modifier
+            val Y = value / modifier
+            listOf(listOf(thresholdsX[X], thresholdsX[X+1]), listOf(thresholdsY[Y], thresholdsY[Y+1]))
+        }.collect(Collectors.toList())
     }
 
 }

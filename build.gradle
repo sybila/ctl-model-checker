@@ -20,7 +20,7 @@ buildscript {
 
 apply plugin: 'java'
 apply plugin: 'kotlin'
-apply plugin: 'antlr'
+//apply plugin: 'antlr'
 apply plugin: 'maven'
 apply plugin: 'jacoco'
 apply plugin: 'org.jetbrains.dokka'
@@ -30,15 +30,15 @@ group = "com.github.sybila"
 version = '3.0.0'
 
 //antlr config
-generateGrammarSource {
+/*generateGrammarSource {
     arguments += [
             "-no-visitor",
             "-listener"
     ]
-}
+}*/
 
 // make the Java compile task depend on the antlr4 task
-compileKotlin.dependsOn generateGrammarSource
+//compileKotlin.dependsOn generateGrammarSource
 
 repositories {
     mavenCentral()
@@ -62,8 +62,9 @@ dependencies {
 
     // just for the .bio parser
     compile 'com.github.sybila:ode-generator:74d24977ab'
+    compile 'org.antlr:antlr4-runtime:4.7'
 
-    antlr "org.antlr:antlr4:$version_antlr"
+    //antlr "org.antlr:antlr4:$version_antlr"
 }
 
 task sourcesJar(type: Jar) {
@@ -133,7 +134,7 @@ task runBench(type: JavaExec) {
     jvmArgs = ["-Xmx${ project.memory }g"]
 }*/
 
-mainClassName = "com.github.sybila.BenchmarkKt"
+mainClassName = "com.github.sybila.FunKt"
 
 kotlin {
     experimental {

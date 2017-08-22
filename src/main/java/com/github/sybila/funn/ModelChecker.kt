@@ -1,6 +1,7 @@
 package com.github.sybila.funn
 
 import com.github.sybila.huctl.Formula
+import com.github.sybila.huctl.PathQuantifier
 import com.github.sybila.huctl.dsl.Not
 import com.github.sybila.huctl.dsl.and
 import com.github.sybila.huctl.dsl.or
@@ -9,6 +10,7 @@ import kotlinx.coroutines.experimental.channels.consumeEach
 import kotlinx.coroutines.experimental.channels.produce
 import java.util.*
 import java.util.concurrent.atomic.AtomicInteger
+import java.util.concurrent.atomic.AtomicLong
 import kotlin.system.measureTimeMillis
 
 /**
@@ -38,7 +40,7 @@ class ModelChecker<S, P>(
         private val solverFactory: () -> Solver<P>,
         private val parallelism: Int = Runtime.getRuntime().availableProcessors(),
         private val name: String = "MC",
-        private val chunkTime: Long = 500
+        private val chunkTime: Long = 25
 ) {
 
     private val executor = newFixedThreadPoolContext(parallelism, name)
@@ -67,6 +69,7 @@ class ModelChecker<S, P>(
 
         fun build(f: Formula): Deferred<StateMap<S, P>> {
             return graph.computeIfAbsent(f.canonicalKey) {
+                println("Build $f")
                 when (f) {
                     is Formula.True -> lazyAsync { model.fullMap }
                     is Formula.False -> lazyAsync { model.emptyMap }
@@ -75,6 +78,8 @@ class ModelChecker<S, P>(
                     is Formula.Or -> makeOr(build(f.left), build(f.right))
                     is Formula.Implies -> build(Not(f.left) or f.right)
                     is Formula.Equals -> build((Not(f.left) and Not(f.right)) or (f.left and f.right))
+                    is Formula.Globally -> build(Not(Formula.Future(f.quantifier.invert(), Not(f.inner), f.direction)))
+                    is Formula.Future -> makeReach(build(f.inner))
                     else -> lazyAsync { model.makeProposition(f) }
                 }
             }
@@ -86,7 +91,7 @@ class ModelChecker<S, P>(
         val inner = innerJob.await()
         val result = model.mutate(model.fullMap)
         inner.states.toList().parallelChunks { s ->
-            result[s] = (ONE - inner[s]).takeUnless { it.isZero() }
+            result[s] = (ONE - inner[s])
         }
         result
     }
@@ -96,7 +101,7 @@ class ModelChecker<S, P>(
         val right = rightJob.await()
         val result = model.mutate(left)
         left.states.toList().parallelChunks { s ->
-            result[s] = (left[s] * right[s]).takeUnless { it.isZero() }
+            result[s] = (left[s] * right[s])
         }
         result
     }
@@ -111,14 +116,45 @@ class ModelChecker<S, P>(
         result
     }
 
+    fun makeReach(reachJob: Deferred<StateMap<S, P>>): Deferred<StateMap<S, P>> = lazyAsync {
+        val reach = reachJob.await()
+        val result = model.mutate(reach)
+
+        val queue = TierQueue(model)
+        reach.states.forEach { queue.add(it, null) }
+
+        println("Start reachability!")
+        while (queue.isNotEmpty()) {
+            val tier = queue.remove().toList()
+            val changed = tier.parallelChunkMap { (s, f) ->
+                if (f == null) s else {
+                    /*val witness: P = model.nextStep(s, true).fold(result[s]) { witness, (succ, bound) ->
+                        witness + (result[succ] * bound)
+                    }*/
+                    val bound: P = model.nextStep(s, true).find { it.first == f }?.second ?: ZERO
+                    s.takeIf { result.increaseKey(s, result[f] * bound) }
+                }
+            }
+            println("Changed: ${changed.size}")
+            changed.forEach {
+                it?.let { s -> model.nextStep(s, false).forEach { (a, _) -> queue.add(a, s) } }
+            }
+        }
+        println("Done!")
+
+        result
+    }
+
     private fun <T> lazyAsync(block: suspend CoroutineScope.() -> T): Deferred<T>
             = async(executor, CoroutineStart.LAZY, block)
+
+    private val chunk = 1
 
     // Split the list into chunks which will be processed by given action in parallel.
     // The size of the chunks changes dynamically based on the complexity of taken actions.
     // Use given channel to further communicate the results of the actions.
     private suspend fun <T> List<T>.parallelChunks(action: Solver<P>.(T) -> Unit): Unit {
-        val chunkSize = AtomicInteger(1)
+        val chunkSize = AtomicInteger(chunk)
         val chunks = produce<List<T>>(executor) {
             val original = this@parallelChunks
             var chunkStart = 0  //inclusive
@@ -154,5 +190,53 @@ class ModelChecker<S, P>(
         }.forEach { it.await() }
     }
 
+    private inline suspend fun <T, R> List<T>.parallelChunkMap(crossinline action: Solver<P>.(T) -> R?): List<R?> {
+        val chunkSize = AtomicInteger(chunk)
+        // what a nice warning you have here...
+        val result = Arrays.asList<R?>(*(arrayOfNulls<Any?>(this.size) as Array<out R>))
+        val original = this@parallelChunkMap
+        val chunks = produce<IntRange>(executor) {
+            var chunkStart = 0  //inclusive
+            while (chunkStart != original.size) {
+                val chunk = chunkSize.get()
+                val chunkEnd = Math.min(original.size, chunkStart + chunk)  //exclusive
+                send(chunkStart until chunkEnd)
+                chunkStart = chunkEnd
+            }
+            original.take(10)
+            close()
+        }
+        (1..parallelism).map {
+            async(executor) {
+                chunks.consumeEach { items ->
+                    val solver = solver.get()
+                    val elapsed = measureTimeMillis {
+                        items.forEach {
+                            result[it] = solver.action(original[it])
+                        }
+                    }
+                    if (elapsed < 0.8 * chunkTime || elapsed > 1.2 * chunkTime) {
+                        val chunk = items.last - items.first + 1    // + 1 for inclusive range
+                        val itemTime = elapsed / chunk.toDouble()
+                        if (itemTime == 0.0) {
+                            // If we are real fast, we can get a zero elapsed time and hence a zero item time
+                            chunkSize.set(2 * chunk)    // in which case, just increase the chunk arbitrarily.
+                        } else {
+                            // On the other hand, we can also be really slow and get a zero chunk size
+                            chunkSize.set(Math.max(1, (chunkTime / itemTime).toInt()))  // hence use a lower bound.
+                        }
+                    }
+                }
+            }
+        }.forEach { it.await() }
+        return result
+    }
+
+    private fun PathQuantifier.invert() = when (this) {
+        PathQuantifier.A -> PathQuantifier.E
+        PathQuantifier.E -> PathQuantifier.A
+        PathQuantifier.pA -> PathQuantifier.pE
+        PathQuantifier.pE -> PathQuantifier.pA
+    }
 
 }

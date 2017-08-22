@@ -9,6 +9,10 @@ interface TransitionSystem<S, P> {
 
     fun makeProposition(proposition: Formula): StateMap<S, P>
 
-    fun mutate(stateMap: StateMap<S, P>): MutableStateMap<S, P>
+    fun mutate(stateMap: StateMap<S, P>): AtomicStateMap<S, P>
+
+    fun <T> genericMap(zero: T): AtomicStateMap<S, T>
+
+    fun nextStep(from: S, timeFlow: Boolean): Iterable<Pair<S, P>>
 
 }
