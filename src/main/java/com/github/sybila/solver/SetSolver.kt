@@ -4,30 +4,17 @@ package com.github.sybila.solver
  * Simple solver for enumerated parameter sets represented by standard [Set] objects.
  */
 class SetSolver<Item>(
-        override val tt: Set<Item>
+        override val TT: Set<Item>
 ) : Solver<Set<Item>> {
 
-    override val ff: Set<Item> = setOf()
+    override fun Set<Item>.takeIfNotEmpty(): Set<Item>? = this.takeIf { it.isNotEmpty() }
 
-    override fun Set<Item>.and(other: Set<Item>): Set<Item> = when {
-        this.isEmpty() || other.isEmpty() -> ff
-        else -> this.intersect(other)
-    }
+    override fun Set<Item>.strictAnd(with: Set<Item>): Set<Item>? = this.intersect(with).takeIfNotEmpty()
 
-    override fun Set<Item>.or(other: Set<Item>): Set<Item> = when {
-        this.isEmpty() -> other
-        other.isEmpty() -> this
-        else -> this + other
-    }
+    override fun Set<Item>.strictOr(with: Set<Item>): Set<Item>? = this.plus(with).takeIfNotEmpty()
 
-    override fun Set<Item>.not(): Set<Item> = when {
-        this.isEmpty() -> tt
-        this == tt -> ff
-        else -> tt - this
-    }
+    override fun Set<Item>.strictComplement(against: Set<Item>): Set<Item>? = against.minus(this).takeIfNotEmpty()
 
-    override fun Set<Item>.equal(other: Set<Item>): Boolean = this == other
-
-    override fun Set<Item>.isSat(): Boolean = this.isNotEmpty()
+    override fun Set<Item>.strictTryOr(with: Set<Item>): Set<Item>? = this.plus(with).takeIf { it != this }
 
 }
