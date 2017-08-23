@@ -5,7 +5,7 @@ package com.github.sybila.collection
  *
  * Probably won't any benchmarks, but very useful for testing and small/sparse maps.
  */
-class GenericStateMap<S: Any, out P: Any>(private val data: Map<S, P>) : StateMap<S, P> {
+class GenericStateMap<S: Any, P: Any>(private val data: Map<S, P>) : StateMap<S, P> {
 
     constructor(vararg items: Pair<S, P>) : this(mapOf(*items))
 
@@ -15,5 +15,8 @@ class GenericStateMap<S: Any, out P: Any>(private val data: Map<S, P>) : StateMa
         get() = data.entries.asSequence().map { it.key to it.value }
 
     override fun get(state: S): P? = data[state]
+
+    /** Create a mutable copy of this state map */
+    fun mutate(): GenericMutableStateMap<S, P> = GenericMutableStateMap(data)
 
 }

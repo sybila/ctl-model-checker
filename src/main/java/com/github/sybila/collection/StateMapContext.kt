@@ -27,9 +27,4 @@ interface StateMapContext<S: Any, P: Any> {
      */
     fun MutableStateMap<S, P>.toReadOnly(): StateMap<S, P>
 
-    /**
-     * Construct a state map from a (lazy) sequence.
-     */
-    fun Sequence<Pair<S, P>>.toStateMap(): StateMap<S, P>
-
 }
