@@ -1,5 +1,6 @@
 package com.github.sybila
 
+import com.github.sybila.collection.StateMap
 import com.github.sybila.ode.generator.NodeEncoder
 import com.github.sybila.ode.model.OdeModel
 import com.github.sybila.solver.grid.Grid2
@@ -57,7 +58,7 @@ internal fun printJsonRectResults(model: OdeModel, result: Map<String, StateMap<
     for ((f, pResult) in result) {
         val rMap = ArrayList<List<Int>>()
         pResult.states.forEach { s ->
-            val p = pResult[s]
+            val p = pResult[s] ?: Grid2.EMPTY
             val stateIndex = stateIndexMapping.computeIfAbsent(s) {
                 states.add(s)
                 states.size - 1

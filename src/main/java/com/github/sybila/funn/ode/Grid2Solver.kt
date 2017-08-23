@@ -1,6 +1,6 @@
 package com.github.sybila.funn.ode
 
-import com.github.sybila.funn.Solver
+import com.github.sybila.solver.Solver
 import com.github.sybila.solver.copy
 import com.github.sybila.solver.grid.Grid2
 import java.util.*
@@ -10,40 +10,31 @@ class Grid2Solver(
         boundsY: Pair<Double, Double>
 ) : Solver<Grid2> {
 
-    override val ONE: Grid2 = Grid2(
+    override val TT: Grid2 = Grid2(
             thresholdsX = doubleArrayOf(boundsX.first, boundsX.second),
             thresholdsY = doubleArrayOf(boundsY.first, boundsY.second),
             values = BitSet(1).apply { set(0) }
     )
 
-    override val ZERO: Grid2 = Grid2.EMPTY
+    override fun Grid2.takeIfNotEmpty(): Grid2? = this.takeIf { it != Grid2.EMPTY }
 
-    override fun Grid2.plus(other: Grid2): Grid2 {
-        return when {
-            this === ZERO -> other
-            other === ZERO -> this
-            else -> {
-                val (l, r) = this.cut(other) to other.cut(this)
-                l.copy(values = l.values.copy().apply { or(r.values) }).simplify()
-            }
-        }
+    override fun Grid2.strictAnd(with: Grid2): Grid2? {
+        val (l, r) = this.cut(with) to with.cut(this)
+        return l.copy(values = l.values.copy().apply { and(r.values) }).simplify().takeIfNotEmpty()
     }
 
-    override fun Grid2.times(other: Grid2): Grid2 {
-        return when {
-            this === ZERO || other === ZERO -> ZERO
-            else -> {
-                val (l, r) = this.cut(other) to other.cut(this)
-                l.copy(values = l.values.copy().apply { and(r.values) }).simplify()
-            }
-        }
+    override fun Grid2.strictOr(with: Grid2): Grid2? {
+        val (l, r) = this.cut(with) to with.cut(this)
+        return l.copy(values = l.values.copy().apply { or(r.values) }).simplify().takeIfNotEmpty()
     }
 
-    override fun Grid2.minus(other: Grid2): Grid2 {
-        val (l, r) = this.cut(other) to other.cut(this)
-        return l.copy(values = l.values.copy().apply { andNot(r.values) }).simplify()
+    override fun Grid2.strictComplement(against: Grid2): Grid2? {
+        val (l, r) = this.cut(against) to against.cut(this)
+        return r.copy(values = r.values.copy().apply { andNot(l.values) }).simplify()
     }
 
-    override fun Grid2.equal(other: Grid2): Boolean = this == other
+    override fun Grid2.strictTryOr(with: Grid2): Grid2? {
+        return this.strictOr(with)?.takeIf { it != this }
+    }
 
 }

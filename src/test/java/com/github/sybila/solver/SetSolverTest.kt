@@ -2,7 +2,7 @@ package com.github.sybila.solver
 
 import org.junit.Test
 import kotlin.test.assertTrue
-
+/*
 class SetSolverTest {
 
     val f = emptySet<Boolean>()
@@ -93,4 +93,4 @@ class SetSolverTest {
             assertTrue((ab tryAnd a)!! equal a)
         }
     }
-}
+}*/

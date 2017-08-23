@@ -62,8 +62,9 @@ interface Solver<Param : Any> {
      *
      * (This operation requires some kind of emptiness check)
      */
+    @Suppress("IfThenToElvis")  // it will screw up the null semantics
     fun Param?.tryOr(with: Param?): Param?
-            = if (with == null) null else this?.strictTryOr(with) ?: with
+            = if (with == null) null else if (this == null) with else this.strictTryOr(with)
 
     /**
      * An explicit emptiness check.

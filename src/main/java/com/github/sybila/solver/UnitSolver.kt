@@ -6,7 +6,7 @@ import com.github.sybila.solver.Truth.*
  * Simple solver for binary parameter sets.
  *
  * It uses
- */
+ *//*
 class UnitSolver : Solver<Truth> {
 
     override val tt: Truth = True
@@ -30,4 +30,4 @@ class UnitSolver : Solver<Truth> {
 
     override fun Truth.isSat(): Boolean = this === True
 
-}
+}*/
