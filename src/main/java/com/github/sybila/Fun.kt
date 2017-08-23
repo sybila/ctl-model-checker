@@ -39,7 +39,7 @@ fun main(args: Array<String>) {
         println(model)
 
         val tSystem = ODETransitionSystem(model)
-        val mc = ModelChecker(model = tSystem, maps = tSystem, solver = tSystem.solver, fork = 1, meanChunkTime = 25)
+        val mc = ModelChecker(model = tSystem, maps = tSystem, solver = tSystem.solver, fork = 4, meanChunkTime = 25)
 
         val s = prop["stay_high"]!!
 
