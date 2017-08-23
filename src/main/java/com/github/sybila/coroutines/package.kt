@@ -1,7 +1,6 @@
 package com.github.sybila.coroutines
 
-import kotlinx.coroutines.experimental.CommonPool
-import kotlinx.coroutines.experimental.async
+import kotlinx.coroutines.experimental.*
 import kotlinx.coroutines.experimental.channels.ProducerJob
 import kotlinx.coroutines.experimental.channels.consumeEach
 import kotlinx.coroutines.experimental.channels.produce
@@ -31,9 +30,8 @@ fun List<*>.chunks(executor: CoroutineContext, chunkDispenser: ChunkDispenser): 
  *
  * Use [context] to provide context for each chunk execution.
  */
-suspend fun <T, C> List<T>.consumeChunks(
-        context: () -> C,
-        action: C.(T) -> Unit,
+suspend fun <T> List<T>.consumeChunks(
+        action: (T) -> Unit,
         fork: Int = 1,
         executor: CoroutineContext = CommonPool,
         chunkDispenser: ChunkDispenser = ChunkDispenser()
@@ -44,8 +42,7 @@ suspend fun <T, C> List<T>.consumeChunks(
         async(executor) {
             chunks.consumeEach { items ->
                 val chunkTime = measureTimeMillis {
-                    val ctx = context()
-                    items.forEach { ctx.action(list[it]) }
+                    items.forEach { action(list[it]) }
                 }
                 chunkDispenser.adjust(items.last - items.first + 1, chunkTime)
             }
@@ -59,9 +56,8 @@ suspend fun <T, C> List<T>.consumeChunks(
  *
  * Use [context] to provide context for each chunk execution.
  */
-suspend fun <T, R, C> List<T>.mapChunks(
-        context: () -> C,
-        action: C.(T) -> R?,
+suspend fun <T, R> List<T>.mapChunks(
+        action: (T) -> R?,
         fork: Int = 1,
         executor: CoroutineContext = CommonPool,
         chunkDispenser: ChunkDispenser = ChunkDispenser()
@@ -73,9 +69,8 @@ suspend fun <T, R, C> List<T>.mapChunks(
         async(executor) {
             chunks.consumeEach { items ->
                 val chunkTime = measureTimeMillis {
-                    val ctx = context()
                     items.forEach {
-                        result[it] = ctx.action(list[it])
+                        result[it] = action(list[it])
                     }
                 }
                 chunkDispenser.adjust(items.last - items.first + 1, chunkTime)
@@ -84,3 +79,9 @@ suspend fun <T, R, C> List<T>.mapChunks(
     }.map { it.await() }
     return result
 }
+
+/**
+ * Build a lazy async task on the given [executor].
+ */
+fun <T> lazyAsync(executor: CoroutineContext, block: suspend CoroutineScope.() -> T): Deferred<T>
+        = async(executor, CoroutineStart.LAZY, block)
