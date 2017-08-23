@@ -8,7 +8,7 @@ import kotlinx.coroutines.experimental.Deferred
 interface BooleanLogic<S: Any, P: Any> : StateMapContext<S, P>, Algorithm<S, P> {
 
     fun makeAnd(leftJob: Deferred<StateMap<S, P>>, rightJob: Deferred<StateMap<S, P>>): Deferred<StateMap<S, P>>
-        = lazyAsync(executor) {
+        = lazyAsync {
         val left = leftJob.await()
         val right = rightJob.await()
         val result = left.toMutable()
@@ -19,7 +19,7 @@ interface BooleanLogic<S: Any, P: Any> : StateMapContext<S, P>, Algorithm<S, P> 
     }
 
     fun makeOr(leftJob: Deferred<StateMap<S, P>>, rightJob: Deferred<StateMap<S, P>>): Deferred<StateMap<S, P>>
-        = lazyAsync(executor) {
+        = lazyAsync {
         val left = leftJob.await()
         val right = rightJob.await()
         val result = left.toMutable()
@@ -30,7 +30,7 @@ interface BooleanLogic<S: Any, P: Any> : StateMapContext<S, P>, Algorithm<S, P> 
     }
 
     fun makeComplement(targetJob: Deferred<StateMap<S, P>>, againstJob: Deferred<StateMap<S, P>>): Deferred<StateMap<S, P>>
-        = lazyAsync(executor) {
+        = lazyAsync {
         val target = targetJob.await()
         val against = againstJob.await()
         val result = against.toMutable()
