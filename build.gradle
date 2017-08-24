@@ -134,6 +134,12 @@ task runBench(type: JavaExec) {
     jvmArgs = ["-Xmx${ project.memory }g"]
 }*/
 
+task runBench(type: JavaExec) {
+    classpath sourceSets.main.runtimeClasspath
+    main = "com.github.sybila.FunKt"
+    jvmArgs = ["-Xmx14g"]
+}
+
 mainClassName = "com.github.sybila.FunKt"
 
 kotlin {
