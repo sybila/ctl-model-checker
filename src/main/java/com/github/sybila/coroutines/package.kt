@@ -1,5 +1,6 @@
 package com.github.sybila.coroutines
 
+import com.github.sybila.algorithm.ChunkDispenser
 import kotlinx.coroutines.experimental.*
 import kotlinx.coroutines.experimental.channels.ProducerJob
 import kotlinx.coroutines.experimental.channels.consumeEach
@@ -34,7 +35,7 @@ suspend fun <T> List<T>.consumeChunks(
         action: (T) -> Unit,
         fork: Int = 1,
         executor: CoroutineContext = CommonPool,
-        chunkDispenser: ChunkDispenser = ChunkDispenser(maxChunkSize = (this.size / (2*fork)).coerceAtLeast(1))
+        chunkDispenser: ChunkDispenser = ChunkDispenser(maxChunkSize = (this.size / (2 * fork)).coerceAtLeast(1))
 ): Unit {
     val list = this
     val chunks = this.chunks(executor, chunkDispenser)

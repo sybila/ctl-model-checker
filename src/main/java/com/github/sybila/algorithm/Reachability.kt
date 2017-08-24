@@ -2,9 +2,6 @@ package com.github.sybila.algorithm
 
 import com.github.sybila.collection.StateMap
 import com.github.sybila.collection.StateMapContext
-import com.github.sybila.coroutines.ChunkDispenser
-import com.github.sybila.coroutines.chunks
-import com.github.sybila.funn.TierQueue
 import com.github.sybila.model.TransitionSystem
 import com.github.sybila.solver.Solver
 import kotlinx.coroutines.experimental.CommonPool

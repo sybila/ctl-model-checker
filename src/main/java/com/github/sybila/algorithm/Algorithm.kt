@@ -1,6 +1,5 @@
 package com.github.sybila.algorithm
 
-import com.github.sybila.coroutines.ChunkDispenser
 import com.github.sybila.coroutines.consumeChunks
 import com.github.sybila.coroutines.mapChunks
 import com.github.sybila.solver.Solver
@@ -19,7 +18,7 @@ interface Algorithm<S: Any, P: Any> {
 
     suspend fun <T> List<T>.consumeChunks(action: Solver<P>.(T) -> Unit)
             = this.consumeChunks({ solver.run { action(it) }}, fork, executor, ChunkDispenser(
-            maxChunkSize = (this.size / (2*fork)).coerceAtLeast(1), meanChunkTime = meanChunkTime
+            maxChunkSize = (this.size / (2 * fork)).coerceAtLeast(1), meanChunkTime = meanChunkTime
     ))
 
     suspend fun <T, R> List<T>.mapChunks(chunkDispenser: ChunkDispenser, action: Solver<P>.(T) -> R?): List<R?>

@@ -1,14 +1,14 @@
-package com.github.sybila.coroutines
+package com.github.sybila.algorithm
 
 import java.util.concurrent.atomic.AtomicInteger
 
 /**
  * Thread safe class which tries to maintain an appropriate chunk size
- * based on feedback from already completed chunks.
+ * based on the feedback from the already completed chunks.
  *
- * Useful when you need to process some data in parallel, but the execution time of items
- * varies drastically so the overhead of processing each separately is too big.
+ * Useful for dynamic load balancing of parallel computations.
  *
+ * @param [maxChunkSize] Upper limit on the chunk size.
  * @param [meanChunkTime] Desired chunk computation time.
  */
 class ChunkDispenser(
