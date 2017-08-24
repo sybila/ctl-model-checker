@@ -4,6 +4,7 @@ import com.github.sybila.collection.StateMap
 import com.github.sybila.collection.StateMapContext
 import com.github.sybila.coroutines.ChunkDispenser
 import com.github.sybila.coroutines.chunks
+import com.github.sybila.funn.TierQueue
 import com.github.sybila.model.TransitionSystem
 import com.github.sybila.solver.Solver
 import kotlinx.coroutines.experimental.CommonPool
@@ -23,18 +24,38 @@ interface Reachability<S : Any, P : Any> : Algorithm<S, P>, StateMapContext<S, P
         val chunks = ChunkDispenser(meanChunkTime)
 
         //TODO: Search queue heuristic?
-        var recompute = reach.states.toList()
+        var recompute: List<Pair<S, S?>> = reach.states.map { it to null }.toList()
 
         while (recompute.isNotEmpty()) {
-            val r = HashSet<S>()
-            recompute.mapChunksInline(algorithm = this@Reachability, fork = fork, executor = executor, chunkDispenser = chunks, action = { state ->
-                state.predecessors(time).mapNotNull { p ->
-                    p.takeIf { result.increaseKey(p, result[state] and transitionBound(p, state, time)) }
+            val changed = recompute.mapChunksInline(algorithm = this@Reachability, fork = fork, executor = executor, chunkDispenser = chunks, action = { (state, dep) ->
+                if (dep == null) state else {
+                    state.takeIf { result.increaseKey(state, transitionBound(state, dep, time) and result[dep]) }
                 }
-            }).forEach { it?.forEach { r.add(it) } }
-            recompute = r.toList()//updated.flatMap { it ?: emptyList() }.toSet().toList()
+            }).toSet()
+            val r = ArrayList<Pair<S, S?>>(changed.size * 4)
+            changed.forEach { it?.let { s -> s.predecessors(time).forEach { p -> r.add(p to s) } } }
+            recompute = r
             println("Recompute: ${recompute.size}")
         }
+/*
+        val queue = TierQueue<S>()
+        reach.states.forEach { queue.add(it, null) }
+
+        println("Start reachability!!")
+        while (queue.isNotEmpty()) {
+            val tier = queue.remove().toList()
+            val changed = tier.mapChunksInline(algorithm = this@Reachability, fork = fork,
+                    executor = executor, chunkDispenser = chunks, action = { (s, f) ->
+                if (f == null) s else {
+                    s.takeIf { result.increaseKey(s, result[f] and transitionBound(s, f, time)) }
+                }
+            })
+            println("Changed: ${changed.size}")
+            changed.forEach {
+                it?.let { s -> s.predecessors(time).forEach { p -> queue.add(p, s) } }
+            }
+        }
+        println("Done!")*/
 
         result.toReadOnly()
     }

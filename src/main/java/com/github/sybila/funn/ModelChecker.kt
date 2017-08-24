@@ -100,4 +100,74 @@ class ModelChecker<S : Any, P : Any>(
         PathQuantifier.pE -> PathQuantifier.pA
     }
 
+    fun makeReach(reachJob: Deferred<StateMap<S, P>>, time: Boolean): Deferred<StateMap<S, P>> = lazyAsync {
+        val reach = reachJob.await()
+        val result = reach.toMutable()
+
+        var recompute = HashSet<Pair<S, S?>>(reach.states.map { it to null }.toSet())
+
+        println("Start reachability!")
+        while (recompute.isNotEmpty()) {
+            val changed = recompute.toList().parallelChunkMap { (s, f) ->
+                if (f == null) s else {
+                    /*val witness: P = model.nextStep(s, true).fold(result[s]) { witness, (succ, bound) ->
+                        witness + (result[succ] * bound)
+                    }*/
+                    //val bound: P =  model.nextStep(s, true).find { it.first == f }?.second ?: ZERO
+                    s.takeIf { result.increaseKey(s, result[f] and transitionBound(s, f, time)) }
+                }
+            }
+            println("Changed: ${changed.size}")
+            recompute = HashSet()
+            changed.forEach {
+                it?.let { s -> s.predecessors(time).forEach { p -> recompute.add(p to s) } }
+            }
+        }
+        println("Done!")
+
+        result
+    }
+
+    private inline suspend fun <T, R> List<T>.parallelChunkMap(crossinline action: Solver<P>.(T) -> R?): List<R?> {
+        val chunkSize = AtomicInteger(1)
+        // what a nice warning you have here...
+        val result = Arrays.asList<R?>(*(arrayOfNulls<Any?>(this.size) as Array<out R>))
+        val original = this@parallelChunkMap
+        val chunks = produce<IntRange>(executor) {
+            var chunkStart = 0  //inclusive
+            while (chunkStart != original.size) {
+                val chunk = chunkSize.get()
+                val chunkEnd = Math.min(original.size, chunkStart + chunk)  //exclusive
+                send(chunkStart until chunkEnd)
+                chunkStart = chunkEnd
+            }
+            original.take(10)
+            close()
+        }
+        (1..fork).map {
+            async(executor) {
+                chunks.consumeEach { items ->
+                    val solver = solver
+                    val elapsed = measureTimeMillis {
+                        items.forEach {
+                            result[it] = solver.action(original[it])
+                        }
+                    }
+                    if (elapsed < 0.8 * meanChunkTime || elapsed > 1.2 * meanChunkTime) {
+                        val chunk = items.last - items.first + 1    // + 1 for inclusive range
+                        val itemTime = elapsed / chunk.toDouble()
+                        if (itemTime == 0.0) {
+                            // If we are real fast, we can get a zero elapsed time and hence a zero item time
+                            chunkSize.set(2 * chunk)    // in which case, just increase the chunk arbitrarily.
+                        } else {
+                            // On the other hand, we can also be really slow and get a zero chunk size
+                            chunkSize.set(Math.max(1, (meanChunkTime / itemTime).toInt()))  // hence use a lower bound.
+                        }
+                    }
+                }
+            }
+        }.forEach { it.await() }
+        return result
+    }
+
 }

@@ -27,32 +27,46 @@ import kotlin.system.measureTimeMillis
  */
 fun main(args: Array<String>) {
 
-    val elapsed = measureTimeMillis {
-        val mFile = File("model.bio")
-        val pFile = File("prop.ctl")
-        val oFile = File("/Users/daemontus/Downloads/fun_result.json")
+    println("Test run: ${measureTimeMillis { action() }}")
 
-        val model = Parser().parse(mFile)
-        val prop = readHUCTLp(pFile, onlyFlagged = true)
+    val results = ArrayList<Long>()
+    repeat(5) {
 
-        println(prop)
-        println(model)
+        val elapsed = measureTimeMillis {
+            action()
 
-        val tSystem = ODETransitionSystem(model)
-        val mc = ModelChecker(model = tSystem, maps = tSystem, solver = tSystem.solver, fork = 4, meanChunkTime = 25)
+        }
 
-        val s = prop["stay_high"]!!
-
-        val result = mc.check(prop.map { it.key to it.value })
-        //val result = mc.check(listOf("stay_high" to s))
-
-        /*PrintStream(oFile.apply { this.createNewFile() }.outputStream()).use { outStream ->
-            outStream.println(printJsonRectResults(model, result.toMap()))
-        }*/
-
+        println("Elapsed: $elapsed")
+        results.add(elapsed)
     }
 
-    println("Elapsed: $elapsed")
+    println("Avr.: ${results.sum() / 5}")
+
+}
+
+fun action() {
+    val mFile = File("model.bio")
+    val pFile = File("prop.ctl")
+    //val oFile = File("/Users/daemontus/Downloads/fun_result.json")
+
+    val model = Parser().parse(mFile)
+    val prop = readHUCTLp(pFile, onlyFlagged = true)
+
+    println(prop)
+    println(model)
+
+    val tSystem = ODETransitionSystem(model)
+    val mc = ModelChecker(model = tSystem, maps = tSystem, solver = tSystem.solver, fork = 4, meanChunkTime = 25)
+
+    val s = prop["stay_high"]!!
+
+    val result = mc.check(prop.map { it.key to it.value })
+    //val result = mc.check(listOf("stay_high" to s))
+
+    /*PrintStream(oFile.apply { this.createNewFile() }.outputStream()).use { outStream ->
+        outStream.println(printJsonRectResults(model, result.toMap()))
+    }*/
 }
 
 class Foo {
