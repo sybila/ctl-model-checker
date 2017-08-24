@@ -113,9 +113,15 @@ class ModelChecker<S : Any, P : Any>(
                 if (dep == null) state else {
                     state.takeIf { result.increaseKey(state, transitionBound(state, dep, time) and result[dep]) }
                 }
-            }.toSet()
+            }
+            val added = HashSet<S>()
             val r = ArrayList<Pair<S, S?>>(changed.size * 4)
-            changed.forEach { it?.let { s -> s.predecessors(time).forEach { p -> r.add(p to s) } } }
+            changed.forEach { it?.let { s ->
+                if (s !in added) {
+                    added.add(s)
+                    s.predecessors(time).forEach { p -> r.add(p to s) } }
+                }
+            }
             recompute = r
             println("Recompute: ${recompute.size}")
         }
