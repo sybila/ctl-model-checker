@@ -6,6 +6,7 @@ import com.github.sybila.algorithm.mapChunksInline
 import com.github.sybila.collection.StateMap
 import com.github.sybila.collection.StateMapContext
 import com.github.sybila.coroutines.lazyAsync
+import com.github.sybila.funn.ode.ODETransitionSystem
 import com.github.sybila.huctl.Formula
 import com.github.sybila.huctl.PathQuantifier
 import com.github.sybila.huctl.dsl.Not
@@ -13,11 +14,13 @@ import com.github.sybila.huctl.dsl.and
 import com.github.sybila.huctl.dsl.or
 import com.github.sybila.model.TransitionSystem
 import com.github.sybila.solver.Solver
+import com.github.sybila.solver.grid.Grid2
 import kotlinx.coroutines.experimental.*
 import kotlinx.coroutines.experimental.channels.consumeEach
 import kotlinx.coroutines.experimental.channels.produce
 import java.util.*
 import java.util.concurrent.atomic.AtomicInteger
+import java.util.concurrent.atomic.AtomicIntegerArray
 import java.util.concurrent.atomic.AtomicLong
 import kotlin.system.measureTimeMillis
 
@@ -43,20 +46,20 @@ import kotlin.system.measureTimeMillis
  *  so as to keep one chunk execution time at approx. [chunkTime]ms (of course, the formula does not know
  *  how long the next chunk will take, but if the behaviour is somewhat regular, that should be enough)
  */
-class ModelChecker<S : Any, P : Any>(
-        model: TransitionSystem<S, P>,
-        maps: StateMapContext<S, P>,
-        private val sets: StateMapContext<S, Unit>,
-        override val solver: Solver<P>,
+class ModelChecker(
+        private val model: ODETransitionSystem,
+        maps: StateMapContext<Int, Grid2>,
+        private val sets: StateMapContext<Int, Unit>,
+        override val solver: Solver<Grid2>,
         override val fork: Int = Runtime.getRuntime().availableProcessors(),
         override val meanChunkTime: Long = 25,
         name: String = "MC"
-) : BooleanLogic<S, P>, Reachability<S, P>, TransitionSystem<S, P> by model, StateMapContext<S, P> by maps {
+) : BooleanLogic<Int, Grid2>, Reachability<Int, Grid2>, TransitionSystem<Int, Grid2> by model, StateMapContext<Int, Grid2> by maps {
 
     override val executor = newFixedThreadPoolContext(fork, name)
 
 
-    fun check(formulas: List<Pair<String, Formula>>): List<Pair<String, StateMap<S, P>>> = runBlocking {
+    fun check(formulas: List<Pair<String, Formula>>): List<Pair<String, StateMap<Int, Grid2>>> = runBlocking {
         val names = formulas.map { it.first }
         val toCompute = buildGraph(formulas.map { it.second })
         // At this point, once a node in the graph looses all references, it can be GC'ed.
@@ -64,7 +67,7 @@ class ModelChecker<S : Any, P : Any>(
         names zip toCompute.map { it.await() }  // and then await that shit...
     }
 
-    private fun buildGraph(formulas: List<Formula>): List<Deferred<StateMap<S, P>>> {
+    private fun buildGraph(formulas: List<Formula>): List<Deferred<StateMap<Int, Grid2>>> {
         // We gave this a special scope to make sure the reference to graph
         // does not hang around for too long.
         val graph = GraphBuilder()
@@ -73,9 +76,9 @@ class ModelChecker<S : Any, P : Any>(
 
     private inner class GraphBuilder {
 
-        private val graph = HashMap<String, Deferred<StateMap<S, P>>>()
+        private val graph = HashMap<String, Deferred<StateMap<Int, Grid2>>>()
 
-        fun build(f: Formula): Deferred<StateMap<S, P>> {
+        fun build(f: Formula): Deferred<StateMap<Int, Grid2>> {
             return graph.computeIfAbsent(f.canonicalKey) {
                 println("Build $f")
                 when (f) {
@@ -102,16 +105,25 @@ class ModelChecker<S : Any, P : Any>(
         PathQuantifier.pE -> PathQuantifier.pA
     }
 
-    fun makeReach(reachJob: Deferred<StateMap<S, P>>, time: Boolean): Deferred<StateMap<S, P>> = lazyAsync {
+    fun makeReach(reachJob: Deferred<StateMap<Int, Grid2>>, time: Boolean): Deferred<StateMap<Int, Grid2>> = lazyAsync {
         val reach = reachJob.await()
         val result = reach.toMutable()
         //val chunks = ChunkDispenser(meanChunkTime)
 
-        var recompute: List<Pair<S, S?>> = reach.states.map { it to null }.toList()
+        var recompute = IntArray(model.stateCount) { if (reach[it] != null) 1 else 0 }
+        //var recompute: List<Pair<S, S?>> = reach.states.map { it to null }.toList()
 
-        while (recompute.isNotEmpty()) {
-            val changed = sets.run { emptyMap.toMutable() }
-            recompute.consumeChunks { (state, dep) ->
+        while ((0 until model.stateCount).any { recompute.get(it) != 0 }) {
+            val depChanged = CustomAtomicArray(model.stateCount)
+            (0 until model.stateCount).mapNotNull { if (recompute[it] > 0) it else null }.also { println("Round: ${it.size}") }.consumeChunks { s ->
+                s.predecessors(time).forEach { p ->
+                    if (result.increaseKey(p, result[s] and transitionBound(p, s, time))) {
+                        depChanged.lazySet(p, 1)
+                    }
+                }
+            }
+            recompute = depChanged.backingArray
+            /*recompute.consumeChunks { (state, dep) ->
                 if (dep == null) {
                     changed.lazySet(state, Unit)
                 } else {
@@ -129,7 +141,7 @@ class ModelChecker<S : Any, P : Any>(
             }
             recompute = r.toList()
 
-            println("Recompute: ${recompute.size}")
+            println("Recompute: ${recompute.size}")*/
         }
 
         result.toReadOnly()
@@ -160,7 +172,7 @@ class ModelChecker<S : Any, P : Any>(
         result*/
     }
 
-    private inline suspend fun <T, R> List<T>.parallelChunkMap(crossinline action: Solver<P>.(T) -> R?): List<R?> {
+    private inline suspend fun <T, R> List<T>.parallelChunkMap(crossinline action: Solver<Grid2>.(T) -> R?): List<R?> {
         val chunkSize = AtomicInteger(1)
         // what a nice warning you have here...
         val result = Arrays.asList<R?>(*(arrayOfNulls<Any?>(this.size) as Array<out R>))

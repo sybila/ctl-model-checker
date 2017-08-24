@@ -31,7 +31,7 @@ class ODETransitionSystem(
     private val encoder = NodeEncoder(model)
     private val dimensions = model.variables.size
 
-    private val stateCount: Int = encoder.stateCount
+    val stateCount: Int = encoder.stateCount
 
     private val successors: Array<List<Pair<Int, Grid2>>> = Array(stateCount) { emptyList<Pair<Int, Grid2>>() }
     private val predecessors: Array<List<Pair<Int, Grid2>>> = Array(stateCount) { emptyList<Pair<Int, Grid2>>() }
