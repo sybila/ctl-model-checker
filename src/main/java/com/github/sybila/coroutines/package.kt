@@ -48,6 +48,7 @@ suspend fun <T> List<T>.consumeChunks(
             }
         }
     }.map { it.await() }
+    println("Chunk size: ${chunkDispenser.next()}")
 }
 
 /**
