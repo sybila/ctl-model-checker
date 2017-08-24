@@ -1,15 +1,16 @@
 package com.github.sybila.model
 
-import com.github.sybila.collection.EmptyStateMap
-import com.github.sybila.collection.StateMap
+import com.github.sybila.collection.*
 import com.github.sybila.huctl.DirFormula
 import com.github.sybila.huctl.Formula
+import com.github.sybila.solver.Solver
 import java.util.*
 
 /**
  * A generic implementation of [TransitionSystem] based on explicitly listed transitions and atomic propositions.
  */
 class GenericTransitionSystem<S: Any, P: Any>(
+        solver: Solver<P>,
         transitions: Sequence<Pair<Pair<S, S>, Pair<P, DirFormula>>>,
         atomicPropositions: Sequence<Pair<Formula, StateMap<S, P>>>
 ) : TransitionSystem<S, P> {
@@ -40,8 +41,8 @@ class GenericTransitionSystem<S: Any, P: Any>(
         }
     }
 
-    override val states: Iterable<S>
-        get() = _states
+    override val states: StateSet<S> = GenericStateSet(_states)
+    override val universe: StateMap<S, P> = GenericStateMap(_states.map { it to solver.TT }.toMap())
 
     override fun S.successors(time: Boolean): Iterable<S> = (if (time) _successors else _predecessors)[this] ?: emptyList()
 

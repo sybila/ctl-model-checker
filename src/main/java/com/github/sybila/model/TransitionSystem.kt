@@ -1,6 +1,7 @@
 package com.github.sybila.model
 
 import com.github.sybila.collection.StateMap
+import com.github.sybila.collection.StateSet
 import com.github.sybila.huctl.DirFormula
 import com.github.sybila.huctl.Formula
 
@@ -16,9 +17,14 @@ import com.github.sybila.huctl.Formula
 interface TransitionSystem<S: Any, P : Any> {
 
     /**
-     * Complete list of states.
+     * Complete set of states.
      */
-    val states: Iterable<S>
+    val states: StateSet<S>
+
+    /**
+     * All states together with their admissible parameters.
+     */
+    val universe: StateMap<S, P>
 
     /**
      * Collection of successor states with respect to the [time] direction.

@@ -20,6 +20,6 @@ class ArrayStateMap<P : Any>(private val data: Array<P?>) : StateMap<Int, P> {
     override fun get(state: Int): P? = if (state < 0 || state >= data.size) null else data[state]
 
     /** Create a mutable copy of this state map using [AtomicArrayStateMap]. */
-    fun toAtomic(): AtomicArrayStateMap<P> = AtomicArrayStateMap(AtomicReferenceArray(data))
+    fun makeMutable(): AtomicArrayStateMap<P> = AtomicArrayStateMap(AtomicReferenceArray(data))
 
 }

@@ -1,7 +1,7 @@
 package com.github.sybila.algorithm
 
 import com.github.sybila.collection.StateMap
-import com.github.sybila.collection.StateMapContext
+import com.github.sybila.collection.CollectionContext
 import com.github.sybila.model.TransitionSystem
 import com.github.sybila.solver.Solver
 import kotlinx.coroutines.experimental.CommonPool
@@ -14,7 +14,7 @@ import java.util.concurrent.atomic.AtomicInteger
 import kotlin.coroutines.experimental.CoroutineContext
 import kotlin.system.measureTimeMillis
 
-interface Reachability<S : Any, P : Any> : Algorithm<S, P>, StateMapContext<S, P>, TransitionSystem<S, P> {
+interface Reachability<S : Any, P : Any> : Algorithm<S, P>, CollectionContext<S, P>, TransitionSystem<S, P> {
 
     fun makeReachability(reachJob: Deferred<StateMap<S, P>>, time: Boolean): Deferred<StateMap<S, P>>
         = lazyAsync {

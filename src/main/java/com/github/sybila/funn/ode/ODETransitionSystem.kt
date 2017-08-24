@@ -18,7 +18,7 @@ class ODETransitionSystem(
         val solver: Solver<Grid2> = Grid2Solver(model.parameters[0].range, model.parameters[1].range),
         scheduler: Scheduler = Schedulers.parallel(),
         private val createSelfLoops:Boolean = true
-) : TransitionSystem<Int, Grid2>, StateMapContext<Int, Grid2> {
+) : TransitionSystem<Int, Grid2> {
 
     companion object {
         // possible orientations
@@ -182,12 +182,13 @@ class ODETransitionSystem(
         }
     }
 
+    override val states: StateSet<Int> = object : StateSet<Int> {
+        private val range = (0 until stateCount)
+        override fun contains(state: Int): Boolean = state in range
+        override fun iterator(): Iterator<Int> = range.iterator()
+    }
 
-
-    override val emptyMap: StateMap<Int, Grid2> = EmptyStateMap()
-    override val fullMap: StateMap<Int, Grid2> = ArrayStateMap(stateCount) { solver.TT }
-
-    override val states: Iterable<Int> = (0 until stateCount)
+    override val universe: StateMap<Int, Grid2> = ArrayStateMap(stateCount) { solver.TT }
 
     override fun Int.successors(time: Boolean): Iterable<Int> {
         return (if (time) successors else predecessors)[this].map { it.first }
@@ -199,28 +200,6 @@ class ODETransitionSystem(
 
     override fun transitionDirection(start: Int, end: Int): DirFormula? {
         TODO("not implemented")
-    }
-
-    override fun StateMap<Int, Grid2>.toMutable(): MutableStateMap<Int, Grid2> {
-        return (this as? ArrayStateMap<Grid2>)?.toAtomic() ?: AtomicArrayStateMap(AtomicReferenceArray(Array(stateCount) { this[it] }))
-    }
-
-    override fun MutableStateMap<Int, Grid2>.toReadOnly(): StateMap<Int, Grid2> {
-        return ArrayStateMap(stateCount) { this[it] }
-    }
-
-    val sets = object : StateMapContext<Int, Unit> {
-
-        override val emptyMap: StateMap<Int, Unit> = EmptyStateMap()
-        override val fullMap: StateMap<Int, Unit> = ArrayStateMap(stateCount) { Unit }
-
-        override fun StateMap<Int, Unit>.toMutable(): MutableStateMap<Int, Unit> {
-            return (this as? ArrayStateMap<Unit>)?.toAtomic() ?: AtomicArrayStateMap(AtomicReferenceArray(Array(stateCount) { this[it] }))
-        }
-
-        override fun MutableStateMap<Int, Unit>.toReadOnly(): StateMap<Int, Unit> {
-            return ArrayStateMap(stateCount) { this[it] }
-        }
     }
 
     override fun makeProposition(formula: Formula): StateMap<Int, Grid2> {

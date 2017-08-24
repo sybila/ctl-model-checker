@@ -1,5 +1,6 @@
 package com.github.sybila.collection
 
+import java.util.*
 import java.util.concurrent.ConcurrentHashMap
 
 /**
@@ -26,4 +27,8 @@ class GenericMutableStateSet<S: Any>(data: Set<S>) : MutableStateSet<S> {
     override fun lazyRemove(state: S) {
         data.remove(state)
     }
+
+    /** Make a read only copy of this set */
+    fun copyReadOnly(): GenericStateSet<S> = GenericStateSet(data.keys().asSequence().toSet())
+
 }

@@ -2,10 +2,9 @@ package com.github.sybila.funn
 
 import com.github.sybila.algorithm.BooleanLogic
 import com.github.sybila.algorithm.Reachability
-import com.github.sybila.algorithm.mapChunksInline
 import com.github.sybila.collection.StateMap
-import com.github.sybila.collection.StateMapContext
-import com.github.sybila.coroutines.lazyAsync
+import com.github.sybila.collection.CollectionContext
+import com.github.sybila.collection.EmptyStateMap
 import com.github.sybila.funn.ode.ODETransitionSystem
 import com.github.sybila.huctl.Formula
 import com.github.sybila.huctl.PathQuantifier
@@ -20,8 +19,6 @@ import kotlinx.coroutines.experimental.channels.consumeEach
 import kotlinx.coroutines.experimental.channels.produce
 import java.util.*
 import java.util.concurrent.atomic.AtomicInteger
-import java.util.concurrent.atomic.AtomicIntegerArray
-import java.util.concurrent.atomic.AtomicLong
 import kotlin.system.measureTimeMillis
 
 /**
@@ -48,13 +45,12 @@ import kotlin.system.measureTimeMillis
  */
 class ModelChecker(
         private val model: ODETransitionSystem,
-        maps: StateMapContext<Int, Grid2>,
-        private val sets: StateMapContext<Int, Unit>,
+        maps: CollectionContext<Int, Grid2>,
         override val solver: Solver<Grid2>,
         override val fork: Int = Runtime.getRuntime().availableProcessors(),
         override val meanChunkTime: Long = 25,
         name: String = "MC"
-) : BooleanLogic<Int, Grid2>, Reachability<Int, Grid2>, TransitionSystem<Int, Grid2> by model, StateMapContext<Int, Grid2> by maps {
+) : BooleanLogic<Int, Grid2>, Reachability<Int, Grid2>, TransitionSystem<Int, Grid2> by model, CollectionContext<Int, Grid2> by maps {
 
     override val executor = newFixedThreadPoolContext(fork, name)
 
@@ -82,9 +78,9 @@ class ModelChecker(
             return graph.computeIfAbsent(f.canonicalKey) {
                 println("Build $f")
                 when (f) {
-                    is Formula.True -> lazyAsync { fullMap }
-                    is Formula.False -> lazyAsync { emptyMap }
-                    is Formula.Not -> makeComplement(build(f.inner), lazyAsync { fullMap })
+                    is Formula.True -> lazyAsync { universe }
+                    is Formula.False -> lazyAsync { EmptyStateMap<Int, Grid2>() }
+                    is Formula.Not -> makeComplement(build(f.inner), lazyAsync { universe })
                     is Formula.And -> makeAnd(build(f.left), build(f.right))
                     is Formula.Or -> makeOr(build(f.left), build(f.right))
                     is Formula.Implies -> build(Not(f.left) or f.right)

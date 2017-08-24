@@ -10,4 +10,6 @@ class GenericStateSet<S: Any>(private val data: Set<S>) : StateSet<S> {
     override fun contains(state: S): Boolean = data.contains(state)
 
     override fun iterator(): Iterator<S> = data.iterator()
+
+    fun copyMutable(): GenericMutableStateSet<S> = GenericMutableStateSet(data)
 }

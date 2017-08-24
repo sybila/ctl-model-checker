@@ -1,5 +1,6 @@
 package com.github.sybila.collection
 
+import java.util.*
 import java.util.concurrent.ConcurrentHashMap
 
 /**
@@ -31,4 +32,8 @@ class GenericMutableStateMap<S: Any, P: Any>(data: Map<S, P>) : MutableStateMap<
             data[state] = new
         }
     }
+
+    /** Create a read only copy of this state map */
+    fun copyReadOnly(): GenericStateMap<S, P> = GenericStateMap(HashMap(data))
+
 }

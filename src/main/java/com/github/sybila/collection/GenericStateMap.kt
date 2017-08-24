@@ -17,6 +17,6 @@ class GenericStateMap<S: Any, P: Any>(private val data: Map<S, P>) : StateMap<S,
     override fun get(state: S): P? = data[state]
 
     /** Create a mutable copy of this state map */
-    fun mutate(): GenericMutableStateMap<S, P> = GenericMutableStateMap(data)
+    fun copyMutable(): GenericMutableStateMap<S, P> = GenericMutableStateMap(data)
 
 }

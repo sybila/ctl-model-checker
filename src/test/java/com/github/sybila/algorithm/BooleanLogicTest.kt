@@ -1,8 +1,8 @@
 package com.github.sybila.algorithm
 
 import com.github.sybila.collection.GenericStateMap
-import com.github.sybila.collection.GenericStateMapContext
-import com.github.sybila.collection.StateMapContext
+import com.github.sybila.collection.GenericCollectionContext
+import com.github.sybila.collection.CollectionContext
 import com.github.sybila.coroutines.lazyAsync
 import com.github.sybila.solver.SetSolver
 import com.github.sybila.solver.Solver
@@ -16,8 +16,8 @@ class BooleanLogicTest {
 
     private fun makeAlgorithm(): BooleanLogic<String, Set<Int>> {
         val solver = SetSolver(setOf(1,2,3,4))
-        val maps = GenericStateMapContext(listOf("a", "b", "c", "d").map { it to solver.TT }.toMap())
-        return object : BooleanLogic<String, Set<Int>>, StateMapContext<String, Set<Int>> by maps {
+        val maps = GenericCollectionContext(listOf("a", "b", "c", "d").map { it to solver.TT }.toMap())
+        return object : BooleanLogic<String, Set<Int>>, CollectionContext<String, Set<Int>> by maps {
             override val fork: Int = 4
             override val solver: Solver<Set<Int>> = solver
             override val executor: CoroutineContext = CommonPool

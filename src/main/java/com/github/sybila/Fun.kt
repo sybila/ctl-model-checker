@@ -1,16 +1,13 @@
 package com.github.sybila
 
+import com.github.sybila.collection.ArrayCollectionContext
 import com.github.sybila.funn.ModelChecker
 import com.github.sybila.funn.ode.ODETransitionSystem
 import com.github.sybila.huctl.parser.readHUCTLp
 import com.github.sybila.ode.model.Parser
+import com.github.sybila.solver.grid.Grid2
 import java.io.File
-import java.io.PrintStream
 import java.util.*
-import java.util.concurrent.Executors
-import java.util.concurrent.atomic.AtomicLong
-import java.util.concurrent.atomic.AtomicReferenceArray
-import kotlin.coroutines.experimental.buildSequence
 import kotlin.system.measureTimeMillis
 
 /*
@@ -59,7 +56,10 @@ fun action() {
     println(model)
 
     val tSystem = ODETransitionSystem(model)
-    val mc = ModelChecker(model = tSystem, maps = tSystem, sets = tSystem.sets, solver = tSystem.solver, fork = 4, meanChunkTime = 25)
+    val maps = object : ArrayCollectionContext<Grid2>(tSystem.stateCount) {
+        override fun makeArray(size: Int): Array<Grid2?> = arrayOfNulls(size)
+    }
+    val mc = ModelChecker(model = tSystem, maps = maps, solver = tSystem.solver, fork = 4, meanChunkTime = 25)
 
     val s = prop["stay_high"]!!
 

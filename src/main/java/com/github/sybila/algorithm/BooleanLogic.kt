@@ -1,11 +1,10 @@
 package com.github.sybila.algorithm
 
 import com.github.sybila.collection.StateMap
-import com.github.sybila.collection.StateMapContext
-import com.github.sybila.coroutines.lazyAsync
+import com.github.sybila.collection.CollectionContext
 import kotlinx.coroutines.experimental.Deferred
 
-interface BooleanLogic<S: Any, P: Any> : StateMapContext<S, P>, Algorithm<S, P> {
+interface BooleanLogic<S: Any, P: Any> : CollectionContext<S, P>, Algorithm<S, P> {
 
     fun makeAnd(leftJob: Deferred<StateMap<S, P>>, rightJob: Deferred<StateMap<S, P>>): Deferred<StateMap<S, P>>
         = lazyAsync {
