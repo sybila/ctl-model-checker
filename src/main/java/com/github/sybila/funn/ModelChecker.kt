@@ -2,6 +2,7 @@ package com.github.sybila.funn
 
 import com.github.sybila.algorithm.BooleanLogic
 import com.github.sybila.algorithm.Reachability
+import com.github.sybila.algorithm.mapChunksInline
 import com.github.sybila.collection.StateMap
 import com.github.sybila.collection.StateMapContext
 import com.github.sybila.coroutines.lazyAsync
@@ -85,7 +86,7 @@ class ModelChecker<S : Any, P : Any>(
                     is Formula.Implies -> build(Not(f.left) or f.right)
                     is Formula.Equals -> build((Not(f.left) and Not(f.right)) or (f.left and f.right))
                     is Formula.Globally -> build(Not(Formula.Future(f.quantifier.invert(), Not(f.inner), f.direction)))
-                    is Formula.Future -> makeReachability(build(f.inner), true)
+                    is Formula.Future -> makeReach(build(f.inner), true)
                     else -> lazyAsync { makeProposition(f) }
                 }
             }
@@ -102,6 +103,25 @@ class ModelChecker<S : Any, P : Any>(
 
     fun makeReach(reachJob: Deferred<StateMap<S, P>>, time: Boolean): Deferred<StateMap<S, P>> = lazyAsync {
         val reach = reachJob.await()
+        val result = reach.toMutable()
+        //val chunks = ChunkDispenser(meanChunkTime)
+
+        var recompute: List<Pair<S, S?>> = reach.states.map { it to null }.toList()
+
+        while (recompute.isNotEmpty()) {
+            val changed = recompute.parallelChunkMap { (state, dep) ->
+                if (dep == null) state else {
+                    state.takeIf { result.increaseKey(state, transitionBound(state, dep, time) and result[dep]) }
+                }
+            }.toSet()
+            val r = ArrayList<Pair<S, S?>>(changed.size * 4)
+            changed.forEach { it?.let { s -> s.predecessors(time).forEach { p -> r.add(p to s) } } }
+            recompute = r
+            println("Recompute: ${recompute.size}")
+        }
+
+        result.toReadOnly()
+        /*val reach = reachJob.await()
         val result = reach.toMutable()
 
         var recompute = HashSet<Pair<S, S?>>(reach.states.map { it to null }.toSet())
@@ -125,7 +145,7 @@ class ModelChecker<S : Any, P : Any>(
         }
         println("Done!")
 
-        result
+        result*/
     }
 
     private inline suspend fun <T, R> List<T>.parallelChunkMap(crossinline action: Solver<P>.(T) -> R?): List<R?> {
