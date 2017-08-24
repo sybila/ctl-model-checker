@@ -17,13 +17,9 @@ class GenericMutableStateMap<S: Any, P: Any>(data: Map<S, P>) : MutableStateMap<
         get() = data.entries.asSequence().map { it.key to it.value }
 
     override fun compareAndSet(state: S, expected: P?, new: P?): Boolean = when {
-        // ConcurrentHashMap does not hold nulls, so we have to do a little magic
-        expected == null && new == null -> !data.contains(state)    // if the value is not present, then the "update" worked
-        expected == null && new != null -> data.computeIfAbsent(state, { new }) == new
-        expected != null && new == null -> data.remove(state, expected)
-        else -> data.computeIfPresent(state, { _, p ->
-            if (p == expected) new else p
-        }) == new
+        expected == null -> data.putIfAbsent(state, new) == null
+        new == null -> data.remove(state, expected)
+        else -> data.replace(state, expected, new)
     }
 
     override fun get(state: S): P? = data[state]
