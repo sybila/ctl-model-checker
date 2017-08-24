@@ -209,6 +209,20 @@ class ODETransitionSystem(
         return ArrayStateMap(stateCount) { this[it] }
     }
 
+    val sets = object : StateMapContext<Int, Unit> {
+
+        override val emptyMap: StateMap<Int, Unit> = EmptyStateMap()
+        override val fullMap: StateMap<Int, Unit> = ArrayStateMap(stateCount) { Unit }
+
+        override fun StateMap<Int, Unit>.toMutable(): MutableStateMap<Int, Unit> {
+            return (this as? ArrayStateMap<Unit>)?.toAtomic() ?: AtomicArrayStateMap(AtomicReferenceArray(Array(stateCount) { this[it] }))
+        }
+
+        override fun MutableStateMap<Int, Unit>.toReadOnly(): StateMap<Int, Unit> {
+            return ArrayStateMap(stateCount) { this[it] }
+        }
+    }
+
     override fun makeProposition(formula: Formula): StateMap<Int, Grid2> {
         if (formula !is Formula.Numeric) error("Unknown proposition $formula")
         val left = formula.left

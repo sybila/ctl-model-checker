@@ -46,6 +46,7 @@ import kotlin.system.measureTimeMillis
 class ModelChecker<S : Any, P : Any>(
         model: TransitionSystem<S, P>,
         maps: StateMapContext<S, P>,
+        private val sets: StateMapContext<S, Unit>,
         override val solver: Solver<P>,
         override val fork: Int = Runtime.getRuntime().availableProcessors(),
         override val meanChunkTime: Long = 25,
@@ -109,17 +110,25 @@ class ModelChecker<S : Any, P : Any>(
         var recompute: List<Pair<S, S?>> = reach.states.map { it to null }.toList()
 
         while (recompute.isNotEmpty()) {
-            val changed = recompute.parallelChunkMap { (state, dep) ->
-                if (dep == null) state else {
-                    state.takeIf { result.increaseKey(state, transitionBound(state, dep, time) and result[dep]) }
+            val changed = sets.run { emptyMap.toMutable() }
+            recompute.consumeChunks { (state, dep) ->
+                if (dep == null) {
+                    changed.lazySet(state, Unit)
+                } else {
+                    if (result.increaseKey(state, transitionBound(state, dep, time) and result[dep])) {
+                        changed.lazySet(state, Unit)
+                    }
+                    //state.takeIf { result.increaseKey(state, transitionBound(state, dep, time) and result[dep]) }
                 }
             }
             //val added = HashSet<S>()
-            val r = HashSet<Pair<S, S?>>(changed.size * 4)
-            changed.forEach { it?.let { s ->
-                s.predecessors(time).forEach { p -> r.add(p to s) } }
+            val states = changed.states.toList()
+            val r = HashSet<Pair<S, S?>>(states.size * 4)
+            states.forEach { s ->
+                s.predecessors(time).forEach { p -> r.add(p to s) }
             }
             recompute = r.toList()
+
             println("Recompute: ${recompute.size}")
         }
 

@@ -24,6 +24,8 @@ import kotlin.system.measureTimeMillis
 
 1:101(25ms)/105(250ms)
 4:27s(25ms)
+
+-XX:+UnlockDiagnosticVMOptions -XX:+TraceClassLoading -XX:+LogCompilation -XX:+PrintAssembly
  */
 fun main(args: Array<String>) {
 
@@ -57,7 +59,7 @@ fun action() {
     println(model)
 
     val tSystem = ODETransitionSystem(model)
-    val mc = ModelChecker(model = tSystem, maps = tSystem, solver = tSystem.solver, fork = 4, meanChunkTime = 25)
+    val mc = ModelChecker(model = tSystem, maps = tSystem, sets = tSystem.sets, solver = tSystem.solver, fork = 4, meanChunkTime = 25)
 
     val s = prop["stay_high"]!!
 
