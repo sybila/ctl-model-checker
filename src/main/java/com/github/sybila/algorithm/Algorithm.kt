@@ -18,7 +18,9 @@ interface Algorithm<S: Any, P: Any> {
     val meanChunkTime: Long
 
     suspend fun <T> List<T>.consumeChunks(action: Solver<P>.(T) -> Unit)
-            = this.consumeChunks({ solver.run { action(it) }}, fork, executor, ChunkDispenser(meanChunkTime))
+            = this.consumeChunks({ solver.run { action(it) }}, fork, executor, ChunkDispenser(
+            maxChunkSize = (this.size / (2*fork)).coerceAtLeast(1), meanChunkTime = meanChunkTime
+    ))
 
     suspend fun <T, R> List<T>.mapChunks(chunkDispenser: ChunkDispenser, action: Solver<P>.(T) -> R?): List<R?>
             = this.mapChunks({ solver.run { action(it) }}, fork, executor, chunkDispenser)

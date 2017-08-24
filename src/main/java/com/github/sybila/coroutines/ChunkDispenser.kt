@@ -12,6 +12,7 @@ import java.util.concurrent.atomic.AtomicInteger
  * @param [meanChunkTime] Desired chunk computation time.
  */
 class ChunkDispenser(
+        private val maxChunkSize: Int = Int.MAX_VALUE,
         private val meanChunkTime: Long = 25
 ) {
 
@@ -31,13 +32,14 @@ class ChunkDispenser(
     fun adjust(chunk: Int, chunkTime: Long) {
         if (chunkTime < 0.8 * meanChunkTime || chunkTime > 1.2 * meanChunkTime) {
             val itemTime = chunkTime / chunk.toDouble()
-            if (itemTime == 0.0) {
+            val newChunk = if (itemTime == 0.0) {
                 // If the chunk is really fast, chunkTime will be zero and hence also itemTime.
-                chunkSize.set(chunk * 2)    // In which case, we just increase the size arbitrarily.
+                chunk * 2    // In which case, we just increase the size arbitrarily.
             } else {
                 // Otherwise, compute how many items it would take to get perfect mean time.
-                chunkSize.set((meanChunkTime / itemTime).toInt().coerceAtLeast(1))  // But make it at least 1.
+                (meanChunkTime / itemTime).toInt().coerceAtLeast(1)  // But make it at least 1.
             }
+            chunkSize.set(newChunk.coerceAtMost(maxChunkSize))
         }
     }
 

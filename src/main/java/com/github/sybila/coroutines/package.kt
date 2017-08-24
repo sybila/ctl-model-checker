@@ -34,7 +34,7 @@ suspend fun <T> List<T>.consumeChunks(
         action: (T) -> Unit,
         fork: Int = 1,
         executor: CoroutineContext = CommonPool,
-        chunkDispenser: ChunkDispenser = ChunkDispenser()
+        chunkDispenser: ChunkDispenser = ChunkDispenser(maxChunkSize = (this.size / (2*fork)).coerceAtLeast(1))
 ): Unit {
     val list = this
     val chunks = this.chunks(executor, chunkDispenser)
