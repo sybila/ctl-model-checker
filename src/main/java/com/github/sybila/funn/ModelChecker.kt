@@ -2,9 +2,10 @@ package com.github.sybila.funn
 
 import com.github.sybila.algorithm.BooleanLogic
 import com.github.sybila.algorithm.Reachability
-import com.github.sybila.collection.StateMap
+import com.github.sybila.algorithm.makeDeferred
 import com.github.sybila.collection.CollectionContext
 import com.github.sybila.collection.EmptyStateMap
+import com.github.sybila.collection.StateMap
 import com.github.sybila.funn.ode.ODETransitionSystem
 import com.github.sybila.huctl.Formula
 import com.github.sybila.huctl.PathQuantifier
@@ -14,12 +15,10 @@ import com.github.sybila.huctl.dsl.or
 import com.github.sybila.model.TransitionSystem
 import com.github.sybila.solver.Solver
 import com.github.sybila.solver.grid.Grid2
-import kotlinx.coroutines.experimental.*
-import kotlinx.coroutines.experimental.channels.consumeEach
-import kotlinx.coroutines.experimental.channels.produce
+import kotlinx.coroutines.experimental.Deferred
+import kotlinx.coroutines.experimental.newFixedThreadPoolContext
+import kotlinx.coroutines.experimental.runBlocking
 import java.util.*
-import java.util.concurrent.atomic.AtomicInteger
-import kotlin.system.measureTimeMillis
 
 /**
  * Broad overview of what is going on here:
@@ -78,16 +77,16 @@ class ModelChecker(
             return graph.computeIfAbsent(f.canonicalKey) {
                 println("Build $f")
                 when (f) {
-                    is Formula.True -> lazyAsync { universe }
-                    is Formula.False -> lazyAsync { EmptyStateMap<Int, Grid2>() }
-                    is Formula.Not -> makeComplement(build(f.inner), lazyAsync { universe })
+                    is Formula.True -> makeDeferred(executor) { universe }
+                    is Formula.False -> makeDeferred(executor) { EmptyStateMap<Int, Grid2>() }
+                    is Formula.Not -> makeComplement(build(f.inner), makeDeferred(executor) { universe })
                     is Formula.And -> makeAnd(build(f.left), build(f.right))
                     is Formula.Or -> makeOr(build(f.left), build(f.right))
                     is Formula.Implies -> build(Not(f.left) or f.right)
                     is Formula.Equals -> build((Not(f.left) and Not(f.right)) or (f.left and f.right))
                     is Formula.Globally -> build(Not(Formula.Future(f.quantifier.invert(), Not(f.inner), f.direction)))
-                    is Formula.Future -> makeReach(build(f.inner), true)
-                    else -> lazyAsync { makeProposition(f) }
+                    is Formula.Future -> makeReachability(build(f.inner), true)
+                    else -> makeDeferred(executor) { makeProposition(f) }
                 }
             }
         }
@@ -100,18 +99,17 @@ class ModelChecker(
         PathQuantifier.pA -> PathQuantifier.pE
         PathQuantifier.pE -> PathQuantifier.pA
     }
-
+/*
     fun makeReach(reachJob: Deferred<StateMap<Int, Grid2>>, time: Boolean): Deferred<StateMap<Int, Grid2>> = lazyAsync {
         val reach = reachJob.await()
         val result = reach.toMutable()
         //val chunks = ChunkDispenser(meanChunkTime)
 
         var recompute = IntArray(model.stateCount) { if (reach[it] != null) 1 else 0 }
-        //var recompute: List<Pair<S, S?>> = reach.states.map { it to null }.toList()
 
         while ((0 until model.stateCount).any { recompute.get(it) != 0 }) {
             val depChanged = CustomAtomicArray(model.stateCount)
-            (0 until model.stateCount).flatMap { s ->
+            (0 until ,model.stateCount).flatMap { s ->
                 if (recompute[s] > 0) s.predecessors(time).map { p -> s to p } else emptyList()
             }.also { println("Round: ${it.size}") }.consumeChunks { (s, p) ->
                 if (result.increaseKey(p, result[s] and transitionBound(p, s, time))) {
@@ -124,95 +122,9 @@ class ModelChecker(
                 }*/
             }
             recompute = depChanged.backingArray
-            /*recompute.consumeChunks { (state, dep) ->
-                if (dep == null) {
-                    changed.lazySet(state, Unit)
-                } else {
-                    if (result.increaseKey(state, transitionBound(state, dep, time) and result[dep])) {
-                        changed.lazySet(state, Unit)
-                    }
-                    //state.takeIf { result.increaseKey(state, transitionBound(state, dep, time) and result[dep]) }
-                }
-            }
-            //val added = HashSet<S>()
-            val states = changed.states.toList()
-            val r = HashSet<Pair<S, S?>>(states.size * 4)
-            states.forEach { s ->
-                s.predecessors(time).forEach { p -> r.add(p to s) }
-            }
-            recompute = r.toList()
-
-            println("Recompute: ${recompute.size}")*/
         }
 
         result.toReadOnly()
-        /*val reach = reachJob.await()
-        val result = reach.toMutable()
-
-        var recompute = HashSet<Pair<S, S?>>(reach.states.map { it to null }.toSet())
-
-        println("Start reachability!")
-        while (recompute.isNotEmpty()) {
-            val changed = recompute.toList().parallelChunkMap { (s, f) ->
-                if (f == null) s else {
-                    /*val witness: P = model.nextStep(s, true).fold(result[s]) { witness, (succ, bound) ->
-                        witness + (result[succ] * bound)
-                    }*/
-                    //val bound: P =  model.nextStep(s, true).find { it.first == f }?.second ?: ZERO
-                    s.takeIf { result.increaseKey(s, result[f] and transitionBound(s, f, time)) }
-                }
-            }
-            println("Changed: ${changed.size}")
-            recompute = HashSet()
-            changed.forEach {
-                it?.let { s -> s.predecessors(time).forEach { p -> recompute.add(p to s) } }
-            }
-        }
-        println("Done!")
-
-        result*/
     }
-
-    private inline suspend fun <T, R> List<T>.parallelChunkMap(crossinline action: Solver<Grid2>.(T) -> R?): List<R?> {
-        val chunkSize = AtomicInteger(1)
-        // what a nice warning you have here...
-        val result = Arrays.asList<R?>(*(arrayOfNulls<Any?>(this.size) as Array<out R>))
-        val original = this@parallelChunkMap
-        val chunks = produce<IntRange>(executor) {
-            var chunkStart = 0  //inclusive
-            while (chunkStart != original.size) {
-                val chunk = chunkSize.get()
-                val chunkEnd = Math.min(original.size, chunkStart + chunk)  //exclusive
-                send(chunkStart until chunkEnd)
-                chunkStart = chunkEnd
-            }
-            original.take(10)
-            close()
-        }
-        (1..fork).map {
-            async(executor) {
-                chunks.consumeEach { items ->
-                    val solver = solver
-                    val elapsed = measureTimeMillis {
-                        items.forEach {
-                            result[it] = solver.action(original[it])
-                        }
-                    }
-                    if (elapsed < 0.8 * meanChunkTime || elapsed > 1.2 * meanChunkTime) {
-                        val chunk = items.last - items.first + 1    // + 1 for inclusive range
-                        val itemTime = elapsed / chunk.toDouble()
-                        if (itemTime == 0.0) {
-                            // If we are real fast, we can get a zero elapsed time and hence a zero item time
-                            chunkSize.set(2 * chunk)    // in which case, just increase the chunk arbitrarily.
-                        } else {
-                            // On the other hand, we can also be really slow and get a zero chunk size
-                            chunkSize.set(Math.max(1, (meanChunkTime / itemTime).toInt()))  // hence use a lower bound.
-                        }
-                    }
-                }
-            }
-        }.forEach { it.await() }
-        return result
-    }
-
+*/
 }

@@ -7,33 +7,27 @@ import kotlinx.coroutines.experimental.Deferred
 interface BooleanLogic<S: Any, P: Any> : CollectionContext<S, P>, Algorithm<S, P> {
 
     fun makeAnd(leftJob: Deferred<StateMap<S, P>>, rightJob: Deferred<StateMap<S, P>>): Deferred<StateMap<S, P>>
-        = lazyAsync {
-        val left = leftJob.await()
-        val right = rightJob.await()
+            = withDeferred(executor, leftJob, rightJob) { left, right ->
         val result = left.toMutable()
-        left.states.toList().consumeChunks { state ->
+        consumeParallel(left.states.toList()) { state ->
             result.lazySet(state, (left[state] and right[state])?.takeIfNotEmpty())
         }
         result.toReadOnly()
     }
 
     fun makeOr(leftJob: Deferred<StateMap<S, P>>, rightJob: Deferred<StateMap<S, P>>): Deferred<StateMap<S, P>>
-        = lazyAsync {
-        val left = leftJob.await()
-        val right = rightJob.await()
+            = withDeferred(executor, leftJob, rightJob) { left, right ->
         val result = left.toMutable()
-        right.states.toList().consumeChunks { state ->
+        consumeParallel(right.states.toList()) { state ->
             result.lazySet(state, (left[state] or right[state])?.takeIfNotEmpty())
         }
         result.toReadOnly()
     }
 
     fun makeComplement(targetJob: Deferred<StateMap<S, P>>, againstJob: Deferred<StateMap<S, P>>): Deferred<StateMap<S, P>>
-        = lazyAsync {
-        val target = targetJob.await()
-        val against = againstJob.await()
+            = withDeferred(executor, targetJob, againstJob) { target, against ->
         val result = against.toMutable()
-        target.states.toList().consumeChunks { state ->
+        consumeParallel(target.states.toList()) { state ->
             result.lazySet(state, (target[state] complement against[state])?.takeIfNotEmpty())
         }
         result.toReadOnly()
