@@ -115,17 +115,17 @@ class ModelChecker(
 
         while ((0 until model.stateCount).any { recompute.get(it) != 0 }) {
             val depChanged = CustomAtomicArray(model.stateCount)
-            (0 until model.stateCount).flatMap { s ->
-                if (recompute[s] > 0) s.predecessors(time).map { p -> s to p } else emptyList()
-            }.also { println("Round: ${it.size}") }.consumeChunks { (s, p) ->
-                if (result.increaseKey(p, result[s] and transitionBound(p, s, time))) {
+            (0 until model.stateCount).mapNotNull { s ->
+                if (recompute[s] > 0) s/*.predecessors(time).map { p -> s to p }*/ else null
+            }.also { println("Round: ${it.size}") }.consumeChunks { s ->
+                /*if (result.increaseKey(p, result[s] and transitionBound(p, s, time))) {
                     depChanged.lazySet(p, 1)
-                }
-                /*s.predecessors(time).forEach { p ->
+                }*/
+                s.predecessors(time).forEach { p ->
                     if (result.increaseKey(p, result[s] and transitionBound(p, s, time))) {
                         depChanged.lazySet(p, 1)
                     }
-                }*/
+                }
             }
             recompute = depChanged.backingArray
             /*recompute.consumeChunks { (state, dep) ->
