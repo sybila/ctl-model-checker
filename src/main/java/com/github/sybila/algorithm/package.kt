@@ -10,14 +10,14 @@ import kotlinx.coroutines.experimental.channels.produce
 import kotlin.coroutines.experimental.CoroutineContext
 import kotlin.system.measureTimeMillis
 
-fun <R> makeDeferred(context: CoroutineContext, action: suspend () -> R): Deferred<R>
-        = async(context, CoroutineStart.LAZY) { action() }
+fun <R> Algorithm<*, *>.makeDeferred(action: suspend () -> R): Deferred<R>
+        = async(executor, CoroutineStart.LAZY) { action() }
 
-fun <A, R> withDeferred(context: CoroutineContext, j: Deferred<A>, action: suspend (A) -> R): Deferred<R>
-        = async(context, CoroutineStart.LAZY) { j.start(); action(j.await()) }
+fun <A, R> Algorithm<*, *>.withDeferred(j: Deferred<A>, action: suspend (A) -> R): Deferred<R>
+        = async(executor, CoroutineStart.LAZY) { j.start(); action(j.await()) }
 
-fun <A, B, R> withDeferred(context: CoroutineContext, j1: Deferred<A>, j2: Deferred<B>, action: suspend (A, B) -> R): Deferred<R>
-        = async(context, CoroutineStart.LAZY) { j1.start(); j2.start(); action(j1.await(), j2.await()) }
+fun <A, B, R> Algorithm<*, *>.withDeferred(j1: Deferred<A>, j2: Deferred<B>, action: suspend (A, B) -> R): Deferred<R>
+        = async(executor, CoroutineStart.LAZY) { j1.start(); j2.start(); action(j1.await(), j2.await()) }
 
 inline suspend fun <S: Any, P: Any, T> Algorithm<S, P>.consumeParallel(data: List<T>, crossinline action: Solver<P>.(T) -> Unit) {
     val dispenser = ChunkDispenser((data.size / (2*fork)).coerceAtLeast(1), meanChunkTime)

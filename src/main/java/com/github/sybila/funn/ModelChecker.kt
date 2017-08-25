@@ -1,6 +1,7 @@
 package com.github.sybila.funn
 
 import com.github.sybila.algorithm.BooleanLogic
+import com.github.sybila.algorithm.Components
 import com.github.sybila.algorithm.Reachability
 import com.github.sybila.algorithm.makeDeferred
 import com.github.sybila.collection.CollectionContext
@@ -49,7 +50,7 @@ class ModelChecker(
         override val fork: Int = Runtime.getRuntime().availableProcessors(),
         override val meanChunkTime: Long = 25,
         name: String = "MC"
-) : BooleanLogic<Int, Grid2>, Reachability<Int, Grid2>, TransitionSystem<Int, Grid2> by model, CollectionContext<Int, Grid2> by maps {
+) : BooleanLogic<Int, Grid2>, Components<Int, Grid2>, TransitionSystem<Int, Grid2> by model, CollectionContext<Int, Grid2> by maps {
 
     override val executor = newFixedThreadPoolContext(fork, name)
 
@@ -77,16 +78,16 @@ class ModelChecker(
             return graph.computeIfAbsent(f.canonicalKey) {
                 println("Build $f")
                 when (f) {
-                    is Formula.True -> makeDeferred(executor) { universe }
-                    is Formula.False -> makeDeferred(executor) { EmptyStateMap<Int, Grid2>() }
-                    is Formula.Not -> makeComplement(build(f.inner), makeDeferred(executor) { universe })
+                    is Formula.True -> makeDeferred { universe }
+                    is Formula.False -> makeDeferred { EmptyStateMap<Int, Grid2>() }
+                    is Formula.Not -> makeComplement(build(f.inner), makeDeferred { universe })
                     is Formula.And -> makeAnd(build(f.left), build(f.right))
                     is Formula.Or -> makeOr(build(f.left), build(f.right))
                     is Formula.Implies -> build(Not(f.left) or f.right)
                     is Formula.Equals -> build((Not(f.left) and Not(f.right)) or (f.left and f.right))
                     is Formula.Globally -> build(Not(Formula.Future(f.quantifier.invert(), Not(f.inner), f.direction)))
                     is Formula.Future -> makeReachability(build(f.inner), true)
-                    else -> makeDeferred(executor) { makeProposition(f) }
+                    else -> makeDeferred { makeProposition(f) }
                 }
             }
         }
