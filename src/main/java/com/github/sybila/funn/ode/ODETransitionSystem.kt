@@ -47,7 +47,7 @@ class ODETransitionSystem(
                     .parallel().runOn(scheduler)
                     .map { vertex ->
                         for (dim in 0 until dimensions) {
-                            vertices[vertex][dim] = computeVertexColors(vertex, dim)
+                            vertices[vertex][dim] = computeVertexColors(vertex, dim)?.takeIfNotEmpty()
                         }
                     }.reduce({ _, _ -> Unit }).block()
 
@@ -58,8 +58,8 @@ class ODETransitionSystem(
                 Array(dimensions) { Array<Any?>(4) { null } }
             }
 
-            fun getFacetColor(state: Int, dim: Int, orientation: Int): Grid2
-                    = facetColors[state][dim][orientation] as Grid2
+            fun getFacetColor(state: Int, dim: Int, orientation: Int): Grid2?
+                    = facetColors[state][dim][orientation] as Grid2?
 
             //enumerate all bit masks corresponding to vertices of a state
             val vertexMasks: IntArray = (0 until dimensions).fold(listOf(0)) { a, _ ->
@@ -75,10 +75,10 @@ class ODETransitionSystem(
                                 val positiveDerivation = orientation == PositiveOut || orientation == NegativeIn
                                 facetColors[state][dim][orientation] = vertexMasks
                                         .filter { it.shr(dim).and(1) == positiveFacet }
-                                        .fold<Int, Grid2?>(null) { _, mask ->
+                                        .fold<Int, Grid2?>(null) { facet, mask ->
                                             val vertex = encoder.nodeVertex(state, mask)
                                             val p = getVertexColor(vertex, dim)
-                                            if (positiveDerivation) p else p.complement(TT)
+                                            facet or (if (positiveDerivation) p else p.complement(TT))
                                         }
                             }
                         }
@@ -102,8 +102,8 @@ class ODETransitionSystem(
                                 val negativeIn = getFacetColor(state, dim, if (time) NegativeIn else NegativeOut)
 
                                 encoder.higherNode(state, dim)?.let { higher ->
-                                    val colors = if (time) positiveOut else positiveIn
-                                    colors.takeIfNotEmpty()?.let { result.add(higher to it) }
+                                    val colors = positiveOut//if (time) positiveOut else positiveIn
+                                    colors?.takeIfNotEmpty()?.let { result.add(higher to it) }
 
                                     if (createSelfLoops) {
                                         val positiveFlow = negativeIn and positiveOut and (negativeOut or positiveIn).complement(TT)
@@ -112,8 +112,8 @@ class ODETransitionSystem(
                                 }
 
                                 encoder.lowerNode(state, dim)?.let { lower ->
-                                    val colors = if (time) negativeOut else negativeIn
-                                    colors.takeIfNotEmpty()?.let { result.add(lower to it) }
+                                    val colors = negativeOut//if (time) negativeOut else negativeIn
+                                    colors?.takeIfNotEmpty()?.let { result.add(lower to it) }
 
                                     if (createSelfLoops) {
                                         val negativeFlow = negativeOut and positiveIn and (negativeIn or positiveOut).complement(TT)
