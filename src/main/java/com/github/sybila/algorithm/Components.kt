@@ -1,12 +1,13 @@
 package com.github.sybila.algorithm
 
+import com.github.sybila.algorithm.components.PivotSelector
 import com.github.sybila.collection.Counter
 import com.github.sybila.collection.StateMap
 import kotlinx.coroutines.experimental.Deferred
 import kotlinx.coroutines.experimental.Job
 import kotlinx.coroutines.experimental.async
 
-interface Components<S: Any, P: Any> : Reachability<S, P>, BooleanLogic<S, P> {
+interface Components<S: Any, P: Any> : Reachability<S, P>, BooleanLogic<S, P>, PivotSelector<S, P> {
 
     fun makeTerminalComponents(): Deferred<Counter<P>> = makeDeferred {
         val counter = Counter(solver)
@@ -31,10 +32,12 @@ interface Components<S: Any, P: Any> : Reachability<S, P>, BooleanLogic<S, P> {
     }
 
     private fun branch(universe: StateMap<S, P>, counter: Counter<P>): Job = async(executor) {
+
         fun StateMap<S, P>.allParams() = solver.run {
             entries.map { it.second }.fold<P?, P?>(null) { a, b -> a or b }
         }
-        val pivots = selectPivots(universe)
+
+        val pivots = universe.findPivots()
         println("Pivots: ${pivots.states.toList()}")
 
         val F = FWD(makeDeferred { pivots })

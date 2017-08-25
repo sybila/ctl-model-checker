@@ -1,5 +1,6 @@
 package com.github.sybila.solver.grid
 
+import com.github.sybila.algorithm.components.PickCardinality
 import java.util.*
 import java.util.stream.Collectors
 
@@ -7,7 +8,14 @@ class Grid2(
         val thresholdsX: DoubleArray,
         val thresholdsY: DoubleArray,
         val values: BitSet
-) {
+) : PickCardinality.Cardinality {
+
+    override val cardinality: Double
+        get() = values.cardinality().toDouble()/*values.stream().mapToDouble { value ->
+            val X = value % modifier
+            val Y = value / modifier
+            (thresholdsX[X+1] - thresholdsX[X]) * (thresholdsY[Y+1] - thresholdsY[Y])
+        }.sum()*/
 
     companion object {
         val EMPTY = Grid2(DoubleArray(0), DoubleArray(0), BitSet())

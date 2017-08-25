@@ -2,7 +2,10 @@ package com.github.sybila.funn
 
 import com.github.sybila.algorithm.BooleanLogic
 import com.github.sybila.algorithm.Components
-import com.github.sybila.algorithm.Reachability
+import com.github.sybila.algorithm.components.PickCardinality
+import com.github.sybila.algorithm.components.PickRandom
+import com.github.sybila.algorithm.components.PickStructure
+import com.github.sybila.algorithm.components.PivotSelector
 import com.github.sybila.algorithm.makeDeferred
 import com.github.sybila.collection.CollectionContext
 import com.github.sybila.collection.EmptyStateMap
@@ -50,7 +53,12 @@ class ModelChecker(
         override val fork: Int = Runtime.getRuntime().availableProcessors(),
         override val meanChunkTime: Long = 25,
         name: String = "MC"
-) : BooleanLogic<Int, Grid2>, Components<Int, Grid2>, TransitionSystem<Int, Grid2> by model, CollectionContext<Int, Grid2> by maps {
+) : BooleanLogic<Int, Grid2>,
+        Components<Int, Grid2>,
+        TransitionSystem<Int, Grid2> by model,
+        CollectionContext<Int, Grid2> by maps,
+        PivotSelector<Int, Grid2> by PickStructure(solver, maps, model)
+{
 
     override val executor = newFixedThreadPoolContext(fork, name)
 
@@ -100,32 +108,5 @@ class ModelChecker(
         PathQuantifier.pA -> PathQuantifier.pE
         PathQuantifier.pE -> PathQuantifier.pA
     }
-/*
-    fun makeReach(reachJob: Deferred<StateMap<Int, Grid2>>, time: Boolean): Deferred<StateMap<Int, Grid2>> = lazyAsync {
-        val reach = reachJob.await()
-        val result = reach.toMutable()
-        //val chunks = ChunkDispenser(meanChunkTime)
 
-        var recompute = IntArray(model.stateCount) { if (reach[it] != null) 1 else 0 }
-
-        while ((0 until model.stateCount).any { recompute.get(it) != 0 }) {
-            val depChanged = CustomAtomicArray(model.stateCount)
-            (0 until ,model.stateCount).flatMap { s ->
-                if (recompute[s] > 0) s.predecessors(time).map { p -> s to p } else emptyList()
-            }.also { println("Round: ${it.size}") }.consumeChunks { (s, p) ->
-                if (result.increaseKey(p, result[s] and transitionBound(p, s, time))) {
-                    depChanged.lazySet(p, 1)
-                }
-                /*s.predecessors(time).forEach { p ->
-                    if (result.increaseKey(p, result[s] and transitionBound(p, s, time))) {
-                        depChanged.lazySet(p, 1)
-                    }
-                }*/
-            }
-            recompute = depChanged.backingArray
-        }
-
-        result.toReadOnly()
-    }
-*/
 }
