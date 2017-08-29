@@ -3,7 +3,6 @@ package com.github.sybila.model
 import com.github.sybila.collection.EmptyStateMap
 import com.github.sybila.collection.GenericStateMap
 import com.github.sybila.huctl.DirFormula.*
-import com.github.sybila.huctl.Formula
 import com.github.sybila.huctl.Formula.Text
 import org.junit.Test
 import kotlin.test.assertEquals
@@ -13,7 +12,7 @@ class GenericTransitionSystemTest {
 
     @Test
     fun validExample() {
-        val system = GenericTransitionSystem<String, Long>(sequenceOf(
+        val system = GenericTransitionSystem(Long.MAX_VALUE, sequenceOf(
             ("a" to "b") to (12L to True),
                 ("a" to "c") to (-3L to False),
                 ("b" to "c") to (1234L to True),
@@ -64,7 +63,7 @@ class GenericTransitionSystemTest {
     @Test
     fun duplicateTransition() {
         assertFailsWith<IllegalArgumentException> {
-            GenericTransitionSystem<String, String>(sequenceOf(
+            GenericTransitionSystem("foo|goo", sequenceOf(
                     ("a" to "b") to ("foo" to True),
                     ("a" to "b") to ("goo" to Loop)
             ), emptySequence())
@@ -74,7 +73,7 @@ class GenericTransitionSystemTest {
     @Test
     fun duplicateProposition() {
         assertFailsWith<IllegalArgumentException> {
-            GenericTransitionSystem<String, String>(sequenceOf(
+            GenericTransitionSystem("foo|goo", sequenceOf(
                     ("a" to "b") to ("foo" to True)
             ), sequenceOf(
                     Text("foo") to EmptyStateMap(),
@@ -86,7 +85,7 @@ class GenericTransitionSystemTest {
     @Test
     fun unknownStateInProposition() {
         assertFailsWith<IllegalArgumentException> {
-            GenericTransitionSystem<String, String>(sequenceOf(
+            GenericTransitionSystem("foo|goo", sequenceOf(
                     ("a" to "b") to ("foo" to True)
             ), sequenceOf(
                     Text("foo") to GenericStateMap("a" to "foo", "bb" to "goo")

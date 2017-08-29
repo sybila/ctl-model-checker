@@ -1,7 +1,6 @@
 package com.github.sybila.collection
 
 import org.junit.Test
-import kotlin.coroutines.experimental.buildSequence
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
 import kotlin.test.assertFalse
@@ -11,14 +10,14 @@ class AtomicArrayStateMapTest {
 
     @Test
     fun inBoundsRead() {
-        val states = ArrayStateMap(2) { if (it == 0) "a" else null }.toAtomic()
+        val states = ArrayStateMap(2) { if (it == 0) "a" else null }.makeMutable()
         assertEquals("a", states[0])
         assertEquals(null, states[1])
     }
 
     @Test
     fun outOfBoundsRead() {
-        val states = ArrayStateMap(1) { "a" }.toAtomic()
+        val states = ArrayStateMap(1) { "a" }.makeMutable()
         assertEquals(null, states[-1])
         assertEquals("a", states[0])
         assertEquals(null, states[1])
@@ -64,13 +63,13 @@ class AtomicArrayStateMapTest {
 
     @Test
     fun statesSequence() {
-        val states = ArrayStateMap(10) { if (it % 2 == 0) "a" else null }.toAtomic()
+        val states = ArrayStateMap(10) { if (it % 2 == 0) "a" else null }.makeMutable()
         assertEquals(listOf(0, 2, 4, 6, 8), states.states.toList())
     }
 
     @Test
     fun entriesSequence() {
-        val states = ArrayStateMap(10) { if (it % 2 == 0) "a" else null }.toAtomic()
+        val states = ArrayStateMap(10) { if (it % 2 == 0) "a" else null }.makeMutable()
         assertEquals(listOf(0, 2, 4, 6, 8).map { it to "a" }, states.entries.toList())
     }
 

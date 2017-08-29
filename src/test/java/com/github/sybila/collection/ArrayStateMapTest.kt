@@ -35,7 +35,7 @@ class ArrayStateMapTest {
     @Test
     fun makeAtomic() {
         val states = ArrayStateMap(3) { if (it == 1) null else (it * 2).toString() }
-        val atomic = states.toAtomic()
+        val atomic = states.makeMutable()
         assertEquals(states[0], atomic[0])
         assertEquals(states[1], atomic[1])
         assertEquals(states[2], atomic[2])

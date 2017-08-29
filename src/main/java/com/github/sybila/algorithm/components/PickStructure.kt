@@ -24,7 +24,7 @@ class PickStructure<S: Any, P: PickCardinality.Cardinality>(
     // Ugly, wrong cast!
     private val magics = (collections.makeEmptyMap() as MutableStateMap<S, ArrayList<P?>>).apply { solver.run { model.run {
         states.forEach { state ->
-            println("Magic: $state")
+            //println("Magic: $state")
             fun MutableList<P?>.setOrUnion(index: Int, value: P?) {
                 while (this.size <= index) add(null)
                 this[index] = this[index] or value

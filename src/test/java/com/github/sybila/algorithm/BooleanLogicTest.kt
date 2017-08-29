@@ -1,9 +1,8 @@
 package com.github.sybila.algorithm
 
-import com.github.sybila.collection.GenericStateMap
-import com.github.sybila.collection.GenericCollectionContext
 import com.github.sybila.collection.CollectionContext
-import com.github.sybila.coroutines.lazyAsync
+import com.github.sybila.collection.GenericCollectionContext
+import com.github.sybila.collection.GenericStateMap
 import com.github.sybila.solver.SetSolver
 import com.github.sybila.solver.Solver
 import kotlinx.coroutines.experimental.CommonPool
@@ -36,7 +35,7 @@ class BooleanLogicTest {
     fun andTest() {
         makeAlgorithm().run {
             runBlocking {
-                val C = makeAnd(lazyAsync(executor) { A }, lazyAsync(executor) { B }).await()
+                val C = makeAnd(makeDeferred { A }, makeDeferred { B }).await()
                 assertEquals(mapOf(
                         "a" to setOf(2, 3), "b" to setOf(2,3)
                 ), C.entries.toMap())
@@ -48,7 +47,7 @@ class BooleanLogicTest {
     fun orTest() {
         makeAlgorithm().run {
             runBlocking {
-                val C = makeOr(lazyAsync(executor) { A }, lazyAsync(executor) { B }).await()
+                val C = makeOr(makeDeferred { A }, makeDeferred { B }).await()
                 assertEquals(mapOf(
                         "a" to setOf(1,2,3,4), "b" to setOf(1,2,3,4), "c" to setOf(1,2,3), "d" to setOf(2,3,4)
                 ), C.entries.toMap())
@@ -60,7 +59,7 @@ class BooleanLogicTest {
     fun makeComplement() {
         makeAlgorithm().run {
             runBlocking {
-                val C = makeComplement(lazyAsync(executor) { A }, lazyAsync(executor) { B }).await()
+                val C = makeComplement(makeDeferred { A }, makeDeferred { B }).await()
                 assertEquals(mapOf(
                         "a" to setOf(4), "b" to setOf(1), "d" to setOf(2,3,4)
                 ), C.entries.toMap())
