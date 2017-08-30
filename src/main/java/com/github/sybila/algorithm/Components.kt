@@ -6,6 +6,9 @@ import com.github.sybila.collection.StateMap
 import kotlinx.coroutines.experimental.Deferred
 import kotlinx.coroutines.experimental.Job
 import kotlinx.coroutines.experimental.async
+import java.util.concurrent.atomic.AtomicInteger
+
+val c = AtomicInteger(0)
 
 interface Components<S: Any, P: Any> : Reachability<S, P>, BooleanLogic<S, P>, PivotSelector<S, P> {
 
@@ -15,22 +18,6 @@ interface Components<S: Any, P: Any> : Reachability<S, P>, BooleanLogic<S, P>, P
         counter
     }
 
-    private fun selectPivots(universe: StateMap<S, P>): StateMap<S, P> {
-        solver.run {
-            val pivots = makeEmptyMap()
-            var uncovered = universe.entries.map { it.second }
-                    .fold<P?, P?>(null) { uncovered, p -> uncovered or p }
-            for ((s, p) in universe.entries) {
-                (p and uncovered)?.takeIfNotEmpty()?.let { pivot ->
-                    pivots.lazySet(s, pivot)
-                    uncovered = (pivot complement uncovered)?.takeIfNotEmpty()
-                }
-                if (uncovered == null) break
-            }
-            return pivots
-        }
-    }
-
     private fun branch(universe: StateMap<S, P>, counter: Counter<P>): Job = async(executor) {
 
         fun StateMap<S, P>.allParams() = solver.run {
@@ -38,19 +25,15 @@ interface Components<S: Any, P: Any> : Reachability<S, P>, BooleanLogic<S, P>, P
         }
 
         val pivots = universe.findPivots()
-        println("Pivots: ${pivots.states.toList()}")
+        println("Iteration: ${c.incrementAndGet()} pivots: ${pivots.states.count()}")
 
-        val F = FWD(makeDeferred { pivots })
-        val B = BWD(makeDeferred { pivots })
+        val F = FWD(makeDeferred { pivots }, makeDeferred { universe })
+        val B = BWD(makeDeferred { pivots }, F)
+
+        val BB = BWD(F, makeDeferred { universe })
+        val V_minus_BB = makeComplement(BB, makeDeferred { universe }).await()
 
         val F_minus_B = makeComplement(B, F).await()
-
-        val j1 = F_minus_B.takeIf { it.entries.any() }?.let { next ->
-            branch(next, counter)
-        }
-
-        val BB = BWD(F)
-        val V_minus_BB = makeComplement(BB, makeDeferred { universe }).await()
 
         val j2 = solver.run {
             V_minus_BB.allParams()?.takeIfNotEmpty()?.let { newComponents ->
@@ -60,11 +43,15 @@ interface Components<S: Any, P: Any> : Reachability<S, P>, BooleanLogic<S, P>, P
             }
         }
 
+        val j1 = F_minus_B.takeIf { it.entries.any() }?.let { next ->
+            branch(next, counter)
+        }
+
         j1?.join()
         j2?.join()
     }
 
-    private fun FWD(from: Deferred<StateMap<S, P>>): Deferred<StateMap<S, P>> = makeReachability(from, false)
-    private fun BWD(from: Deferred<StateMap<S, P>>): Deferred<StateMap<S, P>> = makeReachability(from, true)
+    fun FWD(from: Deferred<StateMap<S, P>>, through: Deferred<StateMap<S, P>>): Deferred<StateMap<S, P>> = makeReachability(from, through, false)
+    fun BWD(from: Deferred<StateMap<S, P>>, through: Deferred<StateMap<S, P>>): Deferred<StateMap<S, P>> = makeReachability(from, through,true)
 
 }

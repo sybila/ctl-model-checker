@@ -2,8 +2,6 @@ package com.github.sybila.funn
 
 import com.github.sybila.algorithm.BooleanLogic
 import com.github.sybila.algorithm.Components
-import com.github.sybila.algorithm.components.PickCardinality
-import com.github.sybila.algorithm.components.PickRandom
 import com.github.sybila.algorithm.components.PickStructure
 import com.github.sybila.algorithm.components.PivotSelector
 import com.github.sybila.algorithm.makeDeferred
@@ -94,7 +92,7 @@ class ModelChecker(
                     is Formula.Implies -> build(Not(f.left) or f.right)
                     is Formula.Equals -> build((Not(f.left) and Not(f.right)) or (f.left and f.right))
                     is Formula.Globally -> build(Not(Formula.Future(f.quantifier.invert(), Not(f.inner), f.direction)))
-                    is Formula.Future -> makeReachability(build(f.inner), true)
+                    is Formula.Future -> makeReachability(build(f.inner), build(Formula.True),true)
                     else -> makeDeferred { makeProposition(f) }
                 }
             }

@@ -7,8 +7,8 @@ import kotlinx.coroutines.experimental.Deferred
 
 interface Reachability<S : Any, P : Any> : Algorithm<S, P>, CollectionContext<S, P>, TransitionSystem<S, P> {
 
-    fun makeReachability(reachJob: Deferred<StateMap<S, P>>, time: Boolean): Deferred<StateMap<S, P>>
-        = withDeferred(reachJob) { reach ->
+    fun makeReachability(reachJob: Deferred<StateMap<S, P>>, pathJob: Deferred<StateMap<S, P>>, time: Boolean): Deferred<StateMap<S, P>>
+        = withDeferred(reachJob, pathJob) { reach, path ->
         val result = reach.toMutable()
 
         var recompute = makeEmptySet()
@@ -17,9 +17,9 @@ interface Reachability<S : Any, P : Any> : Algorithm<S, P>, CollectionContext<S,
         while (recompute.iterator().hasNext()) {
             val changed = makeEmptySet()
             val update = recompute.flatMap { s -> s.predecessors(time).map { p -> s to p } }
-            println("Recompute: ${update.size}")
+            //println("Recompute: ${update.size}")
             consumeParallel(update) { (s, p) ->
-                if (result.increaseKey(p, result[s] and transitionBound(p, s, time))) {
+                if (result.increaseKey(p, result[s] and path[p] and transitionBound(p, s, time))) {
                     changed.lazyAdd(p)
                 }
             }
