@@ -2,7 +2,7 @@ package com.github.sybila.funn
 
 import com.github.sybila.algorithm.BooleanLogic
 import com.github.sybila.algorithm.Components
-import com.github.sybila.algorithm.components.PickStructure
+import com.github.sybila.algorithm.components.PickRandom
 import com.github.sybila.algorithm.components.PivotSelector
 import com.github.sybila.algorithm.makeDeferred
 import com.github.sybila.collection.CollectionContext
@@ -55,7 +55,7 @@ class ModelChecker(
         Components<Int, Grid2>,
         TransitionSystem<Int, Grid2> by model,
         CollectionContext<Int, Grid2> by maps,
-        PivotSelector<Int, Grid2> by PickStructure(solver, maps, model)
+        PivotSelector<Int, Grid2> by PickRandom(solver, maps)
 {
 
     override val executor = newFixedThreadPoolContext(fork, name)
